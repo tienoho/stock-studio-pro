@@ -1,0 +1,46 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# PyInstaller / Build outputs / Large binaries
+dist/
+build/
+*.spec
+*.exe
+*.zip
+*.rar
+*.7z
+release_v5/
+StockPreview_v5_PORTABLE/
+
+# Secrets, configs, states & caches
+.env
+*.env
+.env.*
+*config.json
+*.pkl
+*state.pkl
+.stock_preview_*
+*cache*
+.stock_preview_cache_*
+
+# Generated Media / Output directories
+stock_media/
+Stock_Media_Output/
+downloads/
+output/
+voices/
+parts_txt/
+kich_ban_hoan_chinh.srt
+
+# IDE / Editor files
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS files
+Thumbs.db
+Desktop.ini
+.DS_Store
