@@ -92,34 +92,57 @@ def format_duration(seconds: float) -> str:
 
 
 def extract_scenes_from_json(data: Any) -> List[Dict[str, Any]]:
-    """Extract list of scene dictionaries from structured or partial JSON."""
+    """Extract list of scene dictionaries from structured or partial JSON, supporting lists and dicts."""
     scenes = []
-    if not isinstance(data, dict):
+    if isinstance(data, list):
+        scenes.extend([s for s in data if isinstance(s, dict)])
+    elif not isinstance(data, dict):
         return scenes
+    else:
+        try:
+            if "scenes" in data and isinstance(data["scenes"], list):
+                scenes.extend([s for s in data["scenes"] if isinstance(s, dict)])
+            if "part_a_scenes" in data and isinstance(data["part_a_scenes"], list):
+                scenes.extend([s for s in data["part_a_scenes"] if isinstance(s, dict)])
+            if "part_b_segments" in data and isinstance(data["part_b_segments"], list):
+                for seg in data["part_b_segments"]:
+                    if not isinstance(seg, dict):
+                        continue
+                    seg_id = seg.get("id") or seg.get("segment_id") or len(scenes) + 1
+                    keywords = seg.get("keywords") or []
+                    scenes.append({
+                        "id": f"seg_{seg_id}",
+                        "time_start": seg.get("time_start", ""),
+                        "time_end": seg.get("time_end", ""),
+                        "duration_seconds": seg.get("duration_seconds", 0),
+                        "dialogue_es": seg.get("dialogue_es_excerpt", ""),
+                        "primary_keywords": keywords[:5],
+                        "secondary_keywords": keywords[5:],
+                        "_is_segment": True,
+                        "_segment_topic": seg.get("segment_topic", ""),
+                    })
+        except Exception as e:
+            print(f"[extract_scenes] Error: {type(e).__name__}: {e}")
 
-    try:
-        if "scenes" in data and isinstance(data["scenes"], list):
-            scenes.extend(data["scenes"])
-        if "part_a_scenes" in data and isinstance(data["part_a_scenes"], list):
-            scenes.extend(data["part_a_scenes"])
-        if "part_b_segments" in data and isinstance(data["part_b_segments"], list):
-            for seg in data["part_b_segments"]:
-                if not isinstance(seg, dict):
-                    continue
-                seg_id = seg.get("id") or seg.get("segment_id") or len(scenes) + 1
-                keywords = seg.get("keywords") or []
-                scenes.append({
-                    "id": f"seg_{seg_id}",
-                    "time_start": seg.get("time_start", ""),
-                    "time_end": seg.get("time_end", ""),
-                    "duration_seconds": seg.get("duration_seconds", 0),
-                    "dialogue_es": seg.get("dialogue_es_excerpt", ""),
-                    "primary_keywords": keywords[:5],
-                    "secondary_keywords": keywords[5:],
-                    "_is_segment": True,
-                    "_segment_topic": seg.get("segment_topic", ""),
-                })
-    except Exception as e:
-        print(f"[extract_scenes] Error: {type(e).__name__}: {e}")
+    # Normalize scene dictionaries: fallback keywords and ID validation
+    for idx, sc in enumerate(scenes):
+        if not isinstance(sc, dict):
+            continue
+        if sc.get("id") is None or str(sc.get("id")).strip() == "":
+            sc["id"] = idx + 1
+
+        pk = sc.get("primary_keywords") or []
+        sk = sc.get("secondary_keywords") or []
+        if not pk and not sk:
+            fallback = sc.get("keywords") or sc.get("tags") or sc.get("search_terms") or []
+            if isinstance(fallback, str):
+                fallback = [k.strip() for k in fallback.split(",") if k.strip()]
+            elif isinstance(fallback, list):
+                fallback = [str(k).strip() for k in fallback if str(k).strip()]
+            else:
+                fallback = []
+            if fallback:
+                sc["primary_keywords"] = fallback[:3]
+                sc["secondary_keywords"] = fallback[3:6]
 
     return scenes

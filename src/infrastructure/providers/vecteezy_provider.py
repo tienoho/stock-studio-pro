@@ -54,57 +54,68 @@ class VecteezyProvider(IMediaProvider):
             return ""
 
     def _search(self, query: str, content_type: str, per_page: int = 30) -> List[Dict[str, Any]]:
-        key = self._get_key()
-        if self.km and not key:
+        clean_query = str(query).strip()
+        if not clean_query:
             return []
-        params = {
-            "term": query,
-            "content_type": content_type,
-            "page": 1,
-            "per_page": min(per_page, 100),
-            "sort_by": "relevance",
-            "family_friendly": "true",
-        }
-        try:
-            r = requests.get(self.API_URL, headers=self._headers(key), params=params, timeout=20)
-            if key:
-                key.record_request()
-            if r.status_code != 200:
+        max_attempts = max(1, len(self.km.vecteezy_keys)) if (self.km and self.km.vecteezy_keys) else 1
+
+        for _ in range(max_attempts):
+            key = self._get_key()
+            if self.km and not key:
                 return []
-            items = []
-            for res in r.json().get("resources", []):
-                rid = res.get("id")
-                if not rid:
+            params = {
+                "term": clean_query,
+                "content_type": content_type,
+                "page": 1,
+                "per_page": min(per_page, 100),
+                "sort_by": "relevance",
+                "family_friendly": "true",
+            }
+            try:
+                r = requests.get(self.API_URL, headers=self._headers(key), params=params, timeout=20)
+                if key:
+                    key.record_request()
+                if r.status_code == 401 and key:
+                    key.is_dead = True
+                if r.status_code in (401, 403, 429) and self.km and len(self.km.vecteezy_keys) > 1:
                     continue
-                thumb_url = (
-                    res.get("thumbnail_url")
-                    or res.get("thumbnail_2x_url")
-                    or res.get("preview_url")
-                    or res.get("preview_2x_url")
-                    or ""
-                )
-                download_url = self._download_url(rid, content_type, key) if key else ""
-                if not download_url:
-                    continue
-                width, height = self._extract_dimensions(res)
-                items.append({
-                    "source": "vecteezy",
-                    "type": "video" if content_type == "video" else "photo",
-                    "id": rid,
-                    "thumb_url": thumb_url,
-                    "download_url": download_url,
-                    "width": width,
-                    "height": height,
-                    "duration": res.get("duration", 0) or 0,
-                    "author": "Vecteezy",
-                    "author_url": "https://www.vecteezy.com/",
-                    "page_url": res.get("url") or res.get("link") or "",
-                    "search_query": query,
-                })
-            return items
-        except Exception as e:
-            print(f"[VecteezyProvider] search_{content_type} error: {e}")
-            return []
+                if r.status_code != 200:
+                    return []
+                items = []
+                for res in r.json().get("resources", []):
+                    rid = res.get("id")
+                    if not rid:
+                        continue
+                    thumb_url = (
+                        res.get("thumbnail_url")
+                        or res.get("thumbnail_2x_url")
+                        or res.get("preview_url")
+                        or res.get("preview_2x_url")
+                        or ""
+                    )
+                    download_url = self._download_url(rid, content_type, key) if key else ""
+                    if not download_url:
+                        continue
+                    width, height = self._extract_dimensions(res)
+                    items.append({
+                        "source": "vecteezy",
+                        "type": "video" if content_type == "video" else "photo",
+                        "id": rid,
+                        "thumb_url": thumb_url,
+                        "download_url": download_url,
+                        "width": width or 0,
+                        "height": height or 0,
+                        "duration": res.get("duration") or 0,
+                        "author": "Vecteezy",
+                        "author_url": "https://www.vecteezy.com/",
+                        "page_url": res.get("url") or res.get("link") or "",
+                        "search_query": clean_query,
+                    })
+                return items
+            except Exception as e:
+                print(f"[VecteezyProvider] search_{content_type} error: {e}")
+                return []
+        return []
 
     def search_photos(self, query: str, per_page: int = 30) -> List[Dict[str, Any]]:
         return self._search(query, "photo", per_page)

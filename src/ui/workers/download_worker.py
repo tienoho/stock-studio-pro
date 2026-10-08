@@ -129,6 +129,12 @@ class DownloadWorker(QThread):
                 scene_id = scene.get("id")
                 selected = self.selected_items.get(scene_id, {})
                 if not selected:
+                    str_sid = str(scene_id)
+                    for k, v in self.selected_items.items():
+                        if str(k) == str_sid:
+                            selected = v
+                            break
+                if not selected:
                     continue
 
                 clean_sid = re.sub(r'[\\/*?:"<>|]', '_', str(scene_id).strip())

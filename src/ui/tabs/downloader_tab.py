@@ -307,7 +307,7 @@ class DownloaderTab(QWidget):
 
     def _load_json_from_file(self, file_path: str):
         try:
-            with open(file_path, "r", encoding="utf-8") as f:
+            with open(file_path, "r", encoding="utf-8-sig") as f:
                 data = json.load(f)
             scenes = extract_scenes_from_json(data)
             if not scenes:
@@ -1244,11 +1244,17 @@ class DownloaderTab(QWidget):
     def load_scenes(self, scenes: list, json_data: dict = None, file_path: str = ""):
         """Loads scene data into the timeline and resets UI state."""
         self.scenes = scenes or []
+        for idx, s in enumerate(self.scenes):
+            if not isinstance(s, dict):
+                continue
+            if s.get("id") is None or str(s.get("id")).strip() == "":
+                s["id"] = idx + 1
+
         self.json_data = json_data
         if file_path:
             self.file_path = file_path
-        self.scene_items = {s.get("id"): [] for s in self.scenes}
-        self.selected_items = {s.get("id"): {} for s in self.scenes}
+        self.scene_items = {s.get("id"): [] for s in self.scenes if isinstance(s, dict)}
+        self.selected_items = {s.get("id"): {} for s in self.scenes if isinstance(s, dict)}
         self.current_scene_id = None
         self.current_page = 0
 
@@ -1291,6 +1297,9 @@ class DownloaderTab(QWidget):
         if not state:
             return
         self.scenes = state.get("scenes", [])
+        for idx, s in enumerate(self.scenes):
+            if isinstance(s, dict) and (s.get("id") is None or str(s.get("id")).strip() == ""):
+                s["id"] = idx + 1
         self.json_data = state.get("json_data")
         self.scene_items = state.get("scene_items", {})
         self.selected_items = state.get("selected_items", {})
@@ -1309,7 +1318,7 @@ class DownloaderTab(QWidget):
             """)
             self._populate_scene_list()
             active_scene = next(
-                (s for s in self.scenes if s.get("id") == self.current_scene_id),
+                (s for s in self.scenes if str(s.get("id")) == str(self.current_scene_id)),
                 self.scenes[0]
             )
             self._on_scene_clicked(active_scene)
@@ -1422,7 +1431,7 @@ class DownloaderTab(QWidget):
         idx = 0
         if self.current_scene_id is not None:
             for i, sc in enumerate(self.scenes):
-                if sc.get("id") == self.current_scene_id:
+                if str(sc.get("id")) == str(self.current_scene_id):
                     idx = (i + 1) % len(self.scenes)
                     break
         self._on_scene_clicked(self.scenes[idx])
@@ -1435,7 +1444,7 @@ class DownloaderTab(QWidget):
         idx = 0
         if self.current_scene_id is not None:
             for i, sc in enumerate(self.scenes):
-                if sc.get("id") == self.current_scene_id:
+                if str(sc.get("id")) == str(self.current_scene_id):
                     idx = (i - 1 + len(self.scenes)) % len(self.scenes)
                     break
         self._on_scene_clicked(self.scenes[idx])
@@ -1444,7 +1453,7 @@ class DownloaderTab(QWidget):
     def _scroll_timeline_to_active(self):
         """Scrolls the scene list scroll area to ensure the active scene card is in view."""
         for item in self.scene_list_widgets:
-            if item.scene.get("id") == self.current_scene_id:
+            if str(item.scene.get("id")) == str(self.current_scene_id):
                 self.scenes_scroll.ensureWidgetVisible(item)
                 break
 
@@ -1872,10 +1881,32 @@ class DownloaderTab(QWidget):
         self.current_page = 0
         self._render_grid()
 
+    def _get_scene_items(self, scene_id: Any) -> list:
+        if scene_id is None:
+            return []
+        if scene_id in self.scene_items:
+            return self.scene_items[scene_id]
+        str_id = str(scene_id)
+        for k, v in self.scene_items.items():
+            if str(k) == str_id:
+                return v
+        return []
+
+    def _get_selected_items(self, scene_id: Any) -> dict:
+        if scene_id is None:
+            return {}
+        if scene_id in self.selected_items:
+            return self.selected_items[scene_id]
+        str_id = str(scene_id)
+        for k, v in self.selected_items.items():
+            if str(k) == str_id:
+                return v
+        return {}
+
     def _get_current_items(self) -> list:
         if self.current_scene_id is None:
             return []
-        return self.scene_items.get(self.current_scene_id, [])
+        return self._get_scene_items(self.current_scene_id)
 
     def _apply_filter(self, items: list) -> list:
         if self.current_filter == "photos":
@@ -1883,7 +1914,7 @@ class DownloaderTab(QWidget):
         elif self.current_filter == "videos":
             return [i for i in items if i.get("type") == "video"]
         elif self.current_filter == "selected":
-            sel_dict = self.selected_items.get(self.current_scene_id, {})
+            sel_dict = self._get_selected_items(self.current_scene_id)
             return [i for i in items if self._get_item_key(i) in sel_dict]
         return items
 
@@ -1893,7 +1924,7 @@ class DownloaderTab(QWidget):
         total_count = len(all_items)
         photos_count = sum(1 for i in all_items if i.get("type") == "photo")
         videos_count = sum(1 for i in all_items if i.get("type") == "video")
-        sel_count = len(self.selected_items.get(self.current_scene_id, {}))
+        sel_count = len(self._get_selected_items(self.current_scene_id))
 
         if "all" in self.filter_buttons:
             self.filter_buttons["all"].setText(f"{t('downloader.filter_all')} ({total_count})")
@@ -2102,8 +2133,8 @@ class DownloaderTab(QWidget):
         for widget in self.scene_list_widgets:
             if str(widget.scene.get("id")) == str(scene_id):
                 widget.update_stats(
-                    len(self.scene_items.get(scene_id, []) or self.scene_items.get(widget.scene.get("id"), [])),
-                    len(self.selected_items.get(scene_id, {}) or self.selected_items.get(widget.scene.get("id"), {}))
+                    len(self._get_scene_items(scene_id)),
+                    len(self._get_selected_items(scene_id))
                 )
                 break
 
@@ -2112,8 +2143,8 @@ class DownloaderTab(QWidget):
             self.stat_total.set_value(0)
             self.stat_selected_scene.set_value(0)
         else:
-            self.stat_total.set_value(len(self.scene_items.get(self.current_scene_id, [])))
-            self.stat_selected_scene.set_value(len(self.selected_items.get(self.current_scene_id, {})))
+            self.stat_total.set_value(len(self._get_scene_items(self.current_scene_id)))
+            self.stat_selected_scene.set_value(len(self._get_selected_items(self.current_scene_id)))
         total_selected = sum(len(s) for s in self.selected_items.values())
         self.stat_selected_total.set_value(total_selected)
         self.selection_changed.emit(total_selected)
@@ -2287,10 +2318,10 @@ class DownloaderTab(QWidget):
         self.status_panel.set_progress(done, total)
 
         if self.current_scene_id is None and items:
-            scene = next((s for s in self.scenes if s.get("id") == scene_id), None)
+            scene = next((s for s in self.scenes if str(s.get("id")) == str(scene_id)), None)
             if scene:
                 self._on_scene_clicked(scene)
-        elif self.current_scene_id == scene_id:
+        elif str(self.current_scene_id) == str(scene_id):
             self._render_grid()
             self._update_stats()
 

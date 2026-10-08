@@ -26,12 +26,19 @@ class PexelsProvider(IMediaProvider):
             return None
         mp4 = [f for f in files if f.get("file_type") == "video/mp4"]
         files = mp4 if mp4 else files
-        files = sorted(files, key=lambda f: (f.get("width", 0) * f.get("height", 0)), reverse=True)
+        files = sorted(
+            files,
+            key=lambda f: ((f.get("width") or 0) * (f.get("height") or 0)),
+            reverse=True
+        )
         return files[0] if files else None
 
     def search_videos(self, query: str, per_page: int = 30) -> List[Dict[str, Any]]:
+        clean_query = str(query).strip()
+        if not clean_query:
+            return []
         url = f"{self.VIDEOS_URL}/search"
-        params = {"query": query, "per_page": per_page, "orientation": "landscape"}
+        params = {"query": clean_query, "per_page": per_page, "orientation": "landscape"}
         max_attempts = max(1, len(self.km.pexels_keys)) if (self.km and self.km.pexels_keys) else 1
 
         for _ in range(max_attempts):
@@ -44,7 +51,9 @@ class PexelsProvider(IMediaProvider):
                 r = requests.get(url, headers=headers, params=params, timeout=15)
                 if key:
                     key.record_request()
-                if r.status_code in (429, 401, 403) and self.km and len(self.km.pexels_keys) > 1:
+                if r.status_code == 401 and key:
+                    key.is_dead = True
+                if r.status_code in (401, 403, 429) and self.km and len(self.km.pexels_keys) > 1:
                     continue
                 if r.status_code != 200:
                     return []
@@ -69,14 +78,13 @@ class PexelsProvider(IMediaProvider):
                         "id": v.get("id", ""),
                         "thumb_url": thumb_url,
                         "download_url": best.get("link", ""),
-                        "width": best.get("width", 0),
-                        "height": best.get("height", 0),
-
-                        "duration": v.get("duration", 0),
+                        "width": best.get("width") or 0,
+                        "height": best.get("height") or 0,
+                        "duration": v.get("duration") or 0,
                         "author": v.get("user", {}).get("name", "Unknown"),
                         "author_url": v.get("user", {}).get("url", ""),
                         "page_url": v.get("url", ""),
-                        "search_query": query,
+                        "search_query": clean_query,
                     })
                 return items
             except Exception as e:
@@ -85,8 +93,11 @@ class PexelsProvider(IMediaProvider):
         return []
 
     def search_photos(self, query: str, per_page: int = 30) -> List[Dict[str, Any]]:
+        clean_query = str(query).strip()
+        if not clean_query:
+            return []
         url = f"{self.PHOTOS_URL}/search"
-        params = {"query": query, "per_page": per_page, "orientation": "landscape"}
+        params = {"query": clean_query, "per_page": per_page, "orientation": "landscape"}
         max_attempts = max(1, len(self.km.pexels_keys)) if (self.km and self.km.pexels_keys) else 1
 
         for _ in range(max_attempts):
@@ -99,7 +110,9 @@ class PexelsProvider(IMediaProvider):
                 r = requests.get(url, headers=headers, params=params, timeout=15)
                 if key:
                     key.record_request()
-                if r.status_code in (429, 401, 403) and self.km and len(self.km.pexels_keys) > 1:
+                if r.status_code == 401 and key:
+                    key.is_dead = True
+                if r.status_code in (401, 403, 429) and self.km and len(self.km.pexels_keys) > 1:
                     continue
                 if r.status_code != 200:
                     return []
@@ -118,13 +131,13 @@ class PexelsProvider(IMediaProvider):
                         "id": p["id"],
                         "thumb_url": thumb_url,
                         "download_url": download_url,
-                        "width": p.get("width", 0),
-                        "height": p.get("height", 0),
+                        "width": p.get("width") or 0,
+                        "height": p.get("height") or 0,
                         "duration": 0,
                         "author": p.get("photographer", "Unknown"),
                         "author_url": p.get("photographer_url", ""),
                         "page_url": p.get("url", ""),
-                        "search_query": query,
+                        "search_query": clean_query,
                     })
                 return items
             except Exception as e:

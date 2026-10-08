@@ -449,7 +449,7 @@ class AutoStockMainWindow(QMainWindow):
 
     def _load_json_path(self, path_str: str):
         try:
-            with open(path_str, "r", encoding="utf-8") as f:
+            with open(path_str, "r", encoding="utf-8-sig") as f:
                 data = json.load(f)
             scenes = extract_scenes_from_json(data)
             if scenes:

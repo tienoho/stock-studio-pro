@@ -52,8 +52,20 @@ class SearchWorker(QThread):
                     break
 
                 scene_id = scene.get("id")
-                primary_kws = [k for k in scene.get("primary_keywords", []) if k]
-                secondary_kws = [k for k in scene.get("secondary_keywords", []) if k]
+                primary_kws = [str(k).strip() for k in scene.get("primary_keywords", []) if str(k).strip()]
+                secondary_kws = [str(k).strip() for k in scene.get("secondary_keywords", []) if str(k).strip()]
+
+                if not primary_kws and not secondary_kws:
+                    fallback = scene.get("keywords") or scene.get("tags") or scene.get("search_terms") or []
+                    if isinstance(fallback, str):
+                        fallback = [k.strip() for k in fallback.split(",") if k.strip()]
+                    elif isinstance(fallback, list):
+                        fallback = [str(k).strip() for k in fallback if str(k).strip()]
+                    else:
+                        fallback = []
+                    if fallback:
+                        primary_kws = fallback[:3]
+                        secondary_kws = fallback[3:6]
 
                 n_primary = min(len(primary_kws), max(3, MAX_KEYWORDS_PER_SCENE - 2))
                 n_secondary = MAX_KEYWORDS_PER_SCENE - n_primary

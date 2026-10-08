@@ -42,7 +42,7 @@ class SubtitleService:
         """Parses an SRT file into structured subtitle blocks with milliseconds timings."""
         if not srt_path.exists():
             return []
-        raw = srt_path.read_text(encoding="utf-8", errors="ignore").replace("\r\n", "\n").replace("\r", "\n")
+        raw = srt_path.read_text(encoding="utf-8-sig", errors="ignore").replace("\r\n", "\n").replace("\r", "\n")
         blocks = []
         for raw_block in re.split(r"\n{2,}", raw.strip()):
             lines = [l.strip() for l in raw_block.split("\n") if l.strip()]

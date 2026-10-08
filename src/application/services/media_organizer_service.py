@@ -83,27 +83,38 @@ class MediaOrganizerService:
         for f in output_dir.iterdir():
             if not f.is_file() or f.name.startswith("_"):
                 continue
-            m = re.match(r'^(\d{3})_', f.name)
+            m = re.match(r'^(\d+)_', f.name)
             if not m:
                 continue
+            raw_num = m.group(1)
             try:
-                sid = int(m.group(1))
+                sid_int = int(raw_num)
             except ValueError:
-                continue
+                sid_int = None
 
-            if sid not in scene_counts:
-                # Might be 0-based or 1-based indexing match
+            matched_sid = None
+            if sid_int is not None and sid_int in scene_counts:
+                matched_sid = sid_int
+            elif raw_num in scene_counts:
+                matched_sid = raw_num
+            else:
+                for k in scene_counts.keys():
+                    if str(k) == raw_num or (sid_int is not None and str(k) == str(sid_int)):
+                        matched_sid = k
+                        break
+
+            if matched_sid is None:
                 continue
 
             name_lower = f.name.lower()
             if '_pexels_video_' in name_lower and name_lower.endswith(self.VIDEO_EXTENSIONS):
-                scene_counts[sid]['pexels_video'] += 1
+                scene_counts[matched_sid]['pexels_video'] += 1
             elif '_pexels_photo_' in name_lower and name_lower.endswith(self.PHOTO_EXTENSIONS):
-                scene_counts[sid]['pexels_photo'] += 1
+                scene_counts[matched_sid]['pexels_photo'] += 1
             elif '_motionarray_' in name_lower:
-                scene_counts[sid]['ma_video'] += 1
+                scene_counts[matched_sid]['ma_video'] += 1
             elif name_lower.endswith(self.VIDEO_EXTENSIONS + self.PHOTO_EXTENSIONS):
-                scene_counts[sid]['other'] += 1
+                scene_counts[matched_sid]['other'] += 1
 
         scenes_with_files = 0
         total_files = 0

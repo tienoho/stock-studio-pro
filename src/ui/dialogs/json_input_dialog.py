@@ -401,7 +401,7 @@ class JsonInputDialog(QDialog):
                     QMessageBox.warning(self, "Chưa chọn file", "Vui lòng chọn file kịch bản trước khi tiếp tục.")
                     return
                 try:
-                    with open(self.selected_file, 'r', encoding='utf-8') as f:
+                    with open(self.selected_file, 'r', encoding='utf-8-sig') as f:
                         self.result_data = json.load(f)
                 except Exception as e:
                     QMessageBox.critical(self, t("common.error"), f"Không đọc được file:\n{e}")
