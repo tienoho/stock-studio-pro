@@ -4,6 +4,7 @@ Video Cut & Mix application service orchestrating FFmpeg cuts per scene folder.
 
 from pathlib import Path
 import random
+import re
 from typing import List, Callable, Optional
 from ...infrastructure.media.ffmpeg_processor import FFmpegProcessor
 
@@ -30,7 +31,8 @@ class VideoCutService:
         scene_folders = [d for d in child_folders if self.get_video_files(d)]
         if scene_folders:
             def sort_key(p: Path):
-                return (0, int(p.name)) if p.name.isdigit() else (1, p.name.lower())
+                nums = re.findall(r"\d+", p.name)
+                return (0, int(nums[0]), p.name.lower()) if nums else (1, 0, p.name.lower())
             return sorted(scene_folders, key=sort_key)
         return [root_folder] if self.get_video_files(root_folder) else []
 

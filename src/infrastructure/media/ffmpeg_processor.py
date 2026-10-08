@@ -20,15 +20,18 @@ class FFmpegProcessor:
         self.creationflags = subprocess.CREATE_NO_WINDOW if os.name == "nt" else 0
 
     def _run_cmd(self, cmd: List[str]) -> subprocess.CompletedProcess:
-        return subprocess.run(
-            cmd,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            text=True,
-            encoding="utf-8",
-            errors="replace",
-            creationflags=self.creationflags,
-        )
+        try:
+            return subprocess.run(
+                cmd,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                text=True,
+                encoding="utf-8",
+                errors="replace",
+                creationflags=self.creationflags,
+            )
+        except Exception as e:
+            return subprocess.CompletedProcess(cmd, returncode=127, stdout="", stderr=str(e))
 
     def ffmpeg_exists(self) -> bool:
         try:

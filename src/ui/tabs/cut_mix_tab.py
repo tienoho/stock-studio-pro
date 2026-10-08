@@ -159,7 +159,7 @@ class CutMixTab(QWidget):
         self.btn_open_out.setObjectName("successBtn")
         self.btn_open_out.setFixedHeight(36)
         self.btn_open_out.setToolTip(format_tooltip("Mở thư mục chứa các video vừa cắt ghép", "Ctrl+Shift+D"))
-        self.btn_open_out.clicked.connect(self._open_current_folder)
+        self.btn_open_out.clicked.connect(self._open_out_folder)
         btn_h.addWidget(self.btn_open_out)
 
         btn_h.addStretch()
@@ -191,6 +191,23 @@ class CutMixTab(QWidget):
             else:
                 subprocess.Popen(["xdg-open", str(p)])
             ToastNotification.show_toast(self, f"Đang mở: {p.name}", "info", 2000)
+        else:
+            ToastNotification.show_toast(self, "Thư mục không tồn tại trên ổ đĩa", "error", 2000)
+
+    def _open_out_folder(self):
+        f = self.cut_folder_input.text().strip()
+        if not f:
+            ToastNotification.show_toast(self, "Chưa chọn thư mục", "warning", 2000)
+            return
+        p = Path(f)
+        canh_p = p / "Canh"
+        target = canh_p if canh_p.exists() else p
+        if target.exists():
+            if os.name == 'nt':
+                os.startfile(str(target))
+            else:
+                subprocess.Popen(["xdg-open", str(target)])
+            ToastNotification.show_toast(self, f"Đang mở: {target.name}", "info", 2000)
         else:
             ToastNotification.show_toast(self, "Thư mục không tồn tại trên ổ đĩa", "error", 2000)
 
@@ -234,6 +251,10 @@ class CutMixTab(QWidget):
         folder = self.cut_folder_input.text().strip()
         if not folder:
             QMessageBox.information(self, "Chưa chọn folder", "Vui lòng chọn folder tổng hoặc folder cảnh trước.")
+            return
+
+        if not Path(folder).exists() or not Path(folder).is_dir():
+            QMessageBox.warning(self, "Thư mục không tồn tại", f"Thư mục cảnh nguồn không tồn tại trên ổ đĩa:\n{folder}")
             return
 
         if self.worker and self.worker.isRunning():

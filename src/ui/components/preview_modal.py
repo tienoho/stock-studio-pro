@@ -291,43 +291,45 @@ class PreviewModal(QDialog):
 
     def _load_image(self, item):
         try:
-            url = item.get("preview_url") or item.get("url") or item.get("thumbnail_url")
+            url = item.get("download_url") or item.get("preview_url") or item.get("thumb_url") or item.get("thumbnail_url") or item.get("url")
             headers = {"User-Agent": get_random_ua()}
             if item.get("source") == "vecteezy":
                 headers["Referer"] = "https://www.vecteezy.com/"
 
             # Thử 3 lần với backoff
             last_err = None
-            for attempt in range(3):
-                try:
-                    resp = requests.get(url, headers=headers, timeout=15)
-                    if resp.status_code == 200:
-                        pixmap = QPixmap()
-                        pixmap.loadFromData(resp.content)
-                        if not pixmap.isNull():
-                            def set_pix():
-                                scaled = pixmap.scaled(
-                                    self.image_label.size(),
-                                    Qt.AspectRatioMode.KeepAspectRatio,
-                                    Qt.TransformationMode.SmoothTransformation
-                                )
-                                self.image_label.setPixmap(scaled)
-                            QTimer.singleShot(0, set_pix)
-                            return
+            if url:
+                for attempt in range(3):
+                    try:
+                        resp = requests.get(url, headers=headers, timeout=15)
+                        if resp.status_code == 200:
+                            pixmap = QPixmap()
+                            pixmap.loadFromData(resp.content)
+                            if not pixmap.isNull():
+                                def set_pix():
+                                    scaled = pixmap.scaled(
+                                        self.image_label.size(),
+                                        Qt.AspectRatioMode.KeepAspectRatio,
+                                        Qt.TransformationMode.SmoothTransformation
+                                    )
+                                    self.image_label.setPixmap(scaled)
+                                QTimer.singleShot(0, set_pix)
+                                return
+                            else:
+                                last_err = "Dữ liệu ảnh không hợp lệ"
+                        elif resp.status_code == 429:
+                            time.sleep(1.0 * (attempt + 1))
+                            continue
                         else:
-                            last_err = "Dữ liệu ảnh không hợp lệ"
-                    elif resp.status_code == 429:
-                        time.sleep(1.0 * (attempt + 1))
-                        continue
-                    else:
-                        last_err = f"HTTP {resp.status_code}"
-                except Exception as e:
-                    last_err = str(e)
-                    time.sleep(0.5)
+                            last_err = f"HTTP {resp.status_code}"
+                    except Exception as e:
+                        last_err = str(e)
+                        time.sleep(0.5)
 
             # Fallback sang thumbnail cache
             if self.thumbnail_cache:
-                thumb_pix = self.thumbnail_cache.get(item.get("thumbnail_url", ""))
+                thumb_key = item.get("thumb_url") or item.get("thumbnail_url", "")
+                thumb_pix = self.thumbnail_cache.get(thumb_key)
                 if thumb_pix and not thumb_pix.isNull():
                     def set_thumb():
                         scaled = thumb_pix.scaled(

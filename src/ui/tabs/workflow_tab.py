@@ -345,16 +345,24 @@ class WorkflowTab(QWidget):
     def _workflow_save(self):
         path, _ = QFileDialog.getSaveFileName(self, "Lưu file mẫu quy trình", "workflow_preset.json", "JSON (*.json)")
         if path:
-            Path(path).write_text(
-                json.dumps(self.workflow_canvas.save_payload(), ensure_ascii=False, indent=2),
-                encoding="utf-8"
-            )
-            self.workflow_log.appendPlainText(f"Đã lưu: {path}")
-            ToastNotification.show_toast(self, f"Đã xuất file: {Path(path).name}", "success", 2000)
+            try:
+                Path(path).write_text(
+                    json.dumps(self.workflow_canvas.save_payload(), ensure_ascii=False, indent=2),
+                    encoding="utf-8"
+                )
+                self.workflow_log.appendPlainText(f"Đã lưu: {path}")
+                ToastNotification.show_toast(self, f"Đã xuất file: {Path(path).name}", "success", 2000)
+            except Exception as e:
+                self.workflow_log.appendPlainText(f"Lỗi lưu file quy trình: {e}")
+                ToastNotification.show_toast(self, f"Lỗi lưu file: {str(e)[:35]}", "error", 3000)
 
     def _workflow_load(self):
         path, _ = QFileDialog.getOpenFileName(self, "Mở file mẫu quy trình", "", "JSON (*.json)")
         if path:
-            self.workflow_canvas.load_payload(json.loads(Path(path).read_text(encoding="utf-8")))
-            self.workflow_log.appendPlainText(f"Đã nạp: {path}")
-            ToastNotification.show_toast(self, f"Đã nạp file: {Path(path).name}", "success", 2000)
+            try:
+                self.workflow_canvas.load_payload(json.loads(Path(path).read_text(encoding="utf-8-sig")))
+                self.workflow_log.appendPlainText(f"Đã nạp: {path}")
+                ToastNotification.show_toast(self, f"Đã nạp file: {Path(path).name}", "success", 2000)
+            except Exception as e:
+                self.workflow_log.appendPlainText(f"Lỗi đọc file quy trình: {e}")
+                ToastNotification.show_toast(self, f"Lỗi đọc file: {str(e)[:35]}", "error", 3000)

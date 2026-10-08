@@ -281,10 +281,20 @@ class SceneVoiceTab(QWidget):
             QMessageBox.information(self, "Thiếu thông tin", "Vui lòng chọn Thư mục video cảnh nguồn.")
             return
 
+        if not Path(root).exists() or not Path(root).is_dir():
+            QMessageBox.warning(self, "Thư mục không tồn tại", f"Thư mục cảnh nguồn không tồn tại trên ổ đĩa:\n{root}")
+            return
+
         if not out:
             # Default out to root / "matched_output"
             out = str(Path(root) / "matched_output")
             self.svc_out.setText(out)
+
+        try:
+            Path(out).mkdir(parents=True, exist_ok=True)
+        except OSError as e:
+            QMessageBox.critical(self, "Lỗi thư mục xuất", f"Không thể tạo thư mục xuất:\n{e}")
+            return
 
         if self.scene_voice_worker and self.scene_voice_worker.isRunning():
             QMessageBox.information(self, "Đang xử lý", "Tiến trình khớp video trước đó đang chạy. Vui lòng đợi hoàn tất.")

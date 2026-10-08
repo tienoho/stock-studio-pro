@@ -468,7 +468,7 @@ class VoiceTab(QWidget):
             self.voice_log.appendPlainText("Edge TTS là dịch vụ miễn phí, không yêu cầu lưu API key!")
             return
         tool = Path(self.tool_root()) / "tool-config.json"
-        cfg = json.loads(tool.read_text(encoding="utf-8")) if tool.exists() else {"providers": {}}
+        cfg = json.loads(tool.read_text(encoding="utf-8-sig")) if tool.exists() else {"providers": {}}
         cfg["provider"] = provider
         cfg.setdefault("providers", {})[provider] = {
             "apiKeys": self.provider_api_keys.toPlainText(),
@@ -492,7 +492,7 @@ class VoiceTab(QWidget):
         txt_dir = out_dir / "parts_txt"
         txt_dir.mkdir(parents=True, exist_ok=True)
         try:
-            data = json.loads(json_file.read_text(encoding="utf-8"))
+            data = json.loads(json_file.read_text(encoding="utf-8-sig"))
         except Exception as e:
             QMessageBox.warning(self, "Lỗi đọc JSON", str(e))
             self.finished.emit(False, f"Lỗi đọc JSON: {e}")

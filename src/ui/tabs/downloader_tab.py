@@ -2357,6 +2357,7 @@ class DownloaderTab(QWidget):
             QMessageBox.warning(self, "Chưa chọn thư mục", "Vui lòng chọn thư mục lưu trong Cài đặt.")
             return
 
+        self._is_confirmless_run = bool(confirmless or self._auto_download_confirmless)
         if not confirmless and not self._auto_download_confirmless:
             reply = QMessageBox.question(
                 self, "Xác nhận tải",
@@ -2367,7 +2368,11 @@ class DownloaderTab(QWidget):
                 return
         self._auto_download_confirmless = False
 
-        Path(output_dir).mkdir(parents=True, exist_ok=True)
+        try:
+            Path(output_dir).mkdir(parents=True, exist_ok=True)
+        except OSError as e:
+            QMessageBox.critical(self, "Lỗi thư mục", f"Không thể tạo thư mục lưu: {e}")
+            return
 
         km = KeyManager(
             self.config.get("pexels_keys", []),
@@ -2447,7 +2452,8 @@ class DownloaderTab(QWidget):
                 "success" if fail == 0 else "warning",
                 3500
             )
-            QMessageBox.information(self, "Hoàn tất", msg)
+            if not getattr(self, "_is_confirmless_run", False):
+                QMessageBox.information(self, "Hoàn tất", msg)
             if os.name == 'nt':
                 try:
                     os.startfile(project_dir)

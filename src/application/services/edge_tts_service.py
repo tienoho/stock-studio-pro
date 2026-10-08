@@ -55,9 +55,7 @@ class EdgeTTSService:
                 pitch=pitch
             )
 
-            if output_srt:
-                output_srt = Path(output_srt)
-                output_srt.parent.mkdir(parents=True, exist_ok=True)
+            async def _stream_with_srt():
                 sub_maker = edge_tts.SubMaker()
                 with open(output_file, "wb") as file:
                     async for chunk in communicate.stream():
@@ -65,15 +63,24 @@ class EdgeTTSService:
                             file.write(chunk["data"])
                         elif chunk["type"] in ("WordBoundary", "SentenceBoundary"):
                             sub_maker.feed(chunk)
-                # Write SRT subtitle file
                 output_srt.write_text(sub_maker.get_srt(), encoding="utf-8")
+
+            if output_srt:
+                output_srt = Path(output_srt)
+                output_srt.parent.mkdir(parents=True, exist_ok=True)
+                await asyncio.wait_for(_stream_with_srt(), timeout=60.0)
             else:
-                await communicate.save(str(output_file))
+                await asyncio.wait_for(communicate.save(str(output_file)), timeout=60.0)
 
             if output_file.exists() and output_file.stat().st_size > 100:
                 return True, f"Tạo giọng thành công: {output_file.name}"
             return False, "File xuất rỗng hoặc không tồn tại."
         except Exception as e:
+            if output_file.exists() and output_file.stat().st_size <= 100:
+                try:
+                    output_file.unlink()
+                except OSError:
+                    pass
             return False, f"Lỗi sinh giọng đọc Edge TTS: {str(e)}"
 
     def synthesize(
