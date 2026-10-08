@@ -17,108 +17,17 @@ from PyQt6.QtWidgets import (
     QPlainTextEdit, QTabWidget, QListWidget, QFileDialog, QMessageBox,
     QApplication, QProgressBar, QCheckBox
 )
-from PyQt6.QtCore import pyqtSignal, QThread, QUrl
+from PyQt6.QtCore import pyqtSignal, QUrl
 from PyQt6.QtMultimedia import QMediaPlayer, QAudioOutput
 
 from ...core.models.scene import srt_time_to_seconds, extract_scenes_from_json
 from ...infrastructure.media.ffmpeg_processor import FFmpegProcessor
 from ...application.services.edge_tts_service import EdgeTTSService, AVAILABLE_VOICES
+from ...application.services.subtitle_service import SubtitleService
+from ..workers.voice_worker import VoiceGenerationWorker
 from ..styles.icons import get_svg_icon, get_svg_pixmap
 from ..styles.ui_enhancer import enhance_widget_interactions, format_tooltip
 from ..components.stat_box import StatBox
-
-
-class VoiceGenerationWorker(QThread):
-    """Background thread worker for generating voice audio and subtitles."""
-    log_signal = pyqtSignal(str)
-    progress_signal = pyqtSignal(int, int)
-    finished_signal = pyqtSignal(int, int)
-
-    def __init__(
-        self,
-        files: List[Path],
-        output_dir: Path,
-        provider: str,
-        voice_id: str,
-        speed: float,
-        generate_srt: bool = True,
-        tool_root: Optional[Path] = None
-    ):
-        super().__init__()
-        self.files = files
-        self.output_dir = output_dir
-        self.provider = provider
-        self.voice_id = voice_id
-        self.speed = speed
-        self.generate_srt = generate_srt
-        self.tool_root = tool_root
-        self._is_stopped = False
-
-    def stop(self):
-        self._is_stopped = True
-
-    def run(self):
-        total = len(self.files)
-        success = 0
-
-        if "edge" in self.provider.lower():
-            # Native Edge TTS
-            service = EdgeTTSService(default_voice=self.voice_id)
-            speed_pct = f"{int((self.speed - 1.0) * 100):+d}%"
-
-            def on_log(msg):
-                self.log_signal.emit(msg)
-
-            def on_prog(cur, tot, text):
-                self.progress_signal.emit(cur, tot)
-
-            ok_count, total_count, _ = service.batch_synthesize_txt_files(
-                txt_files=self.files,
-                output_dir=self.output_dir,
-                voice=self.voice_id,
-                rate=speed_pct,
-                generate_subtitles=self.generate_srt,
-                progress_cb=on_prog,
-                log_cb=on_log,
-                stop_cb=lambda: self._is_stopped
-            )
-            success = ok_count
-        else:
-            # External Node.js provider fallback
-            tool = (self.tool_root / "Voice TXT Tool") if self.tool_root else Path("Voice TXT Tool")
-            server_script = tool / "server.mjs"
-            if not server_script.exists():
-                self.log_signal.emit(f"[LỖI] Không tìm thấy script ngoài tại: {server_script}")
-                self.log_signal.emit("GỢI Ý: Chuyển sang chọn 'Edge TTS (Miễn phí / Khuyên dùng)' để tạo giọng trực tiếp không cần Node.js.")
-                self.finished_signal.emit(0, total)
-                return
-
-            for idx, inp in enumerate(self.files, 1):
-                if self._is_stopped:
-                    self.log_signal.emit("[DỪNG] Đã hủy tiến trình tạo giọng.")
-                    break
-                self.log_signal.emit(f"[{idx}/{total}] Đang tạo giọng đọc: {inp.name} qua {self.provider}...")
-                cmd = [
-                    "node", "server.mjs", "--cli", str(inp), str(self.output_dir),
-                    self.provider, str(self.speed)
-                ]
-                try:
-                    proc = subprocess.Popen(
-                        cmd, cwd=str(tool), stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
-                        text=True, encoding="utf-8", errors="replace",
-                        creationflags=(subprocess.CREATE_NO_WINDOW if os.name == "nt" else 0)
-                    )
-                    for line in proc.stdout or []:
-                        self.log_signal.emit(line.rstrip())
-                    proc.wait()
-                    if proc.returncode == 0:
-                        success += 1
-                except Exception as e:
-                    self.log_signal.emit(f"[LỖI] {e}")
-
-                self.progress_signal.emit(idx, total)
-
-        self.finished_signal.emit(success, total)
 
 
 class VoiceTab(QWidget):
@@ -133,6 +42,7 @@ class VoiceTab(QWidget):
         self.tool_root_fn = tool_root_fn or self._default_tool_root
         self.config = config or {}
         self.save_config_fn = save_config_fn
+        self.subtitle_service = SubtitleService()
         self.worker: Optional[VoiceGenerationWorker] = None
         self.audio_output = QAudioOutput()
         self.player = QMediaPlayer()
@@ -750,45 +660,8 @@ class VoiceTab(QWidget):
 
         out = Path(self.srt_output_input.text().strip() or str(Path(self.voice_output_dir.text().strip() or "voices") / "kich_ban_hoan_chinh.srt"))
         gap = self.srt_gap_spin.value()
-        blocks = []
-        offset_ms = 0
-
-        for f in files:
-            raw = f.read_text(encoding="utf-8", errors="ignore").replace("\r\n", "\n").replace("\r", "\n")
-            parsed = []
-            for block in re.split(r"\n{2,}", raw.strip()):
-                lines = [l.strip() for l in block.split("\n") if l.strip()]
-                if lines and lines[0].isdigit():
-                    lines = lines[1:]
-                if not lines or "-->" not in lines[0]:
-                    continue
-                a, b = [x.strip().split()[0] for x in lines[0].split("-->")]
-                start_ms = int(srt_time_to_seconds(a) * 1000)
-                end_ms = int(srt_time_to_seconds(b) * 1000)
-                parsed.append((start_ms, end_ms, "\n".join(lines[1:]).strip()))
-
-            if not parsed:
-                continue
-
-            base = parsed[0][0]
-            last = 0
-            for st, en, txt in parsed:
-                ns = offset_ms + (st - base)
-                ne = offset_ms + (en - base)
-                blocks.append((ns, ne, txt))
-                last = max(last, ne)
-            offset_ms = last + gap
-
-        def fmt(ms):
-            h = ms // 3600000
-            ms %= 3600000
-            m = ms // 60000
-            ms %= 60000
-            sec = ms // 1000
-            ms %= 1000
-            return f"{h:02d}:{m:02d}:{sec:02d},{ms:03d}"
-
-        body = "\n\n".join(f"{i}\n{fmt(st)} --> {fmt(en)}\n{txt}" for i, (st, en, txt) in enumerate(blocks, 1)) + "\n"
-        out.parent.mkdir(parents=True, exist_ok=True)
-        out.write_text(body, encoding="utf-8")
-        self.voice_log.appendPlainText(f"Đã ghép {len(files)} file SRT ({len(blocks)} dòng phụ đề) -> {out}")
+        ok, msg, count = self.subtitle_service.merge_srt_files(files, out, gap_ms=gap)
+        if ok:
+            self.voice_log.appendPlainText(f"[PHỤ ĐỀ HOÀN THÀNH] {msg} -> {out.name}")
+        else:
+            self.voice_log.appendPlainText(f"[LỖI GHÉP PHỤ ĐỀ] {msg}")

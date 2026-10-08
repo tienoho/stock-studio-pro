@@ -41,6 +41,9 @@ from ..dialogs.assign_scene_dialog import AssignSceneDialog
 from ..workers.search_worker import SearchWorker
 from ..workers.download_worker import DownloadWorker
 from ...infrastructure.persistence.sqlite_downloads_repo import SqliteDownloadsRepository
+from ...application.services.browser_service import BrowserService
+from ...application.services.media_organizer_service import MediaOrganizerService
+from ...application.services.media_provider_registry import MediaProviderRegistry
 
 
 class DownloaderTab(QWidget):
@@ -73,6 +76,9 @@ class DownloaderTab(QWidget):
         self.thumb_loader = thumb_loader
         self.downloads_watcher = downloads_watcher
         self.downloads_repo = downloads_repo or SqliteDownloadsRepository()
+        self.browser_service = BrowserService()
+        self.media_organizer = MediaOrganizerService()
+        self.provider_registry = MediaProviderRegistry()
 
         # State
         self.scenes: List[Dict[str, Any]] = []
@@ -1648,19 +1654,6 @@ class DownloaderTab(QWidget):
         else:
             ToastNotification.show_toast(self, "Không có từ khóa nào để sao chép", "warning", 2000)
 
-    def _find_coccoc_path(self) -> Optional[str]:
-        possible_paths = [
-            os.path.expandvars(r"%LOCALAPPDATA%\CocCoc\Browser\Application\browser.exe"),
-            os.path.expandvars(r"%PROGRAMFILES%\CocCoc\Browser\Application\browser.exe"),
-            os.path.expandvars(r"%PROGRAMFILES(X86)%\CocCoc\Browser\Application\browser.exe"),
-            r"C:\Users\%USERNAME%\AppData\Local\CocCoc\Browser\Application\browser.exe",
-        ]
-        for p in possible_paths:
-            expanded = os.path.expandvars(p)
-            if os.path.exists(expanded):
-                return expanded
-        return None
-
     def _open_motionarray_search(self):
         if not self.current_scene_id:
             QMessageBox.information(self, "Chưa chọn cảnh", "Vui lòng chọn một cảnh trước khi tìm kiếm.")
@@ -1690,27 +1683,13 @@ class DownloaderTab(QWidget):
             if reply != QMessageBox.StandardButton.Yes:
                 return
 
-        coccoc_path = self._find_coccoc_path()
         from urllib.parse import quote_plus
-        opened = 0
-        for kw in selected_keywords:
-            try:
-                encoded = quote_plus(kw)
-                url = f"https://motionarray.com/browse/stock-video/?q={encoded}"
-                if coccoc_path:
-                    subprocess.Popen([coccoc_path, url])
-                else:
-                    import webbrowser
-                    webbrowser.open(url, new=2)
-                opened += 1
-                time.sleep(0.3)
-            except Exception as e:
-                print(f"[MotionArray] Error opening tab '{kw}': {e}")
+        urls = [f"https://motionarray.com/browse/stock-video/?q={quote_plus(kw)}" for kw in selected_keywords]
+        opened = self.browser_service.open_batch_urls(urls, delay_seconds=0.3, preferred_browser="coccoc")
 
-        browser_name = "Cốc Cốc" if coccoc_path else "browser mặc định"
         if opened > 0:
-            self.ma_status_label.setText(f"Đã mở {opened} tab {browser_name}")
-            self.status_message.emit(f"MotionArray: mở {opened} tab ({browser_name}) cho scene #{self.current_scene_id}", 4000)
+            self.ma_status_label.setText(f"Đã mở {opened} tab trình duyệt")
+            self.status_message.emit(f"MotionArray: mở {opened} tab cho scene #{self.current_scene_id}", 4000)
             self.status_panel.add_log(f"MotionArray: mở {opened} tab cho scene #{self.current_scene_id}", "info")
 
     def _on_download_detected(self, filepath: str):
@@ -1744,27 +1723,8 @@ class DownloaderTab(QWidget):
             if not scene:
                 return
 
-            output_dir = self.config.get("output_dir") or str(DEFAULT_OUTPUT_DIR)
-            output_base = Path(output_dir)
-            output_base.mkdir(parents=True, exist_ok=True)
-
-            scene_id_str = str(scene_id).zfill(3) if isinstance(scene_id, int) else str(scene_id)
-            ts_start = scene.get("timestamp_start") or scene.get("time_start") or "00-00-00"
-            ts_safe = ts_start.replace(":", "-").replace(",", "-").replace(".", "-")
-            scene_prefix = f"{scene_id_str}_{ts_safe}"
-
-            existing = list(output_base.glob(f"{scene_prefix}_motionarray_*"))
-            next_num = len(existing) + 1
-            src = Path(src_path)
-            dest_path = output_base / f"{scene_prefix}_motionarray_{next_num:03d}{src.suffix.lower()}"
-
-            while dest_path.exists():
-                next_num += 1
-                dest_path = output_base / f"{scene_prefix}_motionarray_{next_num:03d}{src.suffix.lower()}"
-
-            import shutil
-            shutil.move(str(src), str(dest_path))
-
+            output_dir = Path(self.config.get("output_dir") or str(DEFAULT_OUTPUT_DIR))
+            dest_path = self.media_organizer.move_file_to_scene(src_path, scene, output_dir, "motionarray")
             self.status_message.emit(f"Đã sắp xếp: {dest_path.name} → cảnh #{scene_id}", 4000)
             self.refresh_download_monitor()
         except Exception as e:
@@ -1779,10 +1739,7 @@ class DownloaderTab(QWidget):
             return
 
         output_dir = Path(self.config.get("output_dir") or str(DEFAULT_OUTPUT_DIR))
-        if not output_dir.exists():
-            self._dm_clear_rows()
-            self.dm_summary_label.setText("0 scenes • 0 files")
-            return
+        audit = self.media_organizer.scan_scene_downloads(output_dir, self.scenes)
 
         if hasattr(self, 'dm_placeholder') and self.dm_placeholder is not None:
             try:
@@ -1792,53 +1749,17 @@ class DownloaderTab(QWidget):
             except Exception:
                 pass
 
-        scene_counts = {}
-        for scene in self.scenes:
-            sid = scene.get("id")
-            if sid is None:
-                continue
-            scene_counts[sid] = {
-                'pexels_video': 0, 'pexels_photo': 0, 'ma_video': 0, 'other': 0,
-                'folder': output_dir, 'scene': scene
-            }
+        for sid, info in audit["scenes_counts"].items():
+            self._dm_update_scene_row(
+                sid, info['scene'],
+                info['pexels_video'], info['pexels_photo'], info['ma_video'], info['other'],
+                output_dir
+            )
 
-        for f in output_dir.iterdir():
-            if not f.is_file() or f.name.startswith("_"):
-                continue
-            m = re.match(r'^(\d{3})_', f.name)
-            if not m:
-                continue
-            try:
-                sid = int(m.group(1))
-            except ValueError:
-                continue
-            if sid not in scene_counts:
-                continue
+        scenes_with_files = audit["scenes_with_files"]
+        total_scenes = audit["total_scenes"]
+        total_files = audit["total_files"]
 
-            name_lower = f.name.lower()
-            if '_pexels_video_' in name_lower and name_lower.endswith(('.mp4', '.mov')):
-                scene_counts[sid]['pexels_video'] += 1
-            elif '_pexels_photo_' in name_lower and name_lower.endswith(('.jpg', '.jpeg', '.png', '.webp')):
-                scene_counts[sid]['pexels_photo'] += 1
-            elif '_motionarray_' in name_lower:
-                scene_counts[sid]['ma_video'] += 1
-            elif name_lower.endswith(('.mp4', '.mov', '.jpg', '.jpeg', '.png', '.webp')):
-                scene_counts[sid]['other'] += 1
-
-        scenes_with_files = 0
-        total_files = 0
-        for sid, info in scene_counts.items():
-            n_pv = info['pexels_video']
-            n_pp = info['pexels_photo']
-            n_ma = info['ma_video']
-            n_other = info['other']
-            tot = n_pv + n_pp + n_ma + n_other
-            self._dm_update_scene_row(sid, info['scene'], n_pv, n_pp, n_ma, n_other, info['folder'])
-            if tot > 0:
-                scenes_with_files += 1
-                total_files += tot
-
-        total_scenes = len(self.scenes)
         color = "#4ec9b0" if (scenes_with_files == total_scenes and total_scenes > 0) else ("#f39c12" if scenes_with_files > 0 else "#7d8590")
         self.dm_summary_label.setText(f"{scenes_with_files}/{total_scenes} scenes • {total_files} files")
         self.dm_summary_label.setStyleSheet(f"color: {color}; font-size: 10px; font-weight: 600; padding: 4px 6px; background-color: #0d1117; border-radius: 3px;")
@@ -1909,10 +1830,19 @@ class DownloaderTab(QWidget):
             row.mousePressEvent = on_dm_row_click
             row.setToolTip(f"Bấm chuột trái: chuyển tới Scene #{scene_id}\nBấm chuột phải: mở thư mục lưu")
 
+            def _safe_sort_key(v):
+                if v is None:
+                    return (2, 0, "")
+                try:
+                    return (0, float(v), "")
+                except (ValueError, TypeError):
+                    return (1, 0, str(v))
+
             insert_idx = 0
+            cur_key = _safe_sort_key(scene_id)
             for i in range(self.dm_container_layout.count()):
                 w = self.dm_container_layout.itemAt(i).widget()
-                if w and w.property("scene_id") is not None and w.property("scene_id") > scene_id:
+                if w and w.property("scene_id") is not None and _safe_sort_key(w.property("scene_id")) > cur_key:
                     break
                 insert_idx = i + 1
 
@@ -2329,7 +2259,8 @@ class DownloaderTab(QWidget):
             self.scenes, km,
             self.search_photos_check.isChecked(),
             self.search_videos_check.isChecked(),
-            source_mode
+            source_mode,
+            provider_registry=self.provider_registry
         )
         self.search_worker.sceneCompleted.connect(self._on_scene_results)
         self.search_worker.progress.connect(self._on_search_progress)

@@ -3,7 +3,7 @@ Interface contract for media providers (Pexels, Pixabay, Vecteezy, etc.).
 """
 
 from abc import ABC, abstractmethod
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any, Optional, Tuple
 from ..models.media import MediaItem
 
 
@@ -27,8 +27,8 @@ class IMediaProvider(ABC):
         pass
 
     @abstractmethod
-    def test_key(self, key: str) -> bool:
-        """Validate if the given key is active and functional."""
+    def test_key(self, key: str) -> Tuple[bool, str]:
+        """Validate if the given key is active and functional. Returns (is_valid, message)."""
         pass
 
     @abstractmethod

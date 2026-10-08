@@ -7,9 +7,7 @@ from typing import List, Dict, Any, Optional
 from PyQt6.QtCore import QThread, pyqtSignal
 
 from ...core.constants import MAX_KEYWORDS_PER_SCENE, RESULTS_PER_KEYWORD
-from ...infrastructure.providers.pexels_provider import PexelsProvider
-from ...infrastructure.providers.pixabay_provider import PixabayProvider
-from ...infrastructure.providers.vecteezy_provider import VecteezyProvider
+from ...application.services.media_provider_registry import MediaProviderRegistry
 
 
 class SearchWorker(QThread):
@@ -19,13 +17,22 @@ class SearchWorker(QThread):
     progress = pyqtSignal(str)
     finished_signal = pyqtSignal()
 
-    def __init__(self, scenes: List[Dict[str, Any]], key_manager, search_photos: bool, search_videos: bool, source_mode: str = "Pexels + Pixabay"):
+    def __init__(
+        self,
+        scenes: List[Dict[str, Any]],
+        key_manager,
+        search_photos: bool,
+        search_videos: bool,
+        source_mode: str = "Pexels + Pixabay",
+        provider_registry: Optional[MediaProviderRegistry] = None
+    ):
         super().__init__()
         self.scenes = scenes
         self.km = key_manager
         self.search_photos = search_photos
         self.search_videos = search_videos
         self.source_mode = source_mode or "Pexels + Pixabay"
+        self.registry = provider_registry or MediaProviderRegistry(self.km)
         self._stop = False
 
     def stop(self):
@@ -33,16 +40,9 @@ class SearchWorker(QThread):
 
     def run(self):
         try:
-            mode_lower = str(self.source_mode).lower()
-            use_pexels = "pexels" in mode_lower or "cả" in mode_lower or "+" in mode_lower or "all" in mode_lower
-            use_pixabay = "pixabay" in mode_lower or "cả" in mode_lower or "+" in mode_lower or "all" in mode_lower
-            use_vecteezy = "vecteezy" in mode_lower or "cả" in mode_lower or "+" in mode_lower or "all" in mode_lower
+            providers = self.registry.resolve_providers_for_mode(self.source_mode, self.km)
 
-            pexels = PexelsProvider(self.km) if use_pexels and self.km.pexels_keys else None
-            pixabay = PixabayProvider(self.km) if use_pixabay and self.km.pixabay_keys else None
-            vecteezy = VecteezyProvider(self.km) if use_vecteezy and self.km.vecteezy_keys else None
-
-            if not pexels and not pixabay and not vecteezy:
+            if not providers:
                 self.progress.emit(f"[CẢNH BÁO] Chưa có API key hợp lệ cho nguồn: {self.source_mode}")
                 return
 
@@ -78,34 +78,26 @@ class SearchWorker(QThread):
                     sources_results = []
 
                     if self.search_photos:
-                        try:
-                            photos = []
-                            if pexels:
-                                photos.extend(pexels.search_photos(kw, per_page=RESULTS_PER_KEYWORD))
-                            if pixabay:
-                                photos.extend(pixabay.search_photos(kw, per_page=RESULTS_PER_KEYWORD))
-                            if vecteezy:
-                                photos.extend(vecteezy.search_photos(kw, per_page=RESULTS_PER_KEYWORD))
-                            sources_results.append(photos)
-                        except Exception:
-                            pass
+                        photos = []
+                        for prov in providers.values():
+                            try:
+                                photos.extend(prov.search_photos(kw, per_page=RESULTS_PER_KEYWORD))
+                            except Exception:
+                                pass
+                        sources_results.append(photos)
                         for _ in range(3):
                             if self._stop:
                                 break
                             time.sleep(0.1)
 
                     if self.search_videos:
-                        try:
-                            videos = []
-                            if pexels:
-                                videos.extend(pexels.search_videos(kw, per_page=RESULTS_PER_KEYWORD))
-                            if pixabay:
-                                videos.extend(pixabay.search_videos(kw, per_page=RESULTS_PER_KEYWORD))
-                            if vecteezy:
-                                videos.extend(vecteezy.search_videos(kw, per_page=RESULTS_PER_KEYWORD))
-                            sources_results.append(videos)
-                        except Exception:
-                            pass
+                        videos = []
+                        for prov in providers.values():
+                            try:
+                                videos.extend(prov.search_videos(kw, per_page=RESULTS_PER_KEYWORD))
+                            except Exception:
+                                pass
+                        sources_results.append(videos)
                         for _ in range(3):
                             if self._stop:
                                 break
