@@ -100,6 +100,21 @@ class SettingsDialog(QDialog):
         btn_json.clicked.connect(self._show_json_dialog)
         layout.addWidget(btn_json)
 
+        # Section 4: Updates
+        layout.addWidget(self._section_header(t("update.check_btn"), "arrow_down"))
+        upd_row = QHBoxLayout()
+        from ...core.constants import APP_NAME, APP_VERSION
+        upd_lbl = QLabel(f"{APP_NAME} v{APP_VERSION} [PRO]")
+        upd_lbl.setStyleSheet("color: #cbd5e1; font-size: 12px; font-weight: 600;")
+        upd_row.addWidget(upd_lbl)
+
+        btn_check_upd = QPushButton(t("update.check_btn"))
+        btn_check_upd.setIcon(get_svg_icon("arrow_down", "#ffffff", 14))
+        btn_check_upd.clicked.connect(self._check_for_updates)
+        upd_row.addWidget(btn_check_upd)
+        upd_row.addStretch()
+        layout.addLayout(upd_row)
+
         layout.addStretch()
 
         # Close button
@@ -163,3 +178,25 @@ class SettingsDialog(QDialog):
                 self.json_status_label.setText(t("settings.script_loaded", count=len(scenes)))
                 self.json_status_label.setStyleSheet("color: #34d399; font-size: 12px;")
                 self.jsonLoaded.emit(json_data, scenes)
+
+    def _check_for_updates(self):
+        from .update_dialog import UpdateDialog
+        from ..workers.update_worker import UpdateCheckWorker
+        from ...core.constants import APP_VERSION
+        from ..components.toast_notification import ToastNotification
+
+        self._upd_worker = UpdateCheckWorker(current_version=APP_VERSION, parent=self)
+        def on_avail(release):
+            d = UpdateDialog(release, current_version=APP_VERSION, parent=self)
+            d.exec()
+        def on_none(msg):
+            ToastNotification.show_toast(self, msg, "info", 3000)
+        def on_err(err):
+            ToastNotification.show_toast(self, err, "warning", 3000)
+
+        self._upd_worker.update_available.connect(on_avail)
+        self._upd_worker.no_update.connect(on_none)
+        self._upd_worker.error_occurred.connect(on_err)
+        ToastNotification.show_toast(self, t("update.checking"), "info", 1500)
+        self._upd_worker.start()
+

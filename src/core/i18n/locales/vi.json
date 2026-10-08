@@ -158,5 +158,19 @@
     "search_completed": "Tìm xong: {count} media",
     "download_completed": "Tải xong: {success} thành công, {fail} lỗi",
     "keys_updated": "Đã cập nhật danh sách API key"
+  },
+  "update": {
+    "check_btn": "Kiểm Tra Cập Nhật",
+    "checking": "Đang kiểm tra phiên bản mới...",
+    "dialog_title": "Bản Cập Nhật Mới",
+    "new_version_available": "ĐÃ CÓ PHIÊN BẢN MỚI!",
+    "up_to_date": "Bạn đang sử dụng phiên bản mới nhất ({version}).",
+    "up_to_date_title": "Phiên Bản Mới Nhất",
+    "changelog": "Nhật ký thay đổi (What's New):",
+    "auto_check_startup": "Tự động kiểm tra cập nhật khi mở ứng dụng",
+    "remind_later": "Để Sau",
+    "view_on_github": "Xem Trên GitHub",
+    "download_now": "⚡ Tải & Cập Nhật (.ZIP)",
+    "check_failed": "Không thể kiểm tra cập nhật: {error}"
   }
 }

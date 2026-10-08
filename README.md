@@ -34,6 +34,11 @@
   - Phím tắt năng suất cao: `Ctrl+1..6` (chuyển tab), `Ctrl+S` (lưu phiên vào SQLite), `F5` (chạy quy trình).
   - Lưu và nạp các preset mẫu quy trình một chạm bằng SQLite & JSON.
 
+- 🚀 **Enterprise Auto-Updater & CI/CD Pipeline (Cập nhật tự động chuẩn phần mềm xịn)**:
+  - Tự động kiểm tra bản phát hành mới từ **GitHub Releases** khi khởi động app (chạy ngầm bất đồng bộ không gây khựng giao diện).
+  - Hộp thoại cập nhật chuẩn phong cách Obsidian Dark hiển thị chi tiết Changelog, dung lượng file và nút tải trực tiếp bản `.zip` hoặc mở GitHub.
+  - Tích hợp đầy đủ CI/CD GitHub Actions: Tự động lint, chạy kiểm thử Qt headless, đóng gói PyInstaller độc lập và đính kèm mã băm SHA-256 Checksum.
+
 ---
 
 ## 🏛️ Kiến Trúc Mã Nguồn (Architecture Overview)
@@ -54,7 +59,7 @@ stock-studio-pro/
 ├── run_tests.py                     # 🧪 Trình chạy tự động toàn bộ Unit Tests
 ├── AutoStockStudio.spec             # ⚙️ Cấu hình đóng gói PyInstaller
 ├── requirements.txt                 # 📋 Danh sách thư viện Python
-├── tests/                           # 🧪 Bộ Unit Test tự động (70 tests)
+├── tests/                           # 🧪 Bộ Unit Test tự động (75 tests)
 │   ├── test_core_models.py
 │   ├── test_part_merger.py
 │   ├── test_rate_limiter.py
@@ -65,6 +70,7 @@ stock-studio-pro/
 │   ├── test_edge_tts_service.py
 │   ├── test_i18n.py
 │   ├── test_ui_interactions.py
+│   ├── test_update_checker.py
 │   └── test_bug_fixes.py
 └── src/
     ├── core/                        # 🎯 Tầng Domain & Entities

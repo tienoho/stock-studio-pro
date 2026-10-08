@@ -11,7 +11,7 @@ from PyQt6.QtWidgets import (
     QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QTabWidget, QStatusBar,
     QMessageBox, QApplication, QDialog, QPushButton
 )
-from PyQt6.QtCore import Qt, QSize
+from PyQt6.QtCore import Qt, QSize, QTimer
 
 from ..core.constants import APP_NAME, APP_VERSION, CONFIG_FILE, STATE_FILE, CACHE_DIR
 from ..core.i18n import I18nService, t
@@ -24,7 +24,9 @@ from .components.thumbnail_card import ThumbnailLoader
 from .styles.tokens import load_stylesheet
 from .styles.icons import get_svg_icon
 from .tabs import DownloaderTab, CutMixTab, VoiceTab, SceneVoiceTab, AutoTab, WorkflowTab
-from .dialogs.settings_dialog import SettingsDialog
+from .dialogs import SettingsDialog, UpdateDialog
+from .workers import UpdateCheckWorker
+from ..application.services.update_checker import ReleaseInfo
 from .components.toast_notification import ToastNotification
 
 
@@ -85,6 +87,10 @@ class AutoStockMainWindow(QMainWindow):
         if state:
             self.downloader_tab.restore_state(state)
 
+        # Silent background update check after 2.5s (smooth startup)
+        if self.config.get("check_updates_startup", True):
+            QTimer.singleShot(2500, self._check_updates_silent)
+
     def _update_window_title(self):
         badge = t("app.version_badge")
         self.setWindowTitle(f"{APP_NAME} v{APP_VERSION} [{badge}]")
@@ -100,7 +106,37 @@ class AutoStockMainWindow(QMainWindow):
         self.main_tabs = QTabWidget()
         root_layout.addWidget(self.main_tabs, 1)
 
-        # Tab corner: Language toggle button
+        # Tab corner container: Update Status & Language toggle buttons
+        corner_widget = QWidget()
+        corner_layout = QHBoxLayout(corner_widget)
+        corner_layout.setContentsMargins(0, 0, 8, 0)
+        corner_layout.setSpacing(6)
+
+        self.btn_update = QPushButton()
+        self.btn_update.setIcon(get_svg_icon("arrow_down", "#38ef7d", 13))
+        self.btn_update.setIconSize(QSize(13, 13))
+        self.btn_update.setText(f" v{APP_VERSION}")
+        self.btn_update.setToolTip(t("update.check_btn"))
+        self.btn_update.setFixedHeight(30)
+        self.btn_update.setStyleSheet("""
+            QPushButton {
+                background: #161b22;
+                color: #8b949e;
+                border: 1px solid #30363d;
+                border-radius: 6px;
+                padding: 0 10px;
+                font-size: 11px;
+                font-weight: 700;
+            }
+            QPushButton:hover {
+                background: #1f2937;
+                border-color: #38ef7d;
+                color: #38ef7d;
+            }
+        """)
+        self.btn_update.clicked.connect(self._on_update_btn_clicked)
+        corner_layout.addWidget(self.btn_update)
+
         self.btn_lang = QPushButton()
         self.btn_lang.setIcon(get_svg_icon("globe", "#58a6ff", 14))
         self.btn_lang.setIconSize(QSize(14, 14))
@@ -117,7 +153,6 @@ class AutoStockMainWindow(QMainWindow):
                 padding: 0 10px;
                 font-size: 11px;
                 font-weight: 800;
-                margin-right: 8px;
             }
             QPushButton:hover {
                 background: #1f2937;
@@ -126,7 +161,9 @@ class AutoStockMainWindow(QMainWindow):
             }
         """)
         self.btn_lang.clicked.connect(self._toggle_language)
-        self.main_tabs.setCornerWidget(self.btn_lang, Qt.Corner.TopRightCorner)
+        corner_layout.addWidget(self.btn_lang)
+
+        self.main_tabs.setCornerWidget(corner_widget, Qt.Corner.TopRightCorner)
 
         # 1. Downloader Tab
         self.downloader_tab = DownloaderTab(
@@ -234,10 +271,70 @@ class AutoStockMainWindow(QMainWindow):
             if hasattr(tab, "retranslate_ui"):
                 tab.retranslate_ui()
 
+        if hasattr(self, "btn_update"):
+            self.btn_update.setToolTip(t("update.check_btn"))
+
         self.status_bar.showMessage(t("app.status_ready"), 3000)
 
     def _on_status_message(self, message: str, timeout: int = 0):
         self.status_bar.showMessage(message, timeout)
+
+    # ═══════════════════════════════════════════════════════════════
+    # AUTO-UPDATE & VERSION MANAGEMENT
+    # ═══════════════════════════════════════════════════════════════
+
+    def _on_update_btn_clicked(self):
+        if hasattr(self, "_latest_release") and self._latest_release:
+            dialog = UpdateDialog(self._latest_release, current_version=APP_VERSION, config_repo=self.config_repo, parent=self)
+            dialog.exec()
+        else:
+            self._check_updates_manual()
+
+    def _check_updates_silent(self):
+        self._update_worker = UpdateCheckWorker(current_version=APP_VERSION, parent=self)
+        self._update_worker.update_available.connect(lambda rel: self._on_update_available(rel, show_dialog=False))
+        self._update_worker.start()
+
+    def _check_updates_manual(self):
+        self.status_bar.showMessage(t("update.checking"), 3000)
+        self._manual_worker = UpdateCheckWorker(current_version=APP_VERSION, parent=self)
+        self._manual_worker.update_available.connect(lambda rel: self._on_update_available(rel, show_dialog=True))
+        self._manual_worker.no_update.connect(
+            lambda msg: ToastNotification.show_toast(self, msg, "info", 3000)
+        )
+        self._manual_worker.error_occurred.connect(
+            lambda err: ToastNotification.show_toast(self, err, "warning", 3500)
+        )
+        self._manual_worker.start()
+
+    def _on_update_available(self, release: ReleaseInfo, show_dialog: bool = False):
+        self._latest_release = release
+        self.btn_update.setText(f" 🚀 {release.tag_name}")
+        self.btn_update.setStyleSheet("""
+            QPushButton {
+                background: #1f3b2e;
+                color: #38ef7d;
+                border: 1px solid #238636;
+                border-radius: 6px;
+                padding: 0 10px;
+                font-size: 11px;
+                font-weight: 800;
+            }
+            QPushButton:hover {
+                background: #238636;
+                color: #ffffff;
+            }
+        """)
+        self.btn_update.setToolTip(f"Bản mới {release.tag_name} đã sẵn sàng! Bấm để cập nhật.")
+        ToastNotification.show_toast(
+            self,
+            f"🚀 Bản cập nhật mới {release.tag_name} đã sẵn sàng!",
+            "success",
+            4000
+        )
+        if show_dialog:
+            dialog = UpdateDialog(release, current_version=APP_VERSION, config_repo=self.config_repo, parent=self)
+            dialog.exec()
 
     # ═══════════════════════════════════════════════════════════════
     # SETTINGS & JSON IMPORT

@@ -7,6 +7,12 @@ from pathlib import Path
 APP_VERSION = "1.0"
 APP_NAME = "AutoStock Studio"
 
+# GitHub repository & auto-update
+GITHUB_REPO_OWNER = "tienoho"
+GITHUB_REPO_NAME = "stock-studio-pro"
+GITHUB_RELEASES_URL = f"https://github.com/{GITHUB_REPO_OWNER}/{GITHUB_REPO_NAME}/releases"
+GITHUB_API_LATEST_RELEASE = f"https://api.github.com/repos/{GITHUB_REPO_OWNER}/{GITHUB_REPO_NAME}/releases/latest"
+
 # Storage paths
 DB_FILE = Path.home() / ".autostock_studio.db"
 LEGACY_DB_FILE = Path.home() / ".stock_studio_pro.db"

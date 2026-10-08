@@ -158,5 +158,19 @@
     "search_completed": "Search finished: {count} items found",
     "download_completed": "Download completed: {success} succeeded, {fail} failed",
     "keys_updated": "API keys list updated"
+  },
+  "update": {
+    "check_btn": "Check for Updates",
+    "checking": "Checking for new releases...",
+    "dialog_title": "New Update Available",
+    "new_version_available": "NEW VERSION AVAILABLE!",
+    "up_to_date": "You are running the latest version ({version}).",
+    "up_to_date_title": "Up to Date",
+    "changelog": "What's New (Changelog):",
+    "auto_check_startup": "Automatically check for updates on startup",
+    "remind_later": "Later",
+    "view_on_github": "View on GitHub",
+    "download_now": "⚡ Download & Update (.ZIP)",
+    "check_failed": "Unable to check for updates: {error}"
   }
 }
