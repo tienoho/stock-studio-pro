@@ -9,12 +9,12 @@ class AutoStockError(Exception):
 StockStudioError = AutoStockError
 
 
-class PartMergeError(StockStudioError):
+class PartMergeError(AutoStockError):
     """Raised when merging Claude script parts fails validation."""
     pass
 
 
-class ProviderError(StockStudioError):
+class ProviderError(AutoStockError):
     """Raised when an external API provider encounters an error."""
     pass
 
@@ -29,11 +29,11 @@ class InvalidApiKeyError(ProviderError):
     pass
 
 
-class DownloadError(StockStudioError):
+class DownloadError(AutoStockError):
     """Raised when downloading a media file fails."""
     pass
 
 
-class VideoProcessingError(StockStudioError):
+class VideoProcessingError(AutoStockError):
     """Raised when FFmpeg or ffprobe fails to process video."""
     pass

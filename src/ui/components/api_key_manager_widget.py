@@ -381,7 +381,7 @@ class ApiKeyManagerWidget(QFrame):
             self.keys_layout.addWidget(row)
 
     def _backup_db(self):
-        default_name = f"stock_studio_backup_{datetime.now().strftime('%Y%m%d_%H%M%S')}.db"
+        default_name = f"autostock_studio_backup_{datetime.now().strftime('%Y%m%d_%H%M%S')}.db"
         path, _ = QFileDialog.getSaveFileName(self, t("common.backup"), default_name, "SQLite Database (*.db)")
         if path:
             if self.config_repo and hasattr(self.config_repo, "db"):

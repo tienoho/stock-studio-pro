@@ -12,7 +12,7 @@ from ..styles.icons import get_svg_pixmap
 
 
 class StatusPanel(QFrame):
-    """Panel hiển thị status realtime phong cách 1ClickSub Studio."""
+    """Panel hiển thị status realtime phong cách AutoStock Studio."""
 
     def __init__(self, parent=None):
         super().__init__(parent)
