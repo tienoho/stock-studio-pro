@@ -52,6 +52,10 @@ class VoiceGenerationWorker(QThread):
         self.speed = speed
         self.generate_srt = generate_srt
         self.tool_root = tool_root
+        self._is_stopped = False
+
+    def stop(self):
+        self._is_stopped = True
 
     def run(self):
         total = len(self.files)
@@ -75,7 +79,8 @@ class VoiceGenerationWorker(QThread):
                 rate=speed_pct,
                 generate_subtitles=self.generate_srt,
                 progress_cb=on_prog,
-                log_cb=on_log
+                log_cb=on_log,
+                stop_cb=lambda: self._is_stopped
             )
             success = ok_count
         else:
@@ -89,6 +94,9 @@ class VoiceGenerationWorker(QThread):
                 return
 
             for idx, inp in enumerate(self.files, 1):
+                if self._is_stopped:
+                    self.log_signal.emit("[DỪNG] Đã hủy tiến trình tạo giọng.")
+                    break
                 self.log_signal.emit(f"[{idx}/{total}] Đang tạo giọng đọc: {inp.name} qua {self.provider}...")
                 cmd = [
                     "node", "server.mjs", "--cli", str(inp), str(self.output_dir),
@@ -656,6 +664,12 @@ class VoiceTab(QWidget):
         self.worker.progress_signal.connect(self._on_worker_progress)
         self.worker.finished_signal.connect(self._on_worker_finished)
         self.worker.start()
+
+    def stop_voice(self):
+        """Request graceful cancellation of running voice worker."""
+        if hasattr(self, "worker") and self.worker and self.worker.isRunning():
+            self.worker.stop()
+            self.voice_log.appendPlainText("[DỪNG] Đang yêu cầu dừng tiến trình tạo giọng...")
 
     def _on_worker_progress(self, cur: int, total: int):
         self.voice_done_label.setText(str(cur))

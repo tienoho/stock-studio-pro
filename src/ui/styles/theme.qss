@@ -17,7 +17,7 @@ QMainWindow, QWidget {
         stop:0 #080b11, stop:0.45 #0d121c, stop:1 #101625);
 }
 
-#setupSidebar, #scenesSidebar {
+#setupSidebar, #scenesSidebar, #studioSidebar {
     background-color: #0c1018;
     border-right: 1px solid #192233;
 }

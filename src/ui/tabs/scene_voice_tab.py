@@ -48,6 +48,10 @@ class SceneVoiceWorker(QThread):
         self.random_cuts = random_cuts
         self.concat_final = concat_final
         self.chunk_seconds = chunk_seconds
+        self._is_stopped = False
+
+    def stop(self):
+        self._is_stopped = True
 
     def run(self):
         matcher = SceneVoiceMatcher()
@@ -71,6 +75,7 @@ class SceneVoiceWorker(QThread):
             chunk_seconds=self.chunk_seconds,
             progress_cb=on_prog,
             log_cb=on_log,
+            stop_cb=lambda: self._is_stopped,
         )
         self.finished_signal.emit(ok, msg)
 
@@ -206,6 +211,15 @@ class SceneVoiceTab(QWidget):
         self.btn_run.setToolTip(format_tooltip("Khởi chạy tiến trình FFmpeg cắt ghép video theo giọng đọc", "Ctrl+Enter"))
         self.btn_run.clicked.connect(self.start_scene_voice)
         row.addWidget(self.btn_run)
+
+        self.btn_stop = QPushButton("Dừng")
+        self.btn_stop.setObjectName("dangerBtn")
+        self.btn_stop.setIcon(get_svg_icon("square", "#ffffff", 14))
+        self.btn_stop.setFixedHeight(36)
+        self.btn_stop.setEnabled(False)
+        self.btn_stop.setToolTip(format_tooltip("Hủy bỏ tiến trình ghép video đang chạy"))
+        self.btn_stop.clicked.connect(self.stop_scene_voice)
+        row.addWidget(self.btn_stop)
 
         opts_layout.addLayout(row)
         layout.addWidget(opts_frame)
@@ -345,6 +359,7 @@ class SceneVoiceTab(QWidget):
         self.svc_log.appendPlainText("Khởi động tiến trình Native Scene Voice Matcher (FFmpeg)...")
         self.progress_bar.setValue(0)
         self.btn_run.setEnabled(False)
+        self.btn_stop.setEnabled(True)
 
         self.scene_voice_worker = SceneVoiceWorker(
             root_video_dir=Path(root),
@@ -363,12 +378,20 @@ class SceneVoiceTab(QWidget):
         self.scene_voice_worker.finished_signal.connect(self._on_finished)
         self.scene_voice_worker.start()
 
+    def stop_scene_voice(self):
+        """Cancel running scene voice worker."""
+        if self.scene_voice_worker and self.scene_voice_worker.isRunning():
+            self.scene_voice_worker.stop()
+            self.svc_log.appendPlainText("[DỪNG] Đang yêu cầu dừng tiến trình ghép video...")
+            self.btn_stop.setEnabled(False)
+
     def _on_progress_val(self, cur: int, total: int):
         if total > 0:
             self.progress_bar.setValue(int(cur / total * 100))
 
     def _on_finished(self, ok: bool, message: str):
         self.btn_run.setEnabled(True)
+        self.btn_stop.setEnabled(False)
         self.progress_bar.setValue(100 if ok else 0)
         status = "[HOÀN TẤT THÀNH CÔNG] " if ok else "[LỖI XỬ LÝ] "
         self.svc_log.appendPlainText(f"\n{status}{message}")

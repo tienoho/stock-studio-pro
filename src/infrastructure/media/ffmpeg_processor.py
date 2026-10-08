@@ -102,6 +102,24 @@ class FFmpegProcessor:
         ok = (r.returncode == 0 and out_clip.exists() and out_clip.stat().st_size > 1024)
         return ok, r.stderr
 
+    def create_color_clip(self, duration: float, out_clip: Path, color: str = "0x0f172a", width: int = 1920, height: int = 1080) -> Tuple[bool, str]:
+        """Creates a solid color video clip with exact duration, 30fps and 1920x1080 dimensions for timeline fallbacks."""
+        out_clip = Path(out_clip)
+        out_clip.parent.mkdir(parents=True, exist_ok=True)
+        cmd = [
+            "ffmpeg", "-y",
+            "-f", "lavfi",
+            "-i", f"color=c={color}:s={width}x{height}:d={duration:.3f}:r=30",
+            "-t", f"{duration:.3f}",
+            "-c:v", "libx264", "-preset", "veryfast", "-crf", "22",
+            "-pix_fmt", "yuv420p",
+            "-video_track_timescale", "30000",
+            "-movflags", "+faststart", "-f", "mp4", str(out_clip)
+        ]
+        r = self._run_cmd(cmd)
+        ok = (r.returncode == 0 and out_clip.exists() and out_clip.stat().st_size > 512)
+        return ok, r.stderr
+
     def concat_clips(self, clips: List[Path], out_path: Path, include_audio: bool = False) -> Tuple[bool, str]:
         """Concatenate clips using filter_complex or concat demuxer for large clip lists."""
         if not clips:

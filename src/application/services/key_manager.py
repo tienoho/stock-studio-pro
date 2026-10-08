@@ -10,6 +10,16 @@ from ...core.models.api_key import APIKey
 class KeyManager:
     """Thread-safe multi-platform API key manager."""
 
+    @staticmethod
+    def _is_active_key(k: Dict[str, Any]) -> bool:
+        if not k.get("key"):
+            return False
+        if "active" in k and k["active"] not in (1, True, "1", "true", "True"):
+            return False
+        if "is_active" in k and k["is_active"] not in (1, True, "1", "true", "True"):
+            return False
+        return True
+
     def __init__(
         self,
         pexels_keys: List[Dict[str, Any]],
@@ -22,22 +32,22 @@ class KeyManager:
         self.pexels_keys = [
             APIKey(k.get("name", f"Pexels {i+1}"), k["key"], "pexels", id=k.get("id"))
             for i, k in enumerate(pexels_keys or [])
-            if k.get("key") and k.get("is_active", 1) in (1, True, "1")
+            if self._is_active_key(k)
         ]
         self.pixabay_keys = [
             APIKey(k.get("name", f"Pixabay {i+1}"), k["key"], "pixabay", id=k.get("id"))
             for i, k in enumerate(pixabay_keys or [])
-            if k.get("key") and k.get("is_active", 1) in (1, True, "1")
+            if self._is_active_key(k)
         ]
         self.coverr_keys = [
             APIKey(k.get("name", f"Coverr {i+1}"), k["key"], "coverr", id=k.get("id"))
             for i, k in enumerate(coverr_keys or [])
-            if k.get("key") and k.get("is_active", 1) in (1, True, "1")
+            if self._is_active_key(k)
         ]
         self.vecteezy_keys = [
             APIKey(k.get("name", f"Vecteezy {i+1}"), k["key"], "vecteezy", id=k.get("id"))
             for i, k in enumerate(vecteezy_keys or [])
-            if k.get("key") and k.get("is_active", 1) in (1, True, "1")
+            if self._is_active_key(k)
         ]
 
 

@@ -112,6 +112,7 @@ class EdgeTTSService:
         generate_subtitles: bool = True,
         progress_cb: Optional[Callable[[int, int, str], None]] = None,
         log_cb: Optional[Callable[[str], None]] = None,
+        stop_cb: Optional[Callable[[], bool]] = None,
     ) -> Tuple[int, int, List[Path]]:
         """
         Synthesizes a list of TXT files sequentially into corresponding MP3 and SRT files.
@@ -123,6 +124,10 @@ class EdgeTTSService:
         success = 0
 
         for idx, txt_path in enumerate(txt_files, 1):
+            if stop_cb and stop_cb():
+                if log_cb:
+                    log_cb("[DỪNG] Đã hủy tiến trình tạo giọng đọc theo yêu cầu.")
+                break
             if not txt_path.exists():
                 continue
             text = txt_path.read_text(encoding="utf-8", errors="ignore").strip()

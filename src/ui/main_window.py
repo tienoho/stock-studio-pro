@@ -194,6 +194,37 @@ class AutoStockMainWindow(QMainWindow):
         self.btn_quick_out.clicked.connect(self._open_output_folder)
         stepper_layout.addWidget(self.btn_quick_out)
 
+        sep_tools = QLabel("│")
+        sep_tools.setStyleSheet("color: #27354a; font-size: 11px;")
+        stepper_layout.addWidget(sep_tools)
+
+        self.btn_update = QPushButton()
+        self.btn_update.setIcon(get_svg_icon("arrow_down", "#38ef7d", 12))
+        self.btn_update.setIconSize(QSize(12, 12))
+        self.btn_update.setText(f" v{APP_VERSION}")
+        self.btn_update.setToolTip(format_tooltip(t("update.check_btn"), "F12"))
+        self.btn_update.setFixedHeight(26)
+        self.btn_update.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
+        self.btn_update.clicked.connect(self._on_update_btn_clicked)
+        stepper_layout.addWidget(self.btn_update)
+
+        self.btn_theme = QPushButton()
+        self.btn_theme.setFixedHeight(26)
+        self.btn_theme.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
+        self.btn_theme.clicked.connect(self._toggle_theme)
+        stepper_layout.addWidget(self.btn_theme)
+
+        self.btn_lang = QPushButton()
+        self.btn_lang.setIcon(get_svg_icon("globe", "#58a6ff", 12))
+        self.btn_lang.setIconSize(QSize(12, 12))
+        curr_loc = self.i18n.get_locale().upper()
+        self.btn_lang.setText(f" {curr_loc}")
+        self.btn_lang.setToolTip(format_tooltip(t("app.switch_lang"), "Ctrl+L"))
+        self.btn_lang.setFixedHeight(26)
+        self.btn_lang.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
+        self.btn_lang.clicked.connect(self._toggle_language)
+        stepper_layout.addWidget(self.btn_lang)
+
         root_layout.addWidget(self.workflow_stepper)
 
         # Project Status Dashboard (Breadcrumb Bar)
@@ -278,43 +309,9 @@ class AutoStockMainWindow(QMainWindow):
         root_layout.addWidget(self.project_dashboard)
 
         self.main_tabs = QTabWidget()
+        self.main_tabs.tabBar().setVisible(False)
         self.main_tabs.currentChanged.connect(self._on_tab_changed)
         root_layout.addWidget(self.main_tabs, 1)
-
-        # Tab corner container: Update Status, Language toggle, and Theme toggle buttons
-        corner_widget = QWidget()
-        corner_layout = QHBoxLayout(corner_widget)
-        corner_layout.setContentsMargins(0, 0, 8, 0)
-        corner_layout.setSpacing(6)
-
-        self.btn_update = QPushButton()
-        self.btn_update.setIcon(get_svg_icon("arrow_down", "#38ef7d", 13))
-        self.btn_update.setIconSize(QSize(13, 13))
-        self.btn_update.setText(f" v{APP_VERSION}")
-        self.btn_update.setToolTip(format_tooltip(t("update.check_btn"), "F12"))
-        self.btn_update.setFixedHeight(30)
-        self.btn_update.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
-        self.btn_update.clicked.connect(self._on_update_btn_clicked)
-        corner_layout.addWidget(self.btn_update)
-
-        self.btn_theme = QPushButton()
-        self.btn_theme.setFixedHeight(30)
-        self.btn_theme.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
-        self.btn_theme.clicked.connect(self._toggle_theme)
-        corner_layout.addWidget(self.btn_theme)
-
-        self.btn_lang = QPushButton()
-        self.btn_lang.setIcon(get_svg_icon("globe", "#58a6ff", 14))
-        self.btn_lang.setIconSize(QSize(14, 14))
-        curr_loc = self.i18n.get_locale().upper()
-        self.btn_lang.setText(f" {curr_loc}")
-        self.btn_lang.setToolTip(format_tooltip(t("app.switch_lang"), "Ctrl+L"))
-        self.btn_lang.setFixedHeight(30)
-        self.btn_lang.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
-        self.btn_lang.clicked.connect(self._toggle_language)
-        corner_layout.addWidget(self.btn_lang)
-
-        self.main_tabs.setCornerWidget(corner_widget, Qt.Corner.TopRightCorner)
 
         # 1. Downloader Tab
         self.downloader_tab = DownloaderTab(
@@ -1189,10 +1186,33 @@ class AutoStockMainWindow(QMainWindow):
                 self.downloads_watcher.stop()
             if self.thumb_loader:
                 self.thumb_loader.shutdown()
-            if self.downloader_tab.search_worker and self.downloader_tab.search_worker.isRunning():
+
+            # Downloader workers
+            if hasattr(self.downloader_tab, "search_worker") and self.downloader_tab.search_worker and self.downloader_tab.search_worker.isRunning():
                 self.downloader_tab.search_worker.stop()
-            if self.downloader_tab.download_worker and self.downloader_tab.download_worker.isRunning():
+                self.downloader_tab.search_worker.wait(1000)
+            if hasattr(self.downloader_tab, "download_worker") and self.downloader_tab.download_worker and self.downloader_tab.download_worker.isRunning():
                 self.downloader_tab.download_worker.stop()
+                self.downloader_tab.download_worker.wait(1000)
+
+            # Voice worker
+            if hasattr(self, "voice_tab") and hasattr(self.voice_tab, "stop_voice"):
+                self.voice_tab.stop_voice()
+                if self.voice_tab.worker and self.voice_tab.worker.isRunning():
+                    self.voice_tab.worker.wait(1000)
+
+            # Scene Voice worker
+            if hasattr(self, "scene_voice_tab") and hasattr(self.scene_voice_tab, "stop_scene_voice"):
+                self.scene_voice_tab.stop_scene_voice()
+                if self.scene_voice_tab.scene_voice_worker and self.scene_voice_tab.scene_voice_worker.isRunning():
+                    self.scene_voice_tab.scene_voice_worker.wait(1000)
+
+            # Cut & Mix worker
+            if hasattr(self, "cut_mix_tab") and hasattr(self.cut_mix_tab, "worker"):
+                if self.cut_mix_tab.worker and self.cut_mix_tab.worker.isRunning():
+                    self.cut_mix_tab.worker.stop()
+                    self.cut_mix_tab.worker.wait(1000)
+
             if hasattr(self, "state_repo") and hasattr(self.state_repo, "db"):
                 self.state_repo.db.close()
         except Exception:

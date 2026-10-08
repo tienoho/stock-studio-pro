@@ -15,7 +15,7 @@ from typing import List, Dict, Any, Optional
 from PyQt6.QtWidgets import (
     QWidget, QFrame, QVBoxLayout, QHBoxLayout, QGridLayout, QLabel,
     QPushButton, QComboBox, QCheckBox, QLineEdit, QTextEdit, QScrollArea,
-    QSpinBox, QMessageBox, QDialog, QApplication, QSplitter
+    QSpinBox, QMessageBox, QDialog, QApplication, QSplitter, QStackedWidget
 )
 from PyQt6.QtCore import Qt, pyqtSignal, QTimer
 from PyQt6.QtGui import QCursor, QShortcut, QKeySequence
@@ -121,38 +121,35 @@ class DownloaderTab(QWidget):
         main_layout.setContentsMargins(0, 0, 0, 0)
         main_layout.setSpacing(0)
 
-        # Responsive 4-Column Splitter
+        # Responsive 3-Column Splitter (Unified Studio Sidebar | Media Grid | Keywords & Monitor)
         self.splitter = QSplitter(Qt.Orientation.Horizontal, self)
         self.splitter.setObjectName("studioSplitter")
 
-        # Column 1: Setup sidebar (actions + status)
-        self.setup_sidebar = self._build_setup_sidebar()
-        self.splitter.addWidget(self.setup_sidebar)
+        # Column 1: Unified Studio Sidebar (Scenes & Setup tabs)
+        self.left_sidebar = self._build_unified_left_sidebar()
+        self.setup_sidebar = self.left_sidebar
+        self.scenes_sidebar = self.left_sidebar
+        self.splitter.addWidget(self.left_sidebar)
 
-        # Column 2: Scenes sidebar (scenes list + scene info)
-        self.scenes_sidebar = self._build_scenes_sidebar()
-        self.splitter.addWidget(self.scenes_sidebar)
-
-        # Column 3: Main area (grid, stretches)
+        # Column 2: Main area (grid, stretches)
         self.main_area = self._build_main_area()
         self.splitter.addWidget(self.main_area)
 
-        # Column 4: MotionArray sidebar (right side)
+        # Column 3: MotionArray & Keywords sidebar (right side)
         self.ma_sidebar = self._build_motionarray_sidebar()
         self.splitter.addWidget(self.ma_sidebar)
 
         self.splitter.setCollapsible(0, True)
         self.splitter.setCollapsible(1, False)
-        self.splitter.setCollapsible(2, False)
-        self.splitter.setCollapsible(3, True)
+        self.splitter.setCollapsible(2, True)
 
         screen = QApplication.primaryScreen()
         screen_w = screen.availableGeometry().width() if screen else 1920
-        c1 = 260 if screen_w < 1500 else 285
-        c2 = 230 if screen_w < 1500 else 250
-        c4 = 250 if screen_w < 1500 else 275
-        c3 = max(450, screen_w - (c1 + c2 + c4))
-        self.splitter.setSizes([c1, c2, c3, c4])
+        c1 = 330 if screen_w >= 1400 else 300
+        c3 = 290 if screen_w >= 1400 else 260
+        c2 = max(550, screen_w - (c1 + c3))
+        self.splitter.setSizes([c1, c2, c3])
+        self.splitter.splitterMoved.connect(self._on_splitter_moved)
 
         main_layout.addWidget(self.splitter, 1)
 
@@ -227,37 +224,54 @@ class DownloaderTab(QWidget):
         sizes = self.splitter.sizes()
         if sizes[0] > 0:
             self._saved_setup_width = sizes[0]
-            sizes[2] += sizes[0]
+            sizes[1] += sizes[0]
             sizes[0] = 0
             self.splitter.setSizes(sizes)
             self.btn_toggle_setup.setIcon(get_svg_icon("chevron-right", "#818cf8", 12))
-            self.btn_toggle_setup.setToolTip("Mở rộng Sidebar (Alt+1)")
-            ToastNotification.show_toast(self, "Đã thu gọn Sidebar Cài đặt (Alt+1)", "info", 1800)
+            self.btn_toggle_setup.setToolTip("Mở rộng Bảng Điều Khiển (Alt+1)")
+            if hasattr(self, "btn_reopen_left"):
+                self.btn_reopen_left.setVisible(True)
+            ToastNotification.show_toast(self, "Đã thu gọn Bảng Điều Khiển (Alt+1)", "info", 1800)
         else:
-            restore_w = getattr(self, "_saved_setup_width", 260) or 260
+            restore_w = getattr(self, "_saved_setup_width", 330) or 330
             sizes[0] = restore_w
-            sizes[2] = max(200, sizes[2] - restore_w)
+            sizes[1] = max(400, sizes[1] - restore_w)
             self.splitter.setSizes(sizes)
             self.btn_toggle_setup.setIcon(get_svg_icon("chevron-left", "#818cf8", 12))
-            self.btn_toggle_setup.setToolTip("Thu gọn Sidebar (Alt+1)")
+            self.btn_toggle_setup.setToolTip("Thu gọn Bảng Điều Khiển (Alt+1)")
+            if hasattr(self, "btn_reopen_left"):
+                self.btn_reopen_left.setVisible(False)
+            ToastNotification.show_toast(self, "Đã mở lại Bảng Điều Khiển (Alt+1)", "info", 1800)
 
     def _toggle_ma_sidebar(self):
         sizes = self.splitter.sizes()
-        if sizes[3] > 0:
-            self._saved_ma_width = sizes[3]
-            sizes[2] += sizes[3]
-            sizes[3] = 0
+        if sizes[2] > 0:
+            self._saved_ma_width = sizes[2]
+            sizes[1] += sizes[2]
+            sizes[2] = 0
             self.splitter.setSizes(sizes)
             self.btn_toggle_ma.setIcon(get_svg_icon("chevron-left", "#fbbf24", 12))
-            self.btn_toggle_ma.setToolTip("Mở rộng Monitor (Alt+3)")
-            ToastNotification.show_toast(self, "Đã thu gọn MotionArray Monitor (Alt+3)", "info", 1800)
+            self.btn_toggle_ma.setToolTip("Mở rộng Từ Khóa & Tải (Alt+3)")
+            if hasattr(self, "btn_reopen_right"):
+                self.btn_reopen_right.setVisible(True)
+            ToastNotification.show_toast(self, "Đã thu gọn Từ Khóa & Tải (Alt+3)", "info", 1800)
         else:
-            restore_w = getattr(self, "_saved_ma_width", 260) or 260
-            sizes[3] = restore_w
-            sizes[2] = max(200, sizes[2] - restore_w)
+            restore_w = getattr(self, "_saved_ma_width", 290) or 290
+            sizes[2] = restore_w
+            sizes[1] = max(400, sizes[1] - restore_w)
             self.splitter.setSizes(sizes)
             self.btn_toggle_ma.setIcon(get_svg_icon("chevron-right", "#fbbf24", 12))
-            self.btn_toggle_ma.setToolTip("Thu gọn Monitor (Alt+3)")
+            self.btn_toggle_ma.setToolTip("Thu gọn Từ Khóa & Tải (Alt+3)")
+            if hasattr(self, "btn_reopen_right"):
+                self.btn_reopen_right.setVisible(False)
+            ToastNotification.show_toast(self, "Đã mở lại Từ Khóa & Tải (Alt+3)", "info", 1800)
+
+    def _on_splitter_moved(self, pos, index):
+        sizes = self.splitter.sizes()
+        if hasattr(self, "btn_reopen_left"):
+            self.btn_reopen_left.setVisible(sizes[0] == 0)
+        if hasattr(self, "btn_reopen_right"):
+            self.btn_reopen_right.setVisible(len(sizes) > 2 and sizes[2] == 0)
 
     def dragEnterEvent(self, event):
         if event.mimeData().hasUrls():
@@ -315,142 +329,104 @@ class DownloaderTab(QWidget):
         return container
 
     def _build_setup_sidebar(self) -> QWidget:
-        scroll = QScrollArea()
-        scroll.setObjectName("setupSidebar")
-        scroll.setWidgetResizable(True)
-        scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
-        scroll.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
-        scroll.setFrameShape(QFrame.Shape.NoFrame)
+        return getattr(self, "left_sidebar", None) or self._build_unified_left_sidebar()
 
-        scroll.setMinimumWidth(220)
-        scroll.setMaximumWidth(400)
-        scroll.setStyleSheet("""
-            QScrollArea#setupSidebar {
-                background-color: #0d111a;
+    def _build_scenes_sidebar(self) -> QFrame:
+        return getattr(self, "left_sidebar", None) or self._build_unified_left_sidebar()
+
+    def _build_unified_left_sidebar(self) -> QFrame:
+        sidebar = QFrame()
+        sidebar.setObjectName("studioSidebar")
+        sidebar.setMinimumWidth(280)
+        sidebar.setMaximumWidth(450)
+        sidebar.setStyleSheet("""
+            QFrame#studioSidebar {
+                background-color: #0c1018;
                 border: none;
                 border-right: 1px solid #1a2233;
             }
-            #setupSidebarContainer {
-                background-color: transparent;
-            }
         """)
 
-        container = QWidget()
-        container.setObjectName("setupSidebarContainer")
-        layout = QVBoxLayout(container)
-        layout.setContentsMargins(12, 12, 12, 12)
-        layout.setSpacing(10)
+        layout = QVBoxLayout(sidebar)
+        layout.setContentsMargins(10, 10, 10, 10)
+        layout.setSpacing(8)
 
-        # Brand box
-        brand_card = QFrame()
-        brand_card.setStyleSheet("""
-            QFrame {
-                background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #161f30, stop:1 #0f1522);
-                border: 1px solid #24334d;
-                border-radius: 12px;
-            }
-        """)
-        brand_layout = QVBoxLayout(brand_card)
-        brand_layout.setContentsMargins(12, 10, 12, 10)
-        brand_layout.setSpacing(4)
+        # ── 1. Top Header Row ──
+        header_h = QHBoxLayout()
+        header_h.setSpacing(6)
+        brand_icon = QLabel()
+        brand_icon.setPixmap(get_svg_pixmap("sliders", "#818cf8", 14))
+        header_h.addWidget(brand_icon)
 
-        top_brand_row = QHBoxLayout()
-        top_brand_row.setContentsMargins(0, 0, 0, 0)
-        top_brand_row.addStretch()
+        self.brand_title = QLabel("BẢNG ĐIỀU KHIỂN")
+        self.brand_title.setStyleSheet("color: #ffffff; font-size: 12px; font-weight: 800; letter-spacing: 0.6px;")
+        header_h.addWidget(self.brand_title)
+
+        self.version_badge = QLabel(f"v{APP_VERSION} PRO")
+        self.version_badge.setStyleSheet("color: #818cf8; font-size: 10px; font-weight: 800; background: rgba(99, 102, 241, 0.15); padding: 1px 6px; border-radius: 4px; border: 1px solid rgba(99, 102, 241, 0.3);")
+        header_h.addWidget(self.version_badge)
+
+        header_h.addStretch()
+
         self.btn_toggle_setup = QPushButton()
         self.btn_toggle_setup.setIcon(get_svg_icon("chevron-left", "#818cf8", 12))
         self.btn_toggle_setup.setToolTip("Thu gọn Sidebar (Alt+1)")
         self.btn_toggle_setup.setFixedSize(24, 24)
-        self.btn_toggle_setup.setStyleSheet("background: rgba(255, 255, 255, 0.06); border: 1px solid #24334d; border-radius: 6px;")
+        self.btn_toggle_setup.setStyleSheet("background: rgba(255, 255, 255, 0.06); border: 1px solid #1e293b; border-radius: 6px;")
         self.btn_toggle_setup.clicked.connect(self._toggle_setup_sidebar)
-        top_brand_row.addWidget(self.btn_toggle_setup)
-        brand_layout.addLayout(top_brand_row)
+        header_h.addWidget(self.btn_toggle_setup)
+        layout.addLayout(header_h)
 
-        self.brand_title = QLabel(t("downloader.brand_title"))
-        self.brand_title.setStyleSheet("color: #ffffff; font-size: 14px; font-weight: 900; letter-spacing: 0.8px; background: transparent; border: none;")
-        self.brand_title.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        brand_layout.addWidget(self.brand_title)
+        # ── 2. Primary Hero Search & Quick Action Buttons ──
+        self.search_btn = QPushButton(t("downloader.search_all"))
+        self.search_btn.setIcon(get_svg_icon("search", "#ffffff", 15))
+        self.search_btn.setObjectName("primaryBtn")
+        self.search_btn.setFixedHeight(36)
+        self.search_btn.setStyleSheet("QPushButton#primaryBtn { font-size: 12px; font-weight: 800; letter-spacing: 0.5px; }")
+        self.search_btn.clicked.connect(self.start_search)
+        layout.addWidget(self.search_btn)
 
-        version_row = QHBoxLayout()
-        version_row.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.version_badge = QLabel(f"v{APP_VERSION} {t('app.version_badge')}")
-        self.version_badge.setStyleSheet("""
-            background-color: rgba(99, 102, 241, 0.2);
-            color: #818cf8;
-            font-size: 10px;
-            font-weight: 800;
-            padding: 2px 8px;
-            border-radius: 6px;
-            border: 1px solid rgba(99, 102, 241, 0.4);
-        """)
-        version_row.addWidget(self.version_badge)
-        brand_layout.addLayout(version_row)
-        layout.addWidget(brand_card)
+        quick_grid = QGridLayout()
+        quick_grid.setContentsMargins(0, 0, 0, 0)
+        quick_grid.setSpacing(4)
 
-        # In-UI API Key Manager Widget (Live SQLite config)
-        self.api_key_widget = ApiKeyManagerWidget(self.config_repo, parent=self)
-        self.api_key_widget.keysChanged.connect(self._on_api_keys_changed)
-        layout.addWidget(self.api_key_widget)
+        self.stop_btn = QPushButton(t("common.stop"))
+        self.stop_btn.setIcon(get_svg_icon("stop", "#ffffff", 12))
+        self.stop_btn.setObjectName("dangerBtn")
+        self.stop_btn.setFixedHeight(28)
+        self.stop_btn.clicked.connect(self.stop_action)
+        self.stop_btn.setEnabled(False)
+        quick_grid.addWidget(self.stop_btn, 0, 0)
 
-        # Quick tools row (Open Folder + Settings)
-        top_actions_h = QHBoxLayout()
-        top_actions_h.setSpacing(6)
+        self.btn_reset = QPushButton(t("common.reset"))
+        self.btn_reset.setIcon(get_svg_icon("trash", "#cbd5e1", 12))
+        self.btn_reset.setFixedHeight(28)
+        self.btn_reset.clicked.connect(self.reset_all)
+        quick_grid.addWidget(self.btn_reset, 0, 1)
 
-        self.btn_open_folder = QPushButton("Mở Thư Mục")
-        self.btn_open_folder.setIcon(get_svg_icon("folder", "#ffffff", 14))
-        self.btn_open_folder.setToolTip("Mở thư mục lưu trữ media trên máy tính (Ctrl+Shift+O)")
-        self.btn_open_folder.setFixedHeight(34)
-        self.btn_open_folder.setStyleSheet("""
-            QPushButton {
-                background-color: #121826;
-                color: #e2e8f0;
-                font-weight: 700;
-                font-size: 11px;
-                padding: 6px 10px;
-                border-radius: 8px;
-                border: 1px solid #1f2b3f;
-            }
-            QPushButton:hover {
-                background-color: #1a2335;
-                border-color: #38bdf8;
-                color: #ffffff;
-            }
-        """)
+        self.btn_open_folder = QPushButton("Thư Mục")
+        self.btn_open_folder.setIcon(get_svg_icon("folder", "#ffffff", 12))
+        self.btn_open_folder.setToolTip("Mở thư mục xuất (Ctrl+Shift+O)")
+        self.btn_open_folder.setFixedHeight(28)
         self.btn_open_folder.clicked.connect(self._open_output_folder_in_explorer)
-        top_actions_h.addWidget(self.btn_open_folder)
+        quick_grid.addWidget(self.btn_open_folder, 1, 0)
 
         self.btn_settings = QPushButton(t("downloader.settings_btn"))
-        self.btn_settings.setIcon(get_svg_icon("settings", "#e2e8f0", 14))
-        self.btn_settings.setToolTip("Quản lý thư mục lưu, cấu hình nâng cao, JSON input")
-        self.btn_settings.setFixedHeight(34)
+        self.btn_settings.setIcon(get_svg_icon("settings", "#e2e8f0", 12))
+        self.btn_settings.setToolTip("Cấu hình & Tùy chọn")
+        self.btn_settings.setFixedHeight(28)
         self.btn_settings.clicked.connect(self.open_settings_requested.emit)
-        self.btn_settings.setStyleSheet("""
-            QPushButton {
-                background-color: #121826;
-                color: #e2e8f0;
-                font-weight: 700;
-                font-size: 11px;
-                padding: 6px 10px;
-                border-radius: 8px;
-                border: 1px solid #1f2b3f;
-            }
-            QPushButton:hover {
-                background-color: #1a2335;
-                border-color: #6366f1;
-                color: #ffffff;
-            }
-        """)
-        top_actions_h.addWidget(self.btn_settings)
-        layout.addLayout(top_actions_h)
+        quick_grid.addWidget(self.btn_settings, 1, 1)
 
-        # JSON status label
+        layout.addLayout(quick_grid)
+
         self.json_status_label = QLabel(t("downloader.no_json_status"))
         self.json_status_label.setStyleSheet("""
             color: #94a3b8;
             font-size: 10px;
             font-weight: 600;
-            padding: 4px 8px;
-            background: #0c0f17;
+            padding: 3px 6px;
+            background: #090d14;
             border-radius: 6px;
             border: 1px solid #1e293b;
         """)
@@ -458,9 +434,186 @@ class DownloaderTab(QWidget):
         self.json_status_label.setWordWrap(True)
         layout.addWidget(self.json_status_label)
 
-        # Search options
-        layout.addWidget(self._section_header(t("downloader.search_options"), "settings"))
+        # ── 3. Segmented Navigation Tabs (The Sidebar Menu) ──
+        tab_nav_row = QHBoxLayout()
+        tab_nav_row.setSpacing(4)
 
+        self.btn_tab_scenes = QPushButton("🎬 DANH SÁCH CẢNH")
+        self.btn_tab_scenes.setFixedHeight(28)
+        self.btn_tab_scenes.setCheckable(True)
+        self.btn_tab_scenes.setChecked(True)
+        self.btn_tab_scenes.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
+
+        self.btn_tab_setup = QPushButton("⚙️ API & BỘ LỌC")
+        self.btn_tab_setup.setFixedHeight(28)
+        self.btn_tab_setup.setCheckable(True)
+        self.btn_tab_setup.setChecked(False)
+        self.btn_tab_setup.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
+
+        tab_style = """
+            QPushButton {
+                background: #111724;
+                color: #94a3b8;
+                border: 1px solid #1e293b;
+                border-radius: 6px;
+                font-size: 10px;
+                font-weight: 700;
+            }
+            QPushButton:hover {
+                background: #172133;
+                color: #ffffff;
+            }
+            QPushButton:checked {
+                background: #1e293b;
+                color: #38bdf8;
+                border: 1px solid #38bdf8;
+            }
+        """
+        self.btn_tab_scenes.setStyleSheet(tab_style)
+        self.btn_tab_setup.setStyleSheet(tab_style)
+
+        tab_nav_row.addWidget(self.btn_tab_scenes)
+        tab_nav_row.addWidget(self.btn_tab_setup)
+        layout.addLayout(tab_nav_row)
+
+        # ── 4. Stacked Container ──
+        self.sidebar_stack = QStackedWidget()
+
+        # PAGE 0: SCENES TIMELINE
+        page_scenes = QWidget()
+        scenes_page_layout = QVBoxLayout(page_scenes)
+        scenes_page_layout.setContentsMargins(0, 2, 0, 0)
+        scenes_page_layout.setSpacing(6)
+
+        # Scene sub-header with nav & counter
+        sub_h = QHBoxLayout()
+        sub_h.setSpacing(4)
+        self.timeline_header = QLabel("Cảnh Timeline")
+        self.timeline_header.setStyleSheet("color: #cbd5e1; font-size: 11px; font-weight: 700;")
+        sub_h.addWidget(self.timeline_header)
+
+        self.scenes_count_label = QLabel("0 cảnh")
+        self.scenes_count_label.setStyleSheet("color: #818cf8; font-size: 10px; font-weight: 800; background: rgba(99, 102, 241, 0.15); padding: 1px 5px; border-radius: 4px;")
+        sub_h.addWidget(self.scenes_count_label)
+        sub_h.addStretch()
+
+        self.btn_prev_scene = QPushButton()
+        self.btn_prev_scene.setIcon(get_svg_icon("chevron-left", "#818cf8", 12))
+        self.btn_prev_scene.setToolTip("Cảnh trước (Alt+Left)")
+        self.btn_prev_scene.setFixedSize(22, 22)
+        self.btn_prev_scene.setStyleSheet("background: rgba(255, 255, 255, 0.05); border: 1px solid #1e293b; border-radius: 4px;")
+        self.btn_prev_scene.clicked.connect(self.select_prev_scene)
+        sub_h.addWidget(self.btn_prev_scene)
+
+        self.btn_next_scene = QPushButton()
+        self.btn_next_scene.setIcon(get_svg_icon("chevron-right", "#818cf8", 12))
+        self.btn_next_scene.setToolTip("Cảnh sau (Alt+Right)")
+        self.btn_next_scene.setFixedSize(22, 22)
+        self.btn_next_scene.setStyleSheet("background: rgba(255, 255, 255, 0.05); border: 1px solid #1e293b; border-radius: 4px;")
+        self.btn_next_scene.clicked.connect(self.select_next_scene)
+        sub_h.addWidget(self.btn_next_scene)
+        scenes_page_layout.addLayout(sub_h)
+
+        # Search scene box
+        self.scene_search_input = QLineEdit()
+        self.scene_search_input.setFixedHeight(30)
+        self.scene_search_input.setPlaceholderText("🔍 Tìm cảnh... (Ctrl+F)")
+        self.scene_search_input.textChanged.connect(self._filter_scenes)
+        scenes_page_layout.addWidget(self.scene_search_input)
+
+        # Filter buttons
+        filter_seg_row = QHBoxLayout()
+        filter_seg_row.setSpacing(4)
+        self.scene_timeline_filter = "all"
+        self.btn_tl_all = QPushButton("Tất Cả")
+        self.btn_tl_missing = QPushButton("Thiếu Media")
+        self.btn_tl_picked = QPushButton("Đã Chọn")
+        for f_btn, f_mode in [(self.btn_tl_all, "all"), (self.btn_tl_missing, "missing"), (self.btn_tl_picked, "picked")]:
+            f_btn.setFixedHeight(22)
+            f_btn.setCheckable(True)
+            f_btn.setChecked(f_mode == "all")
+            f_btn.setStyleSheet("""
+                QPushButton {
+                    background: #111724;
+                    color: #94a3b8;
+                    border: 1px solid #1e293b;
+                    border-radius: 4px;
+                    font-size: 10px;
+                    font-weight: 700;
+                    padding: 0 4px;
+                }
+                QPushButton:checked {
+                    background: #1e293b;
+                    color: #38bdf8;
+                    border-color: #38bdf8;
+                }
+            """)
+            f_btn.clicked.connect(lambda checked, m=f_mode: self._set_timeline_filter(m))
+            filter_seg_row.addWidget(f_btn)
+        scenes_page_layout.addLayout(filter_seg_row)
+
+        # Scenes Scroll Area
+        self.scenes_scroll = QScrollArea()
+        self.scenes_scroll.setWidgetResizable(True)
+        self.scenes_scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        self.scenes_scroll.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
+        self.scenes_scroll.setStyleSheet("QScrollArea { background-color: #090d14; border: 1px solid #1e293b; border-radius: 8px; }")
+        self.scenes_container = QWidget()
+        self.scenes_layout = QVBoxLayout(self.scenes_container)
+        self.scenes_layout.setContentsMargins(4, 4, 4, 4)
+        self.scenes_layout.setSpacing(4)
+        self.scenes_layout.addStretch()
+        self.scenes_scroll.setWidget(self.scenes_container)
+        scenes_page_layout.addWidget(self.scenes_scroll, 1)
+
+        # Scene info drawer
+        info_h = QHBoxLayout()
+        info_h.setSpacing(4)
+        info_icon = QLabel()
+        info_icon.setPixmap(get_svg_pixmap("file-text", "#94a3b8", 12))
+        info_h.addWidget(info_icon)
+        self.info_header = QLabel("CHI TIẾT CẢNH ĐANG CHỌN")
+        self.info_header.setStyleSheet("color: #94a3b8; font-size: 10px; font-weight: 800; letter-spacing: 0.6px;")
+        info_h.addWidget(self.info_header)
+        info_h.addStretch()
+        scenes_page_layout.addLayout(info_h)
+
+        self.scene_info_panel = QTextEdit()
+        self.scene_info_panel.setReadOnly(True)
+        self.scene_info_panel.setFixedHeight(95)
+        self.scene_info_panel.setStyleSheet("""
+            QTextEdit {
+                background-color: #090d14;
+                color: #cbd5e1;
+                border: 1px solid #1e293b;
+                border-radius: 8px;
+                padding: 6px;
+                font-size: 11px;
+                line-height: 1.3;
+            }
+        """)
+        self.scene_info_panel.setPlainText("Chọn cảnh trong danh sách để xem chi tiết.")
+        scenes_page_layout.addWidget(self.scene_info_panel)
+
+        self.sidebar_stack.addWidget(page_scenes)
+
+        # PAGE 1: SETUP & API KEYS
+        page_setup = QScrollArea()
+        page_setup.setWidgetResizable(True)
+        page_setup.setFrameShape(QFrame.Shape.NoFrame)
+        page_setup.setStyleSheet("background: transparent; border: none;")
+        setup_container = QWidget()
+        setup_page_layout = QVBoxLayout(setup_container)
+        setup_page_layout.setContentsMargins(0, 4, 0, 0)
+        setup_page_layout.setSpacing(10)
+
+        # API Key Manager Widget
+        self.api_key_widget = ApiKeyManagerWidget(self.config_repo, parent=self)
+        self.api_key_widget.keysChanged.connect(self._on_api_keys_changed)
+        setup_page_layout.addWidget(self.api_key_widget)
+
+        # Search Options
+        setup_page_layout.addWidget(self._section_header(t("downloader.search_options"), "settings"))
         search_prefs = self.config.get("search_prefs", {
             "photos": True,
             "videos": True,
@@ -485,7 +638,7 @@ class DownloaderTab(QWidget):
             self.search_source_combo.setCurrentIndex(idx)
         self.search_source_combo.currentTextChanged.connect(self._save_search_prefs)
         source_row.addWidget(self.search_source_combo, 1)
-        layout.addLayout(source_row)
+        setup_page_layout.addLayout(source_row)
 
         chk_row = QHBoxLayout()
         self.search_photos_check = QCheckBox(t("downloader.find_photos"))
@@ -497,201 +650,40 @@ class DownloaderTab(QWidget):
         self.search_videos_check.setChecked(search_prefs.get("videos", True))
         self.search_videos_check.toggled.connect(self._save_search_prefs)
         chk_row.addWidget(self.search_videos_check)
-        layout.addLayout(chk_row)
-
-        # Actions
-        layout.addWidget(self._section_header(t("downloader.actions"), "play"))
-
-        self.search_btn = QPushButton(t("downloader.search_all"))
-        self.search_btn.setIcon(get_svg_icon("search", "#ffffff", 16))
-        self.search_btn.setObjectName("primaryBtn")
-        self.search_btn.setFixedHeight(42)
-        self.search_btn.setStyleSheet("QPushButton#primaryBtn { font-size: 13px; font-weight: 800; letter-spacing: 0.5px; }")
-        self.search_btn.clicked.connect(self.start_search)
-        layout.addWidget(self.search_btn)
-
-        action_btn_row = QHBoxLayout()
-        action_btn_row.setSpacing(6)
-
-        self.stop_btn = QPushButton(t("common.stop"))
-        self.stop_btn.setIcon(get_svg_icon("stop", "#ffffff", 14))
-        self.stop_btn.setObjectName("dangerBtn")
-        self.stop_btn.setFixedHeight(34)
-        self.stop_btn.clicked.connect(self.stop_action)
-        self.stop_btn.setEnabled(False)
-        action_btn_row.addWidget(self.stop_btn)
-
-        self.btn_reset = QPushButton(t("common.reset"))
-        self.btn_reset.setIcon(get_svg_icon("trash", "#cbd5e1", 14))
-        self.btn_reset.setFixedHeight(34)
-        self.btn_reset.clicked.connect(self.reset_all)
-        action_btn_row.addWidget(self.btn_reset)
-        layout.addLayout(action_btn_row)
+        setup_page_layout.addLayout(chk_row)
 
         # Status Panel
-        layout.addSpacing(4)
+        setup_page_layout.addWidget(self._section_header("TRẠNG THÁI TIẾN TRÌNH", "activity"))
         self.status_panel = StatusPanel()
-        layout.addWidget(self.status_panel)
+        setup_page_layout.addWidget(self.status_panel)
 
-        scroll.setWidget(container)
-        return scroll
+        setup_page_layout.addStretch()
+        page_setup.setWidget(setup_container)
+        self.sidebar_stack.addWidget(page_setup)
+
+        layout.addWidget(self.sidebar_stack, 1)
+
+        # Tab Switching Connectors
+        def _switch_to_scenes():
+            self.btn_tab_scenes.setChecked(True)
+            self.btn_tab_setup.setChecked(False)
+            self.sidebar_stack.setCurrentIndex(0)
+
+        def _switch_to_setup():
+            self.btn_tab_scenes.setChecked(False)
+            self.btn_tab_setup.setChecked(True)
+            self.sidebar_stack.setCurrentIndex(1)
+
+        self.btn_tab_scenes.clicked.connect(_switch_to_scenes)
+        self.btn_tab_setup.clicked.connect(_switch_to_setup)
+
+        return sidebar
 
     def _on_api_keys_changed(self):
         """Slot triggered when API keys are added, deleted, or toggled in SQLite."""
         if self.config_repo:
             self.config = self.config_repo.load_config()
         self.status_message.emit(t("status.keys_updated"), 3000)
-
-    def _build_scenes_sidebar(self) -> QFrame:
-        sidebar = QFrame()
-        sidebar.setObjectName("scenesSidebar")
-
-        sidebar.setMinimumWidth(200)
-        sidebar.setMaximumWidth(380)
-
-        layout = QVBoxLayout(sidebar)
-        layout.setContentsMargins(10, 12, 10, 12)
-        layout.setSpacing(8)
-
-        # Header with vector film icon
-        header_row = QHBoxLayout()
-        header_row.setSpacing(6)
-        timeline_icon = QLabel()
-        timeline_icon.setPixmap(get_svg_pixmap("film", "#58a6ff", 13))
-        header_row.addWidget(timeline_icon)
-
-        self.timeline_header = QLabel(t("downloader.timeline"))
-        self.timeline_header.setStyleSheet("color: #f1f5f9; font-size: 12px; font-weight: 800; letter-spacing: 0.5px;")
-        header_row.addWidget(self.timeline_header)
-        header_row.addStretch()
-
-        # Quick step navigation buttons
-        self.btn_prev_scene = QPushButton()
-        self.btn_prev_scene.setIcon(get_svg_icon("chevron-left", "#818cf8", 12))
-        self.btn_prev_scene.setToolTip("Cảnh trước (Alt+Left)")
-        self.btn_prev_scene.setFixedSize(22, 22)
-        self.btn_prev_scene.setStyleSheet("background: rgba(255, 255, 255, 0.05); border: 1px solid #1e293b; border-radius: 4px;")
-        self.btn_prev_scene.clicked.connect(self.select_prev_scene)
-        header_row.addWidget(self.btn_prev_scene)
-
-        self.btn_next_scene = QPushButton()
-        self.btn_next_scene.setIcon(get_svg_icon("chevron-right", "#818cf8", 12))
-        self.btn_next_scene.setToolTip("Cảnh sau (Alt+Right)")
-        self.btn_next_scene.setFixedSize(22, 22)
-        self.btn_next_scene.setStyleSheet("background: rgba(255, 255, 255, 0.05); border: 1px solid #1e293b; border-radius: 4px;")
-        self.btn_next_scene.clicked.connect(self.select_next_scene)
-        header_row.addWidget(self.btn_next_scene)
-
-        self.scenes_count_label = QLabel("0 cảnh")
-        self.scenes_count_label.setStyleSheet("""
-            color: #818cf8;
-            font-size: 10px;
-            font-weight: 800;
-            background: rgba(99, 102, 241, 0.15);
-            padding: 2px 6px;
-            border-radius: 6px;
-        """)
-        header_row.addWidget(self.scenes_count_label)
-        layout.addLayout(header_row)
-
-        # Search box
-        self.scene_search_input = QLineEdit()
-        self.scene_search_input.setFixedHeight(34)
-        self.scene_search_input.setPlaceholderText(t("downloader.search_scenes_placeholder"))
-        self.scene_search_input.textChanged.connect(self._filter_scenes)
-        layout.addWidget(self.scene_search_input)
-
-        # Timeline status filter tabs (Tất cả / Thiếu / Đã chọn)
-        filter_seg_row = QHBoxLayout()
-        filter_seg_row.setSpacing(4)
-        self.scene_timeline_filter = "all"
-
-        self.btn_tl_all = QPushButton("Tất Cả")
-        self.btn_tl_missing = QPushButton("Thiếu Media")
-        self.btn_tl_picked = QPushButton("Đã Chọn")
-
-        for f_btn, f_mode in [(self.btn_tl_all, "all"), (self.btn_tl_missing, "missing"), (self.btn_tl_picked, "picked")]:
-            f_btn.setFixedHeight(24)
-            f_btn.setCheckable(True)
-            f_btn.setChecked(f_mode == "all")
-            f_btn.setStyleSheet("""
-                QPushButton {
-                    background: #131926;
-                    color: #94a3b8;
-                    border: 1px solid #1f2b3f;
-                    border-radius: 4px;
-                    font-size: 10px;
-                    font-weight: 700;
-                    padding: 0 4px;
-                }
-                QPushButton:checked {
-                    background: #243048;
-                    color: #38bdf8;
-                    border-color: #38bdf8;
-                }
-                QPushButton:hover {
-                    color: #ffffff;
-                }
-            """)
-            f_btn.clicked.connect(lambda checked, m=f_mode: self._set_timeline_filter(m))
-            filter_seg_row.addWidget(f_btn)
-
-        layout.addLayout(filter_seg_row)
-
-        # Scrollable scenes list
-        self.scenes_scroll = QScrollArea()
-        self.scenes_scroll.setWidgetResizable(True)
-        self.scenes_scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
-        self.scenes_scroll.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
-        self.scenes_scroll.setFixedHeight(380)
-        self.scenes_scroll.setStyleSheet("""
-            QScrollArea {
-                background-color: #0c0f17;
-                border: 1px solid #1e293b;
-                border-radius: 8px;
-            }
-        """)
-
-        self.scenes_container = QWidget()
-        self.scenes_layout = QVBoxLayout(self.scenes_container)
-        self.scenes_layout.setContentsMargins(4, 4, 4, 4)
-        self.scenes_layout.setSpacing(4)
-        self.scenes_layout.addStretch()
-
-        self.scenes_scroll.setWidget(self.scenes_container)
-        layout.addWidget(self.scenes_scroll)
-
-        # Scene Info Panel
-        info_h = QHBoxLayout()
-        info_h.setSpacing(6)
-        info_icon = QLabel()
-        info_icon.setPixmap(get_svg_pixmap("file-text", "#94a3b8", 12))
-        info_h.addWidget(info_icon)
-
-        self.info_header = QLabel(t("downloader.scene_info_header"))
-        self.info_header.setStyleSheet("color: #94a3b8; font-size: 10px; font-weight: 800; letter-spacing: 0.8px;")
-        info_h.addWidget(self.info_header)
-        info_h.addStretch()
-        layout.addLayout(info_h)
-
-        self.scene_info_panel = QTextEdit()
-        self.scene_info_panel.setReadOnly(True)
-        self.scene_info_panel.setMinimumHeight(180)
-        self.scene_info_panel.setStyleSheet("""
-            QTextEdit {
-                background-color: #0c0f17;
-                color: #cbd5e1;
-                border: 1px solid #1e293b;
-                border-radius: 8px;
-                padding: 10px;
-                font-size: 11px;
-                line-height: 1.4;
-            }
-        """)
-        self.scene_info_panel.setPlainText("Chọn cảnh trong danh sách để xem chi tiết nội dung & từ khóa.")
-        layout.addWidget(self.scene_info_panel, 1)
-
-        return sidebar
 
     def _build_main_area(self) -> QFrame:
         area = QFrame()
@@ -718,7 +710,31 @@ class DownloaderTab(QWidget):
 
         # Filter + Action bar
         action_h = QHBoxLayout()
-        action_h.setSpacing(8)
+        action_h.setSpacing(6)
+
+        # Reopen Left button (visible when left sidebar collapsed)
+        self.btn_reopen_left = QPushButton("⮞ Bảng Điều Khiển")
+        self.btn_reopen_left.setIcon(get_svg_icon("sliders", "#818cf8", 12))
+        self.btn_reopen_left.setFixedHeight(32)
+        self.btn_reopen_left.setVisible(False)
+        self.btn_reopen_left.setToolTip("Mở lại Bảng Điều Khiển (Alt+1)")
+        self.btn_reopen_left.setStyleSheet("""
+            QPushButton {
+                background: #1e293b;
+                color: #818cf8;
+                border: 1px solid #818cf8;
+                border-radius: 6px;
+                font-weight: 700;
+                font-size: 11px;
+                padding: 0 8px;
+            }
+            QPushButton:hover {
+                background: #27354a;
+                color: #ffffff;
+            }
+        """)
+        self.btn_reopen_left.clicked.connect(self._toggle_setup_sidebar)
+        action_h.addWidget(self.btn_reopen_left)
 
         self.filter_buttons = {}
         filter_meta = [
@@ -730,10 +746,16 @@ class DownloaderTab(QWidget):
         for fkey, label, icon_name, sc_key in filter_meta:
             btn = QPushButton(label)
             if icon_name:
-                btn.setIcon(get_svg_icon(icon_name, "#ffffff", 13))
-            btn.setFixedHeight(34)
-            btn.setMinimumWidth(85)
+                btn.setIcon(get_svg_icon(icon_name, "#ffffff", 12))
+            btn.setFixedHeight(30)
             btn.setObjectName("filterActive" if fkey == "all" else "filterInactive")
+            btn.setStyleSheet("""
+                QPushButton {
+                    padding: 0 8px;
+                    font-size: 11px;
+                    font-weight: 700;
+                }
+            """)
             btn.setToolTip(format_tooltip(f"Lọc {label.lower()}", sc_key))
             btn.clicked.connect(lambda checked, k=fkey: self._set_filter(k))
             action_h.addWidget(btn)
@@ -744,66 +766,70 @@ class DownloaderTab(QWidget):
         self.random_count_spin = QSpinBox()
         self.random_count_spin.setRange(1, 999)
         self.random_count_spin.setValue(1)
-        self.random_count_spin.setFixedHeight(34)
-        self.random_count_spin.setMinimumWidth(65)
+        self.random_count_spin.setFixedHeight(30)
+        self.random_count_spin.setMinimumWidth(50)
         self.random_count_spin.setToolTip(format_tooltip("Số media muốn chọn ngẫu nhiên", "1-999"))
-        lbl_qty = QLabel("Số lượng:")
-        lbl_qty.setStyleSheet("font-weight: 700; font-size: 11px;")
+        lbl_qty = QLabel("SL:")
+        lbl_qty.setStyleSheet("font-weight: 700; font-size: 11px; color: #94a3b8;")
         action_h.addWidget(lbl_qty)
         action_h.addWidget(self.random_count_spin)
 
-        self.btn_random_select = QPushButton(t("downloader.random_all"))
-        self.btn_random_select.setIcon(get_svg_icon("shuffle", "#ffffff", 13))
+        self.btn_random_select = QPushButton("Ngẫu nhiên")
+        self.btn_random_select.setIcon(get_svg_icon("shuffle", "#ffffff", 12))
         self.btn_random_select.setObjectName("purpleBtn")
-        self.btn_random_select.setFixedHeight(34)
+        self.btn_random_select.setFixedHeight(30)
+        self.btn_random_select.setStyleSheet("QPushButton#purpleBtn { padding: 0 8px; font-size: 11px; font-weight: 700; }")
         self.btn_random_select.setToolTip(format_tooltip("Chọn ngẫu nhiên media trong cảnh", "Ctrl+R"))
         self.btn_random_select.clicked.connect(self._select_random_scene)
         action_h.addWidget(self.btn_random_select)
 
-        btn_retry = QPushButton(t("common.reset"))
-        btn_retry.setIcon(get_svg_icon("refresh", "#fbbf24", 13))
+        btn_retry = QPushButton("Làm mới")
+        btn_retry.setIcon(get_svg_icon("refresh", "#fbbf24", 12))
         btn_retry.setObjectName("warningBtn")
-        btn_retry.setFixedHeight(34)
+        btn_retry.setFixedHeight(30)
+        btn_retry.setStyleSheet("QPushButton#warningBtn { padding: 0 8px; font-size: 11px; font-weight: 700; }")
         btn_retry.setToolTip(format_tooltip("Tải lại ảnh thu nhỏ bị lỗi", "Ctrl+Shift+R"))
         btn_retry.clicked.connect(self._retry_failed_thumbnails)
         action_h.addWidget(btn_retry)
 
-        btn_select_all = QPushButton("Chọn Tất Cả")
-        btn_select_all.setIcon(get_svg_icon("check", "#ffffff", 13))
+        btn_select_all = QPushButton("Chọn hết")
+        btn_select_all.setIcon(get_svg_icon("check", "#ffffff", 12))
         btn_select_all.setObjectName("secondaryBtn")
-        btn_select_all.setFixedHeight(34)
+        btn_select_all.setFixedHeight(30)
+        btn_select_all.setStyleSheet("QPushButton#secondaryBtn { padding: 0 8px; font-size: 11px; font-weight: 700; }")
         btn_select_all.setToolTip(format_tooltip("Chọn tất cả media trong cảnh này", "Ctrl+A"))
         btn_select_all.clicked.connect(self._select_all_scene)
         action_h.addWidget(btn_select_all)
 
         self.btn_clear = QPushButton(t("downloader.clear_all_picks"))
-        self.btn_clear.setIcon(get_svg_icon("x", "#ffffff", 13))
+        self.btn_clear.setIcon(get_svg_icon("x", "#ffffff", 12))
         self.btn_clear.setObjectName("dangerBtn")
-        self.btn_clear.setFixedHeight(34)
+        self.btn_clear.setFixedHeight(30)
+        self.btn_clear.setStyleSheet("QPushButton#dangerBtn { padding: 0 8px; font-size: 11px; font-weight: 700; }")
         self.btn_clear.setToolTip(format_tooltip("Bỏ chọn toàn bộ trong cảnh này", "Ctrl+D"))
         self.btn_clear.clicked.connect(self._clear_scene_selection)
         action_h.addWidget(self.btn_clear)
 
         self.btn_download = QPushButton(t("downloader.download_selected"))
-        self.btn_download.setIcon(get_svg_icon("download", "#ffffff", 14))
+        self.btn_download.setIcon(get_svg_icon("download", "#ffffff", 12))
         self.btn_download.setObjectName("successBtn")
-        self.btn_download.setFixedHeight(34)
-        self.btn_download.setStyleSheet("QPushButton#successBtn { padding: 0 16px; font-size: 12px; font-weight: 800; letter-spacing: 0.3px; }")
+        self.btn_download.setFixedHeight(30)
+        self.btn_download.setStyleSheet("QPushButton#successBtn { padding: 0 10px; font-size: 11px; font-weight: 800; letter-spacing: 0.2px; }")
         self.btn_download.setToolTip(format_tooltip(t("downloader.download_selected"), "Ctrl+Enter"))
         self.btn_download.clicked.connect(self.start_download)
         action_h.addWidget(self.btn_download)
 
-        self.btn_next_step = QPushButton("Bước 2: Tạo Giọng Đọc ➔")
-        self.btn_next_step.setIcon(get_svg_icon("mic", "#ffffff", 14))
+        self.btn_next_step = QPushButton("Tiếp tục ➔")
+        self.btn_next_step.setIcon(get_svg_icon("mic", "#ffffff", 12))
         self.btn_next_step.setObjectName("accentBtn")
-        self.btn_next_step.setFixedHeight(34)
+        self.btn_next_step.setFixedHeight(30)
         self.btn_next_step.setStyleSheet("""
             QPushButton#accentBtn {
                 background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #6366f1, stop:1 #8b5cf6);
                 color: #ffffff;
                 font-size: 11px;
                 font-weight: 800;
-                padding: 0 14px;
+                padding: 0 10px;
                 border-radius: 6px;
                 border: 1px solid rgba(255,255,255,0.18);
             }
@@ -814,6 +840,30 @@ class DownloaderTab(QWidget):
         self.btn_next_step.setToolTip(format_tooltip("Chuyển sang Bước 2: Tạo giọng đọc AI & Phụ đề SRT", "Ctrl+2"))
         self.btn_next_step.clicked.connect(lambda: self.nextStepRequested.emit())
         action_h.addWidget(self.btn_next_step)
+
+        # Reopen Right button (visible when ma sidebar collapsed)
+        self.btn_reopen_right = QPushButton("Từ Khóa & Tải ⮜")
+        self.btn_reopen_right.setIcon(get_svg_icon("film", "#fbbf24", 12))
+        self.btn_reopen_right.setFixedHeight(32)
+        self.btn_reopen_right.setVisible(False)
+        self.btn_reopen_right.setToolTip("Mở lại Từ Khóa & Giám Sát Tải (Alt+3)")
+        self.btn_reopen_right.setStyleSheet("""
+            QPushButton {
+                background: #1e293b;
+                color: #fbbf24;
+                border: 1px solid rgba(245, 158, 11, 0.4);
+                border-radius: 6px;
+                font-weight: 700;
+                font-size: 11px;
+                padding: 0 8px;
+            }
+            QPushButton:hover {
+                background: #27354a;
+                color: #ffffff;
+            }
+        """)
+        self.btn_reopen_right.clicked.connect(self._toggle_ma_sidebar)
+        action_h.addWidget(self.btn_reopen_right)
 
         layout.addLayout(action_h)
 
@@ -885,11 +935,11 @@ class DownloaderTab(QWidget):
         sidebar = QFrame()
         sidebar.setObjectName("maSidebar")
 
-        sidebar.setMinimumWidth(220)
+        sidebar.setMinimumWidth(260)
         sidebar.setMaximumWidth(400)
 
         layout = QVBoxLayout(sidebar)
-        layout.setContentsMargins(10, 12, 10, 12)
+        layout.setContentsMargins(10, 10, 10, 10)
         layout.setSpacing(10)
 
         # MotionArray Card
@@ -913,7 +963,7 @@ class DownloaderTab(QWidget):
         ma_header_h.addWidget(ma_icon)
 
         ma_header = QLabel("TỪ KHÓA TÌM KIẾM")
-        ma_header.setStyleSheet("color: #fbbf24; font-size: 12px; font-weight: 800; letter-spacing: 0.5px; background: transparent; border: none;")
+        ma_header.setStyleSheet("color: #fbbf24; font-size: 11px; font-weight: 800; letter-spacing: 0.5px; background: transparent; border: none;")
         ma_header_h.addWidget(ma_header)
         ma_header_h.addStretch()
 
@@ -924,6 +974,10 @@ class DownloaderTab(QWidget):
         self.btn_toggle_ma.setStyleSheet("background: rgba(245, 158, 11, 0.1); border: 1px solid rgba(245, 158, 11, 0.3); border-radius: 4px;")
         self.btn_toggle_ma.clicked.connect(self._toggle_ma_sidebar)
         ma_header_h.addWidget(self.btn_toggle_ma)
+        ma_layout.addLayout(ma_header_h)
+
+        kw_btn_row = QHBoxLayout()
+        kw_btn_row.setSpacing(4)
 
         btn_select_all_kw = QPushButton("Tất cả")
         btn_select_all_kw.setIcon(get_svg_icon("check", "#fbbf24", 11))
@@ -941,7 +995,7 @@ class DownloaderTab(QWidget):
         """)
         btn_select_all_kw.setFixedHeight(22)
         btn_select_all_kw.clicked.connect(self._ma_select_all_keywords)
-        ma_header_h.addWidget(btn_select_all_kw)
+        kw_btn_row.addWidget(btn_select_all_kw)
 
         btn_select_none_kw = QPushButton("Bỏ chọn")
         btn_select_none_kw.setIcon(get_svg_icon("x", "#94a3b8", 11))
@@ -959,9 +1013,9 @@ class DownloaderTab(QWidget):
         """)
         btn_select_none_kw.setFixedHeight(22)
         btn_select_none_kw.clicked.connect(self._ma_select_no_keywords)
-        ma_header_h.addWidget(btn_select_none_kw)
+        kw_btn_row.addWidget(btn_select_none_kw)
 
-        btn_copy_kw = QPushButton("Chép")
+        btn_copy_kw = QPushButton("Sao chép")
         btn_copy_kw.setIcon(get_svg_icon("copy", "#38bdf8", 11))
         btn_copy_kw.setToolTip("Sao chép danh sách từ khóa đang chọn vào clipboard")
         btn_copy_kw.setStyleSheet("""
@@ -978,8 +1032,8 @@ class DownloaderTab(QWidget):
         """)
         btn_copy_kw.setFixedHeight(22)
         btn_copy_kw.clicked.connect(self._ma_copy_all_keywords)
-        ma_header_h.addWidget(btn_copy_kw)
-        ma_layout.addLayout(ma_header_h)
+        kw_btn_row.addWidget(btn_copy_kw)
+        ma_layout.addLayout(kw_btn_row)
 
         ma_instr = QLabel("Chọn từ khóa để tìm trên web:")
         ma_instr.setStyleSheet("color: #94a3b8; font-size: 10px; font-weight: 600; background: transparent; border: none;")

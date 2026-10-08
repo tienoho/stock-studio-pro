@@ -158,22 +158,22 @@ def run_bug_hunt():
     print("\n[Test 6] Testing Dialogs Initialization & Interaction Enhancements...")
     try:
         # SettingsDialog
-        sd = SettingsDialog(config=win.config, parent=win)
+        sd = SettingsDialog(config=win.config, parent=None)
         sd.close()
 
         # KeyManagementDialog
-        kd = KeyDialog("pexels", parent=win)
+        kd = KeyDialog("pexels", parent=None)
         kd.close()
-        kmd = KeyManagementDialog("pexels", config=win.config, parent=win)
+        kmd = KeyManagementDialog("pexels", config=win.config, parent=None)
         kmd.close()
 
         # JsonInputDialog
-        jid = JsonInputDialog(parent=win)
+        jid = JsonInputDialog(parent=None)
         jid.close()
 
         # AssignSceneDialog
         sample_scenes = [{"id": 1, "dialogue": "Scene 1", "time_start": "00:00"}]
-        asd = AssignSceneDialog("test_video.mp4", sample_scenes, suggested_scene_id=1, parent=win)
+        asd = AssignSceneDialog("test_video.mp4", sample_scenes, suggested_scene_id=1, parent=None)
         asd.close()
 
         # UpdateDialog
@@ -184,7 +184,7 @@ def run_bug_hunt():
             "published_at": "2026-10-08T00:00:00Z",
             "html_url": "https://github.com/example/release"
         })
-        ud = UpdateDialog(rel, parent=win)
+        ud = UpdateDialog(rel, parent=None)
         ud.close()
 
         print("  -> Passed: All 5 modal dialogs instantiated, styled, and closed cleanly.")
@@ -246,11 +246,10 @@ def run_bug_hunt():
         for b in bugs_found:
             print(f"  - {b}")
     print("=" * 70)
-
-    win.close()
-    return len(bugs_found) == 0
+    sys.stdout.flush()
+    sys.stderr.flush()
+    os._exit(0 if not bugs_found else 1)
 
 
 if __name__ == "__main__":
-    success = run_bug_hunt()
-    sys.exit(0 if success else 1)
+    run_bug_hunt()

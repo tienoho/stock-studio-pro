@@ -119,6 +119,55 @@ class SceneVoiceMatcher:
         exts = FFmpegProcessor.VIDEO_EXTENSIONS
         return [f for f in folder.glob("*") if f.is_file() and f.suffix.lower() in exts]
 
+    @classmethod
+    def get_media_for_scene(
+        cls,
+        root_dir: Path,
+        scene_idx: int,
+        scene_id: str = "",
+        scene_dirs: Optional[List[Path]] = None
+    ) -> List[Path]:
+        """
+        Locates media specifically tailored for a scene:
+        1. From scene subfolder matching scene_idx or scene_id
+        2. From flat media files in root_dir prefixed with scene_idx (e.g. 1_00.mp4, 01_00.mp4, scene_1_*.mp4)
+        3. From flat media files matching scene_id
+        4. Fallback to all media files distributed by scene index
+        """
+        if scene_dirs and len(scene_dirs) > 1:
+            for sd in scene_dirs:
+                nums = re.findall(r"\d+", sd.name)
+                if nums and int(nums[0]) == scene_idx:
+                    media = cls.get_media_files(sd)
+                    if media:
+                        return media
+                if scene_id and scene_id.lower() in sd.name.lower():
+                    media = cls.get_media_files(sd)
+                    if media:
+                        return media
+
+        if not root_dir.exists():
+            return []
+
+        all_media = cls.get_media_files(root_dir)
+        if not all_media:
+            return []
+
+        patterns = [
+            re.compile(rf"^{scene_idx:02d}_", re.IGNORECASE),
+            re.compile(rf"^{scene_idx:03d}_", re.IGNORECASE),
+            re.compile(rf"^{scene_idx}_", re.IGNORECASE),
+            re.compile(rf"^scene_?0*{scene_idx}(_|\.|\b)", re.IGNORECASE),
+        ]
+        if scene_id:
+            patterns.append(re.compile(rf"^{re.escape(scene_id)}(_|\.|\b)", re.IGNORECASE))
+
+        matched = [f for f in all_media if any(p.search(f.name) for p in patterns)]
+        if matched:
+            return matched
+
+        return all_media
+
     def match_and_cut(
         self,
         root_video_dir: Path,
@@ -132,6 +181,7 @@ class SceneVoiceMatcher:
         chunk_seconds: float = 0.0,
         progress_cb: Optional[Callable[[int, int, str], None]] = None,
         log_cb: Optional[Callable[[str], None]] = None,
+        stop_cb: Optional[Callable[[], bool]] = None,
     ) -> Tuple[bool, str, List[Path]]:
         """
         Executes the matching pipeline:
@@ -203,29 +253,33 @@ class SceneVoiceMatcher:
         total = len(segments)
 
         for idx, seg in enumerate(segments, 1):
+            if stop_cb and stop_cb():
+                log("Tiến trình đã được dừng bởi người dùng.")
+                return False, "Đã hủy bởi người dùng", generated_clips
+
             dur = seg.get("duration", 4.0)
             text_desc = seg.get("text", "")
             audio_clip = seg.get("audio_file")
+            scene_id = str(seg.get("scene_id") or "")
 
-            scene_idx = (idx - 1) % len(scene_dirs)
-            target_scene_dir = scene_dirs[scene_idx]
-            media_list = self.get_media_files(target_scene_dir)
+            media_list = self.get_media_for_scene(root_video_dir, idx, scene_id, scene_dirs)
+            if not media_list and scene_dirs:
+                scene_idx = (idx - 1) % len(scene_dirs)
+                media_list = self.get_media_files(scene_dirs[scene_idx])
 
-            if not media_list:
-                all_media = []
-                for sd in scene_dirs:
-                    all_media.extend(self.get_media_files(sd))
-                media_list = all_media
+            out_clip = clips_dir / f"clip_{idx:03d}.mp4"
 
             if not media_list:
-                log(f"[Cảnh {idx:02d}] Bỏ qua: Không có media trong {target_scene_dir.name}")
+                log(f"[Cảnh {idx:02d}] Không có media: Tạo clip màu bảo toàn timeline ({dur:.2f}s)")
+                ok_fb, _ = self.ffmpeg.create_color_clip(dur, out_clip)
+                if ok_fb:
+                    generated_clips.append(out_clip)
                 continue
 
             # Prioritize video over image if available
             videos = [m for m in media_list if m.suffix.lower() in FFmpegProcessor.VIDEO_EXTENSIONS]
             chosen_media = (random.choice(videos) if random_cuts else videos[0]) if videos else (random.choice(media_list) if random_cuts else media_list[0])
 
-            out_clip = clips_dir / f"clip_{idx:03d}_{target_scene_dir.name}.mp4"
             is_image = chosen_media.suffix.lower() in FFmpegProcessor.IMAGE_EXTENSIONS
 
             if is_image:
@@ -239,6 +293,12 @@ class SceneVoiceMatcher:
                     start_at = random.uniform(0.0, max_start)
                 log(f"[{idx:02d}/{total:02d}] Cắt {dur:.2f}s từ {chosen_media.name} (bắt đầu: {start_at:.2f}s, tự lặp nếu thiếu)")
                 ok, err = self.ffmpeg.cut_clip(chosen_media, start_at, dur, out_clip, loop_if_short=True)
+
+            if not ok:
+                log(f"[Cảnh {idx:02d}] Lỗi cắt {chosen_media.name}: {err[:80] if err else ''}. Tạo fallback clip màu để giữ đồng bộ âm thanh.")
+                ok_fb, _ = self.ffmpeg.create_color_clip(dur, out_clip)
+                if ok_fb:
+                    ok = True
 
             if ok:
                 # If segment has individual audio file and we want audio attached
@@ -308,19 +368,45 @@ class SceneVoiceMatcher:
         return True, f"Thành công: Đã xử lý {len(generated_clips)} clips. File xuất: {final_video_path.name}", generated_clips
 
     def _mux_audio_to_video(self, video_path: Path, audio_path: Path, out_path: Path) -> Tuple[bool, str]:
-        """Muxes an audio track over video, matching duration and replacing any existing audio."""
-        cmd = [
-            "ffmpeg", "-y",
-            "-i", str(video_path),
-            "-i", str(audio_path),
-            "-map", "0:v:0",
-            "-map", "1:a:0",
-            "-c:v", "copy",
-            "-c:a", "aac", "-b:a", "192k",
-            "-shortest",
-            "-movflags", "+faststart",
-            str(out_path)
-        ]
+        """Muxes an audio track over video. Pads video with cloned last frame if audio is longer, preventing voice cut-off."""
+        try:
+            vid_dur = float(self.ffmpeg.clip_duration(video_path))
+        except (TypeError, ValueError):
+            vid_dur = 0.0
+        try:
+            aud_dur = float(self.ffmpeg.clip_duration(audio_path))
+        except (TypeError, ValueError):
+            aud_dur = 0.0
+
+        if aud_dur > vid_dur + 0.1 and vid_dur > 0:
+            diff = aud_dur - vid_dur
+            cmd = [
+                "ffmpeg", "-y",
+                "-i", str(video_path),
+                "-i", str(audio_path),
+                "-filter_complex", f"[0:v:0]tpad=stop_mode=clone:stop_duration={diff:.3f}[v]",
+                "-map", "[v]",
+                "-map", "1:a:0",
+                "-c:v", "libx264", "-preset", "veryfast", "-crf", "22",
+                "-pix_fmt", "yuv420p",
+                "-c:a", "aac", "-b:a", "192k",
+                "-t", f"{aud_dur:.3f}",
+                "-movflags", "+faststart",
+                str(out_path)
+            ]
+        else:
+            cmd = [
+                "ffmpeg", "-y",
+                "-i", str(video_path),
+                "-i", str(audio_path),
+                "-map", "0:v:0",
+                "-map", "1:a:0",
+                "-c:v", "copy",
+                "-c:a", "aac", "-b:a", "192k",
+                "-shortest",
+                "-movflags", "+faststart",
+                str(out_path)
+            ]
         r = self.ffmpeg._run_cmd(cmd)
         ok = r.returncode == 0 and out_path.exists() and out_path.stat().st_size > 1024
         return ok, r.stderr
