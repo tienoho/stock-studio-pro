@@ -308,11 +308,13 @@ class SceneVoiceMatcher:
         return True, f"Thành công: Đã xử lý {len(generated_clips)} clips. File xuất: {final_video_path.name}", generated_clips
 
     def _mux_audio_to_video(self, video_path: Path, audio_path: Path, out_path: Path) -> Tuple[bool, str]:
-        """Muxes an audio track over video, matching duration and replacing silent audio."""
+        """Muxes an audio track over video, matching duration and replacing any existing audio."""
         cmd = [
             "ffmpeg", "-y",
             "-i", str(video_path),
             "-i", str(audio_path),
+            "-map", "0:v:0",
+            "-map", "1:a:0",
             "-c:v", "copy",
             "-c:a", "aac", "-b:a", "192k",
             "-shortest",

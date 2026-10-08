@@ -149,3 +149,7 @@ class EdgeTTSService:
                 progress_cb(idx, total, f"Đã tạo {idx}/{total} files")
 
         return success, total, results
+
+
+# Alias for naming consistency
+EdgeTtsService = EdgeTTSService

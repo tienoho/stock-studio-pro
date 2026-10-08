@@ -89,6 +89,27 @@ class TestSceneVoiceMatcher(unittest.TestCase):
         self.assertEqual(segments[0]["text"], "Một ngày mới bắt đầu")
         self.assertEqual(segments[0]["duration"], 4.5)
 
+    def test_mux_audio_to_video_stream_mapping(self):
+        """Verifies _mux_audio_to_video uses explicit mapping for video and audio streams."""
+        from unittest.mock import MagicMock
+        fake_ffmpeg = MagicMock()
+        mock_res = MagicMock()
+        mock_res.returncode = 0
+        fake_ffmpeg._run_cmd.return_value = mock_res
+
+        matcher = SceneVoiceMatcher(fake_ffmpeg)
+        out_mock = self.test_dir / "out.mp4"
+        out_mock.touch()
+        # Mock file size > 1024
+        with unittest.mock.patch.object(Path, "stat") as mock_stat:
+            mock_stat.return_value.st_size = 2048
+            matcher._mux_audio_to_video(Path("vid.mp4"), Path("voice.mp3"), out_mock)
+
+        cmd = fake_ffmpeg._run_cmd.call_args[0][0]
+        self.assertIn("-map", cmd)
+        self.assertIn("0:v:0", cmd)
+        self.assertIn("1:a:0", cmd)
+
 
 if __name__ == "__main__":
     unittest.main()
