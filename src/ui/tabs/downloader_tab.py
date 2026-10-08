@@ -155,9 +155,10 @@ class DownloaderTab(QWidget):
 
         screen = QApplication.primaryScreen()
         screen_w = screen.availableGeometry().width() if screen else 1920
-        c1 = 330 if screen_w >= 1400 else 300
-        c3 = 290 if screen_w >= 1400 else 260
-        c2 = max(550, screen_w - (c1 + c3))
+        c1 = 340 if screen_w >= 1400 else 310
+        c3 = 0  # Collapsed by default for a clean, spacious 2-Column layout
+        c2 = max(600, screen_w - c1)
+        self._saved_ma_width = 290 if screen_w >= 1400 else 260
         self.splitter.setSizes([c1, c2, c3])
         self.splitter.splitterMoved.connect(self._on_splitter_moved)
 
@@ -264,7 +265,8 @@ class DownloaderTab(QWidget):
             self.btn_toggle_ma.setToolTip("Mở rộng Từ Khóa & Tải (Alt+3)")
             if hasattr(self, "btn_reopen_right"):
                 self.btn_reopen_right.setVisible(True)
-            ToastNotification.show_toast(self, "Đã thu gọn Từ Khóa & Tải (Alt+3)", "info", 1800)
+                self.btn_reopen_right.setText("🏷️ Từ Khóa & Phụ ⮜")
+            ToastNotification.show_toast(self, "Đã thu gọn Bảng Từ Khóa (Alt+3)", "info", 1800)
         else:
             restore_w = getattr(self, "_saved_ma_width", 290) or 290
             sizes[2] = restore_w
@@ -273,8 +275,9 @@ class DownloaderTab(QWidget):
             self.btn_toggle_ma.setIcon(get_svg_icon("chevron-right", "#fbbf24", 12))
             self.btn_toggle_ma.setToolTip("Thu gọn Từ Khóa & Tải (Alt+3)")
             if hasattr(self, "btn_reopen_right"):
-                self.btn_reopen_right.setVisible(False)
-            ToastNotification.show_toast(self, "Đã mở lại Từ Khóa & Tải (Alt+3)", "info", 1800)
+                self.btn_reopen_right.setText("Thu gọn ⮞")
+                self.btn_reopen_right.setVisible(True)
+            ToastNotification.show_toast(self, "Đã mở Bảng Từ Khóa (Alt+3)", "info", 1800)
 
     def _on_splitter_moved(self, pos, index):
         sizes = self.splitter.sizes()
@@ -797,11 +800,11 @@ class DownloaderTab(QWidget):
         filter_h.addStretch()
 
         # Reopen Right button (visible when ma sidebar collapsed)
-        self.btn_reopen_right = QPushButton("Từ Khóa & Tải ⮜")
+        self.btn_reopen_right = QPushButton("🏷️ Từ Khóa & Phụ ⮜")
         self.btn_reopen_right.setIcon(get_svg_icon("film", "#fbbf24", 12))
         self.btn_reopen_right.setFixedHeight(30)
-        self.btn_reopen_right.setVisible(False)
-        self.btn_reopen_right.setToolTip("Mở lại Từ Khóa & Giám Sát Tải (Alt+3)")
+        self.btn_reopen_right.setVisible(True)
+        self.btn_reopen_right.setToolTip("Mở rộng Bảng Từ Khóa & Giám Sát Tải (Alt+3)")
         self.btn_reopen_right.setStyleSheet("""
             QPushButton {
                 background: #1e293b;
