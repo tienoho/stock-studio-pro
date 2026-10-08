@@ -33,7 +33,7 @@ class CutMixTab(QWidget):
         title_h.addWidget(self.title_icon)
 
         self.title_lbl = QLabel(t("cut_mix.title"))
-        self.title_lbl.setStyleSheet("color: #e6edf3; font-size: 18px; font-weight: 700;")
+        self.title_lbl.setObjectName("heroTitle")
         title_h.addWidget(self.title_lbl)
         title_h.addStretch()
         layout.addLayout(title_h)
@@ -41,64 +41,109 @@ class CutMixTab(QWidget):
         self.hint = QLabel(
             "Chọn thư mục chứa các cảnh (cảnh 1, 2, 3...). Công cụ sẽ tự động cắt ghép video cho từng cảnh."
         )
+        self.hint.setObjectName("mutedText")
         self.hint.setWordWrap(True)
-        self.hint.setStyleSheet("color: #8b949e; font-size: 12px;")
         layout.addWidget(self.hint)
 
+        # Main Settings Card
+        cfg_card = QFrame()
+        cfg_card.setObjectName("toolCard")
+        cfg_layout = QVBoxLayout(cfg_card)
+        cfg_layout.setContentsMargins(16, 14, 16, 14)
+        cfg_layout.setSpacing(12)
+
+        # Section 1: Folder Selection
+        sec1_lbl = QLabel("THƯ MỤC CẢNH NGUỒN")
+        sec1_lbl.setObjectName("sectionHeader")
+        cfg_layout.addWidget(sec1_lbl)
+
         folder_h = QHBoxLayout()
+        folder_h.setSpacing(8)
         self.cut_folder_input = QLineEdit()
+        self.cut_folder_input.setFixedHeight(34)
         self.cut_folder_input.setPlaceholderText("Chọn thư mục tổng hoặc thư mục cảnh...")
         folder_h.addWidget(self.cut_folder_input, 1)
 
         self.btn_browse = QPushButton(t("cut_mix.select_folder"))
         self.btn_browse.setIcon(get_svg_icon("folder", "#ffffff", 14))
+        self.btn_browse.setFixedHeight(34)
         self.btn_browse.clicked.connect(self._browse_folder)
         folder_h.addWidget(self.btn_browse)
-        layout.addLayout(folder_h)
+        cfg_layout.addLayout(folder_h)
+
+        # Section 2: Parameters
+        sec2_lbl = QLabel("THAM SỐ CẮT & GHÉP")
+        sec2_lbl.setObjectName("sectionHeader")
+        cfg_layout.addWidget(sec2_lbl)
 
         opts_h = QHBoxLayout()
+        opts_h.setSpacing(14)
+
+        lbl_sec_box = QHBoxLayout()
+        lbl_sec_box.setSpacing(6)
         self.lbl_cut_sec = QLabel("Cắt mỗi (giây):")
-        opts_h.addWidget(self.lbl_cut_sec)
+        lbl_sec_box.addWidget(self.lbl_cut_sec)
         self.cut_seconds_spin = QDoubleSpinBox()
+        self.cut_seconds_spin.setFixedHeight(32)
         self.cut_seconds_spin.setRange(0.2, 60.0)
         self.cut_seconds_spin.setSingleStep(0.5)
         self.cut_seconds_spin.setValue(1.0)
         self.cut_seconds_spin.setDecimals(1)
-        opts_h.addWidget(self.cut_seconds_spin)
+        lbl_sec_box.addWidget(self.cut_seconds_spin)
+        opts_h.addLayout(lbl_sec_box)
 
+        lbl_cnt_box = QHBoxLayout()
+        lbl_cnt_box.setSpacing(6)
         self.lbl_final_count = QLabel("Số video xuất:")
-        opts_h.addWidget(self.lbl_final_count)
+        lbl_cnt_box.addWidget(self.lbl_final_count)
         self.final_count_spin = QSpinBox()
+        self.final_count_spin.setFixedHeight(32)
         self.final_count_spin.setRange(1, 50)
         self.final_count_spin.setValue(1)
-        opts_h.addWidget(self.final_count_spin)
+        lbl_cnt_box.addWidget(self.final_count_spin)
+        opts_h.addLayout(lbl_cnt_box)
 
+        lbl_clip_box = QHBoxLayout()
+        lbl_clip_box.setSpacing(6)
         self.lbl_max_clips = QLabel("Clip tối đa (0 = tất cả):")
-        opts_h.addWidget(self.lbl_max_clips)
+        lbl_clip_box.addWidget(self.lbl_max_clips)
         self.max_clips_spin = QSpinBox()
+        self.max_clips_spin.setFixedHeight(32)
         self.max_clips_spin.setRange(0, 9999)
         self.max_clips_spin.setValue(0)
-        opts_h.addWidget(self.max_clips_spin)
-        opts_h.addStretch()
-        layout.addLayout(opts_h)
+        lbl_clip_box.addWidget(self.max_clips_spin)
+        opts_h.addLayout(lbl_clip_box)
 
+        opts_h.addStretch()
+        cfg_layout.addLayout(opts_h)
+
+        # Action Buttons Row
         btn_h = QHBoxLayout()
+        btn_h.setSpacing(10)
         self.btn_start = QPushButton(t("cut_mix.start_btn"))
         self.btn_start.setIcon(get_svg_icon("scissors", "#ffffff", 14))
         self.btn_start.setObjectName("primaryBtn")
-        self.btn_start.setFixedHeight(34)
+        self.btn_start.setFixedHeight(36)
         self.btn_start.clicked.connect(self.start_cut_merge)
         btn_h.addWidget(self.btn_start)
 
         self.btn_stop = QPushButton(t("common.stop"))
         self.btn_stop.setIcon(get_svg_icon("stop", "#ffffff", 14))
         self.btn_stop.setObjectName("dangerBtn")
-        self.btn_stop.setFixedHeight(34)
+        self.btn_stop.setFixedHeight(36)
         self.btn_stop.setEnabled(False)
         self.btn_stop.clicked.connect(self.stop_cut_merge)
         btn_h.addWidget(self.btn_stop)
+
         btn_h.addStretch()
-        layout.addLayout(btn_h)
+        cfg_layout.addLayout(btn_h)
+
+        layout.addWidget(cfg_card)
+
+        # Process Log Box
+        log_header = QLabel("NHẬT KÝ XỬ LÝ (PROCESSING LOG)")
+        log_header.setObjectName("sectionHeader")
+        layout.addWidget(log_header)
 
         self.cut_log = QPlainTextEdit()
         self.cut_log.setReadOnly(True)

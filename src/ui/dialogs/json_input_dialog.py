@@ -73,13 +73,14 @@ class JsonInputDialog(QDialog):
 
         file_h = QHBoxLayout()
         self.file_path_label = QLabel("Chưa chọn file")
-        self.file_path_label.setStyleSheet("color: #7d8590; padding: 8px; background: #0d1117; border-radius: 6px;")
+        self.file_path_label.setStyleSheet("color: #94a3b8; padding: 8px 12px; background: #0c101a; border: 1px solid #1f2b3f; border-radius: 8px; font-weight: 600;")
         self.file_path_label.setWordWrap(True)
         file_h.addWidget(self.file_path_label, 1)
 
         btn_browse = QPushButton(t("json_input.browse_btn"))
         btn_browse.setIcon(get_svg_icon("folder", "#ffffff", 14))
         btn_browse.setFixedWidth(120)
+        btn_browse.setFixedHeight(34)
         btn_browse.clicked.connect(self._browse_file)
         file_h.addWidget(btn_browse)
         file_layout.addLayout(file_h)
@@ -121,14 +122,14 @@ class JsonInputDialog(QDialog):
         toolbar_h = QHBoxLayout()
         btn_add_part = QPushButton(t("json_input.add_part"))
         btn_add_part.setIcon(get_svg_icon("plus", "#ffffff", 14))
-        btn_add_part.setFixedHeight(32)
+        btn_add_part.setFixedHeight(34)
         btn_add_part.clicked.connect(self._add_part_textarea)
         toolbar_h.addWidget(btn_add_part)
 
         btn_clear_all = QPushButton(t("json_input.clear_all"))
         btn_clear_all.setIcon(get_svg_icon("trash", "#ffffff", 14))
         btn_clear_all.setObjectName("dangerBtn")
-        btn_clear_all.setFixedHeight(32)
+        btn_clear_all.setFixedHeight(34)
         btn_clear_all.clicked.connect(self._clear_all_parts)
         toolbar_h.addWidget(btn_clear_all)
 
@@ -148,6 +149,7 @@ class JsonInputDialog(QDialog):
         btn_h.addStretch()
         btn_cancel = QPushButton(t("common.cancel"))
         btn_cancel.setFixedWidth(100)
+        btn_cancel.setFixedHeight(36)
         btn_cancel.clicked.connect(self.reject)
         btn_h.addWidget(btn_cancel)
 
@@ -155,7 +157,7 @@ class JsonInputDialog(QDialog):
         btn_load.setIcon(get_svg_icon("check", "#ffffff", 14))
         btn_load.setObjectName("primaryBtn")
         btn_load.setFixedWidth(140)
-        btn_load.setFixedHeight(40)
+        btn_load.setFixedHeight(36)
         btn_load.clicked.connect(self._load)
         btn_h.addWidget(btn_load)
 
@@ -168,7 +170,7 @@ class JsonInputDialog(QDialog):
         if path:
             self.selected_file = path
             self.file_path_label.setText(path)
-            self.file_path_label.setStyleSheet("color: #4ec9b0; padding: 8px; background: #0d1117; border-radius: 6px; font-weight: 600;")
+            self.file_path_label.setStyleSheet("color: #34d399; padding: 8px 12px; background: #0c101a; border: 1px solid #10b981; border-radius: 8px; font-weight: 600;")
 
     def _add_part_textarea(self):
         part_index = len(self.part_textareas)
@@ -177,14 +179,14 @@ class JsonInputDialog(QDialog):
         frame = QFrame()
         frame.setStyleSheet("""
             QFrame {
-                background-color: #161b22;
-                border: 1px solid #21262d;
-                border-radius: 6px;
+                background: qlineargradient(x1:0, y1:0, x2:1, y2:1, stop:0 #131926, stop:1 #0c101a);
+                border: 1px solid #1f2b3f;
+                border-radius: 10px;
             }
         """)
         frame_layout = QVBoxLayout(frame)
-        frame_layout.setContentsMargins(8, 8, 8, 8)
-        frame_layout.setSpacing(4)
+        frame_layout.setContentsMargins(10, 10, 10, 10)
+        frame_layout.setSpacing(6)
 
         header_h = QHBoxLayout()
         header_h.setSpacing(8)
@@ -194,22 +196,22 @@ class JsonInputDialog(QDialog):
         header_h.addWidget(part_icon)
 
         label = QLabel(f"Phần {part_number}")
-        label.setStyleSheet("color: #e6edf3; font-size: 11px; font-weight: 600;")
+        label.setStyleSheet("color: #f8fafc; font-size: 11px; font-weight: 700;")
         header_h.addWidget(label)
 
         status_label = QLabel("(trống)")
-        status_label.setStyleSheet("color: #7d8590; font-size: 10px;")
+        status_label.setStyleSheet("color: #94a3b8; font-size: 10px; font-weight: 600;")
         header_h.addWidget(status_label)
         header_h.addStretch()
 
         btn_clear = QPushButton()
         btn_clear.setIcon(get_svg_icon("trash", "#cbd5e1", 12))
-        btn_clear.setFixedSize(24, 24)
+        btn_clear.setFixedSize(28, 28)
         btn_clear.setToolTip("Xóa nội dung phần này")
         header_h.addWidget(btn_clear)
 
         btn_remove = QPushButton(t("common.delete"))
-        btn_remove.setFixedHeight(24)
+        btn_remove.setFixedHeight(28)
         btn_remove.setToolTip("Xóa phần này")
         header_h.addWidget(btn_remove)
         frame_layout.addLayout(header_h)
@@ -221,16 +223,16 @@ class JsonInputDialog(QDialog):
         )
         textarea.setStyleSheet("""
             QPlainTextEdit {
-                background-color: #0d1117;
-                color: #c9d1d9;
-                border: 1px solid #21262d;
-                border-radius: 4px;
-                padding: 6px;
-                font-family: Consolas, monospace;
-                font-size: 10px;
+                background-color: #080b11;
+                color: #e2e8f0;
+                border: 1px solid #1e293b;
+                border-radius: 6px;
+                padding: 8px;
+                font-family: 'Consolas', 'Cascadia Code', monospace;
+                font-size: 11px;
             }
             QPlainTextEdit:focus {
-                border-color: #1f6feb;
+                border-color: #6366f1;
             }
         """)
         textarea.setMinimumHeight(120)

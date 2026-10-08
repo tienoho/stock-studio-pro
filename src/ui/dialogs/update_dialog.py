@@ -49,8 +49,9 @@ class UpdateDialog(QDialog):
         banner = QFrame()
         banner.setStyleSheet("""
             QFrame {
-                background: qlineargradient(x1:0, y1:0, x2:1, y2:1, stop:0 #161b22, stop:1 #0d1117);
-                border: 1px solid #30363d;
+                background: qlineargradient(x1:0, y1:0, x2:1, y2:1, stop:0 #121826, stop:1 #0c101a);
+                border: 1px solid #1f2b3f;
+                border-top: 1px solid rgba(255, 255, 255, 0.14);
                 border-radius: 12px;
                 padding: 12px;
             }
@@ -72,7 +73,7 @@ class UpdateDialog(QDialog):
         info_box.addWidget(badge_lbl)
 
         title_lbl = QLabel(self.release.title or f"{APP_NAME} {self.release.tag_name}")
-        title_lbl.setStyleSheet("color: #f0f6fc; font-size: 18px; font-weight: 700;")
+        title_lbl.setStyleSheet("color: #f8fafc; font-size: 18px; font-weight: 700;")
         info_box.addWidget(title_lbl)
 
         # Version progression pill
@@ -81,31 +82,31 @@ class UpdateDialog(QDialog):
 
         cur_pill = QLabel(f"Hiện tại: v{self.current_version}")
         cur_pill.setStyleSheet("""
-            background: #21262d; color: #8b949e; font-size: 11px; font-weight: 600;
-            border-radius: 10px; padding: 2px 10px;
+            background: #182234; color: #94a3b8; font-size: 11px; font-weight: 700;
+            border: 1px solid #243048; border-radius: 10px; padding: 3px 12px;
         """)
         ver_row.addWidget(cur_pill)
 
         arrow_lbl = QLabel("➔")
-        arrow_lbl.setStyleSheet("color: #58a6ff; font-weight: 700; font-size: 12px;")
+        arrow_lbl.setStyleSheet("color: #38bdf8; font-weight: 700; font-size: 12px;")
         ver_row.addWidget(arrow_lbl)
 
         new_pill = QLabel(f"Mới nhất: {self.release.tag_name}")
         new_pill.setStyleSheet("""
-            background: #1f3b2e; color: #38ef7d; font-size: 11px; font-weight: 700;
-            border: 1px solid #238636; border-radius: 10px; padding: 2px 10px;
+            background: rgba(16, 185, 129, 0.15); color: #34d399; font-size: 11px; font-weight: 800;
+            border: 1px solid rgba(16, 185, 129, 0.4); border-radius: 10px; padding: 3px 12px;
         """)
         ver_row.addWidget(new_pill)
 
         if self.release.published_at:
             date_lbl = QLabel(f"• Ngày phát hành: {self.release.published_at}")
-            date_lbl.setStyleSheet("color: #8b949e; font-size: 11px;")
+            date_lbl.setStyleSheet("color: #94a3b8; font-size: 11px;")
             ver_row.addWidget(date_lbl)
 
         if self.release.asset_size > 0:
             size_mb = self.release.asset_size / (1024 * 1024)
             size_lbl = QLabel(f"• Dung lượng: {size_mb:.1f} MB")
-            size_lbl.setStyleSheet("color: #8b949e; font-size: 11px;")
+            size_lbl.setStyleSheet("color: #94a3b8; font-size: 11px;")
             ver_row.addWidget(size_lbl)
 
         ver_row.addStretch()
@@ -116,7 +117,7 @@ class UpdateDialog(QDialog):
 
         # 2. Changelog / Release Notes Card
         notes_lbl = QLabel(t("update.changelog", default="Nhật ký thay đổi (What's New):"))
-        notes_lbl.setStyleSheet("color: #c9d1d9; font-size: 12px; font-weight: 700;")
+        notes_lbl.setStyleSheet("color: #cbd5e1; font-size: 12px; font-weight: 700;")
         layout.addWidget(notes_lbl)
 
         self.changelog_box = QPlainTextEdit()
@@ -124,9 +125,9 @@ class UpdateDialog(QDialog):
         self.changelog_box.setPlainText(self.release.body or "Bản cập nhật tối ưu hóa hiệu năng và vá lỗi.")
         self.changelog_box.setStyleSheet("""
             QPlainTextEdit {
-                background-color: #090d16;
-                color: #e6edf3;
-                border: 1px solid #21262d;
+                background-color: #080b11;
+                color: #e2e8f0;
+                border: 1px solid #1e293b;
                 border-radius: 8px;
                 padding: 12px;
                 font-family: 'Consolas', 'Cascadia Code', monospace;
@@ -141,9 +142,9 @@ class UpdateDialog(QDialog):
         self.progress_frame.setVisible(False)
         self.progress_frame.setStyleSheet("""
             QFrame {
-                background-color: #0d1117;
-                border: 1px solid #30363d;
-                border-radius: 8px;
+                background-color: #0c101a;
+                border: 1px solid #1f2b3f;
+                border-radius: 10px;
                 padding: 8px 12px;
             }
         """)
@@ -190,7 +191,7 @@ class UpdateDialog(QDialog):
 
         self.chk_startup = QCheckBox(t("update.auto_check_startup", default="Tự động kiểm tra cập nhật khi khởi động"))
         self.chk_startup.setChecked(True)
-        self.chk_startup.setStyleSheet("color: #8b949e; font-size: 11px;")
+        self.chk_startup.setStyleSheet("color: #94a3b8; font-size: 11px;")
         if self.config_repo:
             cfg = self.config_repo.load_config()
             self.chk_startup.setChecked(bool(cfg.get("check_updates_startup", True)))
@@ -203,10 +204,10 @@ class UpdateDialog(QDialog):
         self.btn_later.setFixedHeight(36)
         self.btn_later.setStyleSheet("""
             QPushButton {
-                background: #21262d; color: #c9d1d9; border: 1px solid #30363d;
-                border-radius: 6px; padding: 0 16px; font-weight: 600;
+                background: #141b29; color: #cbd5e1; border: 1px solid #243048;
+                border-radius: 8px; padding: 0 16px; font-weight: 600;
             }
-            QPushButton:hover { background: #30363d; color: #ffffff; }
+            QPushButton:hover { background: #1c263a; border-color: #3f5175; color: #ffffff; }
         """)
         self.btn_later.clicked.connect(self._on_later_or_cancel_clicked)
         bottom_row.addWidget(self.btn_later)
@@ -216,10 +217,10 @@ class UpdateDialog(QDialog):
         self.btn_github.setFixedHeight(36)
         self.btn_github.setStyleSheet("""
             QPushButton {
-                background: #161b22; color: #58a6ff; border: 1px solid #30363d;
-                border-radius: 6px; padding: 0 16px; font-weight: 600;
+                background: #141b29; color: #38bdf8; border: 1px solid #243048;
+                border-radius: 8px; padding: 0 16px; font-weight: 600;
             }
-            QPushButton:hover { background: #21262d; border-color: #58a6ff; }
+            QPushButton:hover { background: #1c263a; border-color: #38bdf8; }
         """)
         self.btn_github.clicked.connect(self._open_github)
         bottom_row.addWidget(self.btn_github)
@@ -230,12 +231,12 @@ class UpdateDialog(QDialog):
         self.btn_action.setFixedHeight(36)
         self.btn_action.setStyleSheet("""
             QPushButton {
-                background: qlineargradient(x1:0, y1:0, x2:1, y2:1, stop:0 #238636, stop:1 #2ea043);
-                color: #ffffff; font-weight: 700; border: none; border-radius: 6px;
+                background: qlineargradient(x1:0, y1:0, x2:1, y2:1, stop:0 #059669, stop:1 #10b981);
+                color: #ffffff; font-weight: 700; border: 1px solid rgba(255, 255, 255, 0.2); border-radius: 8px;
                 padding: 0 20px; font-size: 12px;
             }
-            QPushButton:hover { background: #2ea043; }
-            QPushButton:disabled { background: #21262d; color: #6e7681; }
+            QPushButton:hover { background: qlineargradient(x1:0, y1:0, x2:1, y2:1, stop:0 #10b981, stop:1 #34d399); }
+            QPushButton:disabled { background: #1e293b; color: #64748b; border: 1px solid #334155; }
         """)
         self.btn_action.clicked.connect(self._start_auto_download)
         bottom_row.addWidget(self.btn_action)

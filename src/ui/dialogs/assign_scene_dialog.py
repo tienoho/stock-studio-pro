@@ -45,8 +45,8 @@ class AssignSceneDialog(QDialog):
 
         file_label = QLabel(filename)
         file_label.setStyleSheet("""
-            background-color: #131926;
-            border: 1px solid #f59e0b;
+            background: qlineargradient(x1:0, y1:0, x2:1, y2:1, stop:0 #131926, stop:1 #0c101a);
+            border: 1px solid rgba(245, 158, 11, 0.4);
             border-radius: 8px;
             padding: 10px 14px;
             color: #fbbf24;
@@ -78,6 +78,7 @@ class AssignSceneDialog(QDialog):
                 layout.addWidget(suggest_btn)
 
         self.search_input = QLineEdit()
+        self.search_input.setFixedHeight(34)
         self.search_input.setPlaceholderText(t("assign_scene.search_placeholder"))
         self.search_input.textChanged.connect(self._filter_scenes)
         layout.addWidget(self.search_input)
@@ -85,22 +86,22 @@ class AssignSceneDialog(QDialog):
         self.scene_list = QListWidget()
         self.scene_list.setStyleSheet("""
             QListWidget {
-                background-color: #0c0f17;
-                border: 1px solid #1e293b;
+                background-color: #0c101a;
+                border: 1px solid #1f2b3f;
                 border-radius: 10px;
-                padding: 4px;
+                padding: 6px;
             }
             QListWidget::item {
-                padding: 10px 12px;
+                padding: 8px 12px;
                 border-radius: 6px;
-                margin-bottom: 2px;
+                margin-bottom: 3px;
                 color: #f1f5f9;
             }
             QListWidget::item:hover {
                 background-color: #1a2233;
             }
             QListWidget::item:selected {
-                background-color: #4f46e5;
+                background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #6366f1, stop:1 #8b5cf6);
                 color: #ffffff;
                 font-weight: 700;
             }
@@ -115,17 +116,20 @@ class AssignSceneDialog(QDialog):
         btn_assign = QPushButton(t("assign_scene.assign_btn"))
         btn_assign.setIcon(get_svg_icon("check", "#ffffff", 14))
         btn_assign.setObjectName("primaryBtn")
+        btn_assign.setFixedHeight(36)
         btn_assign.clicked.connect(self._on_assign)
         btn_row.addWidget(btn_assign)
 
         btn_skip = QPushButton("Bỏ qua")
         btn_skip.setIcon(get_svg_icon("chevron-right", "#ffffff", 14))
+        btn_skip.setFixedHeight(36)
         btn_skip.clicked.connect(self._on_skip)
         btn_row.addWidget(btn_skip)
 
         btn_delete = QPushButton(t("assign_scene.delete_btn"))
         btn_delete.setIcon(get_svg_icon("trash", "#ffffff", 14))
         btn_delete.setObjectName("dangerBtn")
+        btn_delete.setFixedHeight(36)
         btn_delete.clicked.connect(self._on_delete)
         btn_row.addWidget(btn_delete)
 

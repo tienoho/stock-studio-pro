@@ -57,24 +57,26 @@ class SceneListItem(QFrame):
             self.setStyleSheet("""
                 SceneListItem {
                     background: qlineargradient(x1:0, y1:0, x2:1, y2:0,
-                        stop:0 #4f46e5, stop:1 #7c3aed);
+                        stop:0 #4338ca, stop:1 #6d28d9);
                     border-radius: 8px;
-                    border-left: 4px solid #38bdf8;
+                    border: 1px solid #818cf8;
+                    border-left: 4px solid #06b6d4;
                 }
             """)
             self.top_label.setStyleSheet("color: #ffffff; font-size: 12px; font-weight: 800; background: transparent;")
-            self.bottom_label.setStyleSheet("color: rgba(255,255,255,0.9); font-size: 10px; font-weight: 600; background: transparent;")
+            self.bottom_label.setStyleSheet("color: rgba(255,255,255,0.95); font-size: 10px; font-weight: 700; background: transparent;")
             self.icon_lbl.setPixmap(get_svg_pixmap("film", "#ffffff", 12))
         else:
             self.setStyleSheet("""
                 SceneListItem {
-                    background-color: #131926;
-                    border: 1px solid #1e293b;
+                    background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+                        stop:0 #111724, stop:1 #0b0f18);
+                    border: 1px solid #1f2b3f;
                     border-radius: 8px;
                 }
                 SceneListItem:hover {
-                    background-color: #1a2233;
-                    border-color: #3b4d6e;
+                    background-color: #161e2e;
+                    border-color: #38bdf8;
                 }
             """)
             self.top_label.setStyleSheet("color: #f1f5f9; font-size: 12px; font-weight: 700; background: transparent;")

@@ -39,9 +39,19 @@ class WorkflowTab(QWidget):
         self.hint_lbl.setWordWrap(True)
         layout.addWidget(self.hint_lbl)
 
-        # Controls Row 1: Add Node & Run
+        # Consolidated Workflow Toolbar Card
+        toolbar_card = QFrame()
+        toolbar_card.setObjectName("toolCard")
+        toolbar_layout = QVBoxLayout(toolbar_card)
+        toolbar_layout.setContentsMargins(14, 12, 14, 12)
+        toolbar_layout.setSpacing(10)
+
+        # Controls Row 1: Add Node & Execution
         top = QHBoxLayout()
+        top.setSpacing(8)
+
         self.workflow_block_combo = QComboBox()
+        self.workflow_block_combo.setFixedHeight(34)
         self.workflow_block_combo.addItems([
             "Load JSON", "Search stock", "Random select", "Download selected",
             "Cut/Mix video", "Create voice", "Scene voice match"
@@ -50,11 +60,13 @@ class WorkflowTab(QWidget):
 
         self.btn_add_node = QPushButton(t("workflow.add_node"))
         self.btn_add_node.setIcon(get_svg_icon("plus", "#ffffff", 14))
+        self.btn_add_node.setFixedHeight(34)
         self.btn_add_node.clicked.connect(self._workflow_canvas_add)
         top.addWidget(self.btn_add_node)
 
         self.btn_auto_layout = QPushButton("Sắp Xếp")
         self.btn_auto_layout.setIcon(get_svg_icon("layout", "#4ec9b0", 14))
+        self.btn_auto_layout.setFixedHeight(34)
         self.btn_auto_layout.setToolTip("Tự động căn chỉnh các bước thẳng hàng từ trái sang phải")
         self.btn_auto_layout.clicked.connect(lambda: self.workflow_canvas.auto_arrange())
         top.addWidget(self.btn_auto_layout)
@@ -62,66 +74,72 @@ class WorkflowTab(QWidget):
         self.btn_run = QPushButton(t("workflow.run_workflow"))
         self.btn_run.setIcon(get_svg_icon("play", "#ffffff", 14))
         self.btn_run.setObjectName("primaryBtn")
+        self.btn_run.setFixedHeight(34)
         self.btn_run.clicked.connect(self.runWorkflowRequested.emit)
         top.addWidget(self.btn_run)
 
         self.btn_clear = QPushButton(t("workflow.clear_canvas"))
         self.btn_clear.setIcon(get_svg_icon("trash", "#f87171", 14))
+        self.btn_clear.setFixedHeight(34)
         self.btn_clear.clicked.connect(self._workflow_clear)
         top.addWidget(self.btn_clear)
 
         top.addStretch()
-        layout.addLayout(top)
+        toolbar_layout.addLayout(top)
 
         # Controls Row 2: SQLite Presets Bar
         preset_bar = QHBoxLayout()
-        preset_bar.setSpacing(6)
+        preset_bar.setSpacing(8)
 
         self.preset_icon = QLabel()
         self.preset_icon.setPixmap(get_svg_pixmap("database", "#818cf8", 14))
         preset_bar.addWidget(self.preset_icon)
 
         self.preset_lbl = QLabel(t("workflow.sqlite_presets"))
-        self.preset_lbl.setStyleSheet("color: #818cf8; font-weight: 700; font-size: 11px;")
+        self.preset_lbl.setObjectName("sectionHeader")
         preset_bar.addWidget(self.preset_lbl)
 
         self.sqlite_preset_combo = QComboBox()
+        self.sqlite_preset_combo.setFixedHeight(32)
         self.sqlite_preset_combo.setMinimumWidth(160)
         preset_bar.addWidget(self.sqlite_preset_combo)
 
         self.btn_load_db = QPushButton(t("workflow.load_db"))
         self.btn_load_db.setIcon(get_svg_icon("refresh", "#58a6ff", 14))
+        self.btn_load_db.setFixedHeight(32)
         self.btn_load_db.clicked.connect(self._load_sqlite_preset)
         preset_bar.addWidget(self.btn_load_db)
 
         self.btn_save_db = QPushButton(t("workflow.save_db"))
         self.btn_save_db.setIcon(get_svg_icon("save", "#34d399", 14))
+        self.btn_save_db.setFixedHeight(32)
         self.btn_save_db.clicked.connect(self._save_sqlite_preset)
         preset_bar.addWidget(self.btn_save_db)
 
         self.btn_del_db = QPushButton(t("workflow.delete_db"))
         self.btn_del_db.setIcon(get_svg_icon("trash", "#f87171", 14))
+        self.btn_del_db.setFixedHeight(32)
         self.btn_del_db.clicked.connect(self._delete_sqlite_preset)
         preset_bar.addWidget(self.btn_del_db)
 
-        # Separator
-        preset_bar.addSpacing(12)
-        self.file_lbl = QLabel("File:")
-        self.file_lbl.setStyleSheet("color: #64748b; font-size: 11px;")
-        preset_bar.addWidget(self.file_lbl)
+        preset_bar.addSpacing(8)
 
         self.btn_save_file = QPushButton("Xuất JSON")
         self.btn_save_file.setIcon(get_svg_icon("file-text", "#94a3b8", 14))
+        self.btn_save_file.setFixedHeight(32)
         self.btn_save_file.clicked.connect(self._workflow_save)
         preset_bar.addWidget(self.btn_save_file)
 
         self.btn_load_file = QPushButton("Mở JSON")
         self.btn_load_file.setIcon(get_svg_icon("folder", "#94a3b8", 14))
+        self.btn_load_file.setFixedHeight(32)
         self.btn_load_file.clicked.connect(self._workflow_load)
         preset_bar.addWidget(self.btn_load_file)
 
         preset_bar.addStretch()
-        layout.addLayout(preset_bar)
+        toolbar_layout.addLayout(preset_bar)
+
+        layout.addWidget(toolbar_card)
 
         self.workflow_canvas = WorkflowCanvas(parent_window or self)
         layout.addWidget(self.workflow_canvas, 1)

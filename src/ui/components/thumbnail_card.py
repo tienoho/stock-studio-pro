@@ -177,25 +177,25 @@ class ThumbnailCard(QFrame):
         if self.is_selected:
             self.setStyleSheet("""
                 #card {
-                    background-color: #0d281e;
+                    background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #0f2c20, stop:1 #0a1c15);
                     border: 2px solid #10b981;
                     border-radius: 12px;
                 }
                 #card:hover {
                     border-color: #34d399;
-                    background-color: #103327;
+                    background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #133829, stop:1 #0c231a);
                 }
             """)
         else:
             self.setStyleSheet("""
                 #card {
-                    background-color: #131926;
-                    border: 1px solid #1e293b;
+                    background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #121826, stop:1 #0c101a);
+                    border: 1px solid #1f2b3f;
                     border-radius: 12px;
                 }
                 #card:hover {
                     border-color: #6366f1;
-                    background-color: #162033;
+                    background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #151d2d, stop:1 #0e131d);
                 }
             """)
 

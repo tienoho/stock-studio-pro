@@ -50,12 +50,14 @@ class KeyDialog(QDialog):
 
         layout.addWidget(QLabel("Tên gợi nhớ (ví dụ: Key 1):"))
         self.name_input = QLineEdit()
+        self.name_input.setFixedHeight(34)
         if existing:
             self.name_input.setText(existing.get("name", ""))
         layout.addWidget(self.name_input)
 
         layout.addWidget(QLabel(f"Mã API Key {platform.title()}:"))
         self.key_input = QLineEdit()
+        self.key_input.setFixedHeight(34)
         self.key_input.setStyleSheet("font-family: 'Consolas', 'Cascadia Code', monospace;")
         if existing:
             self.key_input.setText(existing.get("key", ""))
@@ -72,18 +74,21 @@ class KeyDialog(QDialog):
 
         btn_test = QPushButton(t("api_keys.test_key_btn"))
         btn_test.setIcon(get_svg_icon("zap", "#ffffff", 14))
+        btn_test.setFixedHeight(34)
         btn_test.clicked.connect(self._test_key)
         btn_h.addWidget(btn_test)
 
         btn_h.addStretch()
 
         btn_cancel = QPushButton(t("common.cancel"))
+        btn_cancel.setFixedHeight(34)
         btn_cancel.clicked.connect(self.reject)
         btn_h.addWidget(btn_cancel)
 
         btn_save = QPushButton(t("common.save"))
         btn_save.setIcon(get_svg_icon("save", "#ffffff", 14))
         btn_save.setObjectName("primaryBtn")
+        btn_save.setFixedHeight(34)
         btn_save.clicked.connect(self._save)
         btn_h.addWidget(btn_save)
 
@@ -168,7 +173,7 @@ class KeyManagementDialog(QDialog):
 
         self.list_scroll = QScrollArea()
         self.list_scroll.setWidgetResizable(True)
-        self.list_scroll.setStyleSheet("QScrollArea { border: 1px solid #1e293b; border-radius: 10px; background-color: #0c0f17; }")
+        self.list_scroll.setStyleSheet("QScrollArea { border: 1px solid #1f2b3f; border-radius: 12px; background-color: #0c101a; }")
 
         self.list_container = QWidget()
         self.list_layout = QVBoxLayout(self.list_container)
@@ -185,18 +190,21 @@ class KeyManagementDialog(QDialog):
         btn_add = QPushButton(t("api_keys.add_key_btn"))
         btn_add.setIcon(get_svg_icon("plus", "#ffffff", 14))
         btn_add.setObjectName("primaryBtn")
+        btn_add.setFixedHeight(36)
         btn_add.clicked.connect(self._add_key)
         btn_h.addWidget(btn_add)
 
         btn_register = QPushButton(t("api_keys.get_free_key"))
         btn_register.setIcon(get_svg_icon("globe", "#ffffff", 14))
+        btn_register.setFixedHeight(36)
         btn_register.clicked.connect(self._open_register)
         btn_h.addWidget(btn_register)
 
         btn_h.addStretch()
 
         btn_close = QPushButton(t("common.close"))
-        btn_close.setFixedWidth(100)
+        btn_close.setFixedWidth(110)
+        btn_close.setFixedHeight(36)
         btn_close.clicked.connect(self.accept)
         btn_h.addWidget(btn_close)
 
@@ -225,17 +233,17 @@ class KeyManagementDialog(QDialog):
             row = QFrame()
             row.setStyleSheet("""
                 QFrame {
-                    background-color: #131926;
-                    border: 1px solid #1e293b;
-                    border-radius: 8px;
+                    background: qlineargradient(x1:0, y1:0, x2:1, y2:1, stop:0 #131926, stop:1 #0e1420);
+                    border: 1px solid #1f2b3f;
+                    border-radius: 10px;
                     padding: 4px;
                 }
                 QFrame:hover {
                     border-color: #6366f1;
-                    background-color: #161e2e;
+                    background: qlineargradient(x1:0, y1:0, x2:1, y2:1, stop:0 #182234, stop:1 #121a28);
                 }
             """)
-            row.setFixedHeight(62)
+            row.setFixedHeight(64)
 
             h = QHBoxLayout(row)
             h.setContentsMargins(12, 6, 12, 6)
@@ -263,14 +271,14 @@ class KeyManagementDialog(QDialog):
             h.addLayout(v, 1)
 
             btn_edit = QPushButton(t("common.edit"))
-            btn_edit.setFixedSize(60, 28)
+            btn_edit.setFixedSize(64, 30)
             btn_edit.clicked.connect(lambda checked, i=idx: self._edit_key(i))
             h.addWidget(btn_edit)
 
             btn_del = QPushButton(t("common.delete"))
             btn_del.setIcon(get_svg_icon("trash", "#ffffff", 12))
             btn_del.setObjectName("dangerBtn")
-            btn_del.setFixedSize(60, 28)
+            btn_del.setFixedSize(64, 30)
             btn_del.clicked.connect(lambda checked, i=idx: self._delete_key(i))
             h.addWidget(btn_del)
 

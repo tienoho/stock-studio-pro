@@ -120,16 +120,16 @@ class AutoStockMainWindow(QMainWindow):
         self.btn_update.setFixedHeight(30)
         self.btn_update.setStyleSheet("""
             QPushButton {
-                background: #161b22;
-                color: #8b949e;
-                border: 1px solid #30363d;
-                border-radius: 6px;
+                background: #111724;
+                color: #94a3b8;
+                border: 1px solid #1f2b3f;
+                border-radius: 8px;
                 padding: 0 10px;
                 font-size: 11px;
                 font-weight: 700;
             }
             QPushButton:hover {
-                background: #1f2937;
+                background: #172133;
                 border-color: #38ef7d;
                 color: #38ef7d;
             }
@@ -146,16 +146,16 @@ class AutoStockMainWindow(QMainWindow):
         self.btn_lang.setFixedHeight(30)
         self.btn_lang.setStyleSheet("""
             QPushButton {
-                background: #161b22;
+                background: #111724;
                 color: #58a6ff;
-                border: 1px solid #30363d;
-                border-radius: 6px;
+                border: 1px solid #1f2b3f;
+                border-radius: 8px;
                 padding: 0 10px;
                 font-size: 11px;
                 font-weight: 800;
             }
             QPushButton:hover {
-                background: #1f2937;
+                background: #172133;
                 border-color: #58a6ff;
                 color: #ffffff;
             }
@@ -312,17 +312,17 @@ class AutoStockMainWindow(QMainWindow):
         self.btn_update.setText(f" 🚀 {release.tag_name}")
         self.btn_update.setStyleSheet("""
             QPushButton {
-                background: #1f3b2e;
+                background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #0f2c20, stop:1 #133829);
                 color: #38ef7d;
-                border: 1px solid #238636;
-                border-radius: 6px;
+                border: 1px solid #10b981;
+                border-radius: 8px;
                 padding: 0 10px;
                 font-size: 11px;
                 font-weight: 800;
             }
             QPushButton:hover {
-                background: #238636;
-                color: #ffffff;
+                background: #10b981;
+                color: #081a13;
             }
         """)
         self.btn_update.setToolTip(f"Bản mới {release.tag_name} đã sẵn sàng! Bấm để cập nhật.")

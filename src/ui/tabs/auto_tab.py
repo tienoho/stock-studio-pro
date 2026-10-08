@@ -70,18 +70,29 @@ class AutoTab(QWidget):
         cfg_card = QFrame()
         cfg_card.setObjectName("toolCard")
         cfg_layout = QVBoxLayout(cfg_card)
-        cfg_layout.setSpacing(10)
+        cfg_layout.setContentsMargins(16, 14, 16, 14)
+        cfg_layout.setSpacing(12)
+
+        cfg_header = QLabel("CẤU HÌNH QUY TRÌNH")
+        cfg_header.setObjectName("sectionHeader")
+        cfg_layout.addWidget(cfg_header)
 
         row = QHBoxLayout()
         row.setSpacing(14)
 
-        row.addWidget(QLabel("Định dạng media:"))
+        lbl_format = QLabel("Định dạng media:")
+        lbl_format.setStyleSheet("font-weight: 600;")
+        row.addWidget(lbl_format)
         self.auto_media_combo = QComboBox()
+        self.auto_media_combo.setFixedHeight(34)
         self.auto_media_combo.addItems(["Video + ảnh", "Chỉ video", "Chỉ ảnh"])
         row.addWidget(self.auto_media_combo)
 
-        row.addWidget(QLabel("Số lượng mỗi cảnh:"))
+        lbl_qty = QLabel("Số lượng mỗi cảnh:")
+        lbl_qty.setStyleSheet("font-weight: 600;")
+        row.addWidget(lbl_qty)
         self.auto_pick_spin = QSpinBox()
+        self.auto_pick_spin.setFixedHeight(34)
         self.auto_pick_spin.setRange(1, 20)
         self.auto_pick_spin.setValue(2)
         row.addWidget(self.auto_pick_spin)
@@ -94,15 +105,17 @@ class AutoTab(QWidget):
         cfg_layout.addLayout(row)
 
         action_row = QHBoxLayout()
+        action_row.setSpacing(10)
         self.btn_run = QPushButton("Bắt Đầu Chạy Tự Động")
         self.btn_run.setObjectName("primaryBtn")
         self.btn_run.setIcon(get_svg_icon("play", "#ffffff", 14))
-        self.btn_run.setFixedHeight(38)
+        self.btn_run.setFixedHeight(36)
         self.btn_run.clicked.connect(self._on_run_clicked)
         action_row.addWidget(self.btn_run)
 
         self.btn_clear_log = QPushButton("Xóa Nhật Ký")
         self.btn_clear_log.setIcon(get_svg_icon("trash", "#8b949e", 14))
+        self.btn_clear_log.setFixedHeight(36)
         self.btn_clear_log.clicked.connect(lambda: self.auto_log.clear())
         action_row.addWidget(self.btn_clear_log)
 
@@ -112,6 +125,10 @@ class AutoTab(QWidget):
         layout.addWidget(cfg_card)
 
         # Log Panel
+        log_header = QLabel("TIẾN ĐỘ & NHẬT KÝ THỰC THI (EXECUTION LOG)")
+        log_header.setObjectName("sectionHeader")
+        layout.addWidget(log_header)
+
         self.auto_log = QPlainTextEdit()
         self.auto_log.setReadOnly(True)
         self.auto_log.setPlaceholderText("Nhật ký quy trình tự động sẽ xuất hiện tại đây...")

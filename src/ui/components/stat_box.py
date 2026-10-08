@@ -18,7 +18,8 @@ class StatBox(QFrame):
                 QFrame#statBox {{
                     background: {color};
                     border-radius: 12px;
-                    border: 1px solid rgba(255, 255, 255, 0.12);
+                    border: 1px solid rgba(255, 255, 255, 0.14);
+                    border-top: 1px solid rgba(255, 255, 255, 0.32);
                 }}
             """)
         self.setMinimumHeight(64)
@@ -30,13 +31,13 @@ class StatBox(QFrame):
 
         self.value_label = QLabel(str(value))
         self.value_label.setObjectName("statValue")
-        self.value_label.setStyleSheet("color: #ffffff; font-size: 20px; font-weight: 850; background: transparent;")
+        self.value_label.setStyleSheet("color: #ffffff; font-size: 20px; font-weight: 900; background: transparent;")
         self.value_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         layout.addWidget(self.value_label)
 
         self.title_label = QLabel(label.upper())
         self.title_label.setObjectName("statTitle")
-        self.title_label.setStyleSheet("color: rgba(255, 255, 255, 0.7); font-size: 9px; font-weight: 800; letter-spacing: 0.8px; background: transparent;")
+        self.title_label.setStyleSheet("color: rgba(255, 255, 255, 0.75); font-size: 9.5px; font-weight: 800; letter-spacing: 0.8px; background: transparent;")
         self.title_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         layout.addWidget(self.title_label)
 
@@ -47,10 +48,11 @@ class StatBox(QFrame):
 class Badge(QLabel):
     """Pill badge showing status or count."""
 
-    def __init__(self, text: str, bg_color: str = "#222d42", text_color: str = "#818cf8", parent=None):
+    def __init__(self, text: str, bg_color: str = "#182234", text_color: str = "#818cf8", parent=None):
         super().__init__(text, parent)
         self.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.setStyleSheet(
             f"background-color: {bg_color}; color: {text_color}; "
-            f"border-radius: 8px; font-size: 10px; font-weight: 800; padding: 2px 7px;"
+            f"border-radius: 6px; font-size: 10px; font-weight: 800; padding: 2px 8px; "
+            f"border: 1px solid rgba(255, 255, 255, 0.1);"
         )

@@ -44,8 +44,8 @@ class PreviewModal(QDialog):
         info_bar = QFrame()
         info_bar.setStyleSheet("""
             QFrame {
-                background-color: #131926;
-                border: 1px solid #1e293b;
+                background: qlineargradient(x1:0, y1:0, x2:1, y2:1, stop:0 #131926, stop:1 #0c101a);
+                border: 1px solid #1f2b3f;
                 border-radius: 10px;
             }
         """)
@@ -88,6 +88,7 @@ class PreviewModal(QDialog):
         btn_close = QPushButton("Đóng (ESC)")
         btn_close.setIcon(get_svg_icon("x", "#ffffff", 14))
         btn_close.setFixedWidth(120)
+        btn_close.setFixedHeight(34)
         btn_close.clicked.connect(self.close)
         info_h.addWidget(btn_close)
 
@@ -98,7 +99,7 @@ class PreviewModal(QDialog):
         preview_frame.setStyleSheet("""
             QFrame {
                 background-color: #06090e;
-                border: 1px solid #1e293b;
+                border: 1px solid #1f2b3f;
                 border-radius: 12px;
             }
         """)
@@ -137,8 +138,8 @@ class PreviewModal(QDialog):
             controls = QFrame()
             controls.setStyleSheet("""
                 QFrame {
-                    background-color: #131926;
-                    border: 1px solid #1e293b;
+                    background: qlineargradient(x1:0, y1:0, x2:1, y2:1, stop:0 #131926, stop:1 #0c101a);
+                    border: 1px solid #1f2b3f;
                     border-radius: 10px;
                 }
             """)

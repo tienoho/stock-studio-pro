@@ -310,13 +310,13 @@ class DownloaderTab(QWidget):
         brand_card = QFrame()
         brand_card.setStyleSheet("""
             QFrame {
-                background: qlineargradient(x1:0, y1:0, x2:1, y2:1, stop:0 #1a2235, stop:1 #111724);
-                border: 1px solid #2d3b55;
-                border-radius: 10px;
+                background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #161f30, stop:1 #0f1522);
+                border: 1px solid #24334d;
+                border-radius: 12px;
             }
         """)
         brand_layout = QVBoxLayout(brand_card)
-        brand_layout.setContentsMargins(10, 8, 10, 8)
+        brand_layout.setContentsMargins(12, 10, 12, 10)
         brand_layout.setSpacing(4)
 
         top_brand_row = QHBoxLayout()
@@ -325,8 +325,8 @@ class DownloaderTab(QWidget):
         self.btn_toggle_setup = QPushButton()
         self.btn_toggle_setup.setIcon(get_svg_icon("chevron-left", "#818cf8", 12))
         self.btn_toggle_setup.setToolTip("Thu gọn Sidebar (Alt+1)")
-        self.btn_toggle_setup.setFixedSize(22, 22)
-        self.btn_toggle_setup.setStyleSheet("background: rgba(255, 255, 255, 0.05); border: 1px solid #1e293b; border-radius: 4px;")
+        self.btn_toggle_setup.setFixedSize(24, 24)
+        self.btn_toggle_setup.setStyleSheet("background: rgba(255, 255, 255, 0.06); border: 1px solid #24334d; border-radius: 6px;")
         self.btn_toggle_setup.clicked.connect(self._toggle_setup_sidebar)
         top_brand_row.addWidget(self.btn_toggle_setup)
         brand_layout.addLayout(top_brand_row)
@@ -345,7 +345,7 @@ class DownloaderTab(QWidget):
             font-size: 10px;
             font-weight: 800;
             padding: 2px 8px;
-            border-radius: 8px;
+            border-radius: 6px;
             border: 1px solid rgba(99, 102, 241, 0.4);
         """)
         version_row.addWidget(self.version_badge)
@@ -361,19 +361,20 @@ class DownloaderTab(QWidget):
         self.btn_settings = QPushButton(t("downloader.settings_btn"))
         self.btn_settings.setIcon(get_svg_icon("settings", "#e2e8f0", 14))
         self.btn_settings.setToolTip("Quản lý thư mục lưu, cấu hình nâng cao, JSON input")
+        self.btn_settings.setFixedHeight(34)
         self.btn_settings.clicked.connect(self.open_settings_requested.emit)
         self.btn_settings.setStyleSheet("""
             QPushButton {
-                background-color: #131926;
+                background-color: #121826;
                 color: #e2e8f0;
                 font-weight: 700;
-                font-size: 11px;
-                padding: 8px;
+                font-size: 11.5px;
+                padding: 6px 12px;
                 border-radius: 8px;
-                border: 1px solid #2d3b55;
+                border: 1px solid #1f2b3f;
             }
             QPushButton:hover {
-                background-color: #1e293b;
+                background-color: #1a2335;
                 border-color: #6366f1;
                 color: #ffffff;
             }

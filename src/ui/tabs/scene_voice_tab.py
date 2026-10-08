@@ -104,11 +104,20 @@ class SceneVoiceTab(QWidget):
         hint.setWordWrap(True)
         layout.addWidget(hint)
 
-        # Config Grid
+        # Config Card
         grid_frame = QFrame()
         grid_frame.setObjectName("toolCard")
-        grid = QGridLayout(grid_frame)
-        grid.setSpacing(8)
+        grid_layout = QVBoxLayout(grid_frame)
+        grid_layout.setContentsMargins(16, 14, 16, 14)
+        grid_layout.setSpacing(12)
+
+        paths_header = QLabel("ĐƯỜNG DẪN TỆP & THƯ MỤC NGUỒN")
+        paths_header.setObjectName("sectionHeader")
+        grid_layout.addWidget(paths_header)
+
+        grid = QGridLayout()
+        grid.setHorizontalSpacing(10)
+        grid.setVerticalSpacing(8)
 
         self.svc_json = QLineEdit()
         self.svc_root = QLineEdit()
@@ -125,21 +134,37 @@ class SceneVoiceTab(QWidget):
         ]
         for r, (lab, edit, isdir) in enumerate(rows):
             lbl = QLabel(lab + ":")
-            lbl.setStyleSheet("font-size: 12px; font-weight: 600;")
+            lbl.setStyleSheet("color: #cbd5e1; font-size: 12px; font-weight: 600;")
+            edit.setFixedHeight(32)
             grid.addWidget(lbl, r, 0)
             grid.addWidget(edit, r, 1)
             btn = QPushButton("Chọn...")
             btn.setIcon(get_svg_icon("folder" if isdir else "file", "#ffffff", 14))
+            btn.setFixedHeight(32)
             btn.clicked.connect(lambda _, e=edit, d=isdir: self._browse_line_path(e, d))
             grid.addWidget(btn, r, 2)
 
+        grid_layout.addLayout(grid)
         layout.addWidget(grid_frame)
 
-        # Options Row
+        # Options Card
+        opts_frame = QFrame()
+        opts_frame.setObjectName("toolCard")
+        opts_layout = QVBoxLayout(opts_frame)
+        opts_layout.setContentsMargins(16, 14, 16, 14)
+        opts_layout.setSpacing(10)
+
+        opts_header = QLabel("TÙY CHỌN KHỚP & GHÉP VIDEO")
+        opts_header.setObjectName("sectionHeader")
+        opts_layout.addWidget(opts_header)
+
         row = QHBoxLayout()
-        row.setSpacing(12)
-        row.addWidget(QLabel("Thời lượng cắt cố định (giây, nếu không có SRT):"))
+        row.setSpacing(14)
+        lbl_sec = QLabel("Thời lượng cắt cố định (giây):")
+        lbl_sec.setStyleSheet("font-weight: 600;")
+        row.addWidget(lbl_sec)
         self.svc_chunk_seconds = QDoubleSpinBox()
+        self.svc_chunk_seconds.setFixedHeight(32)
         self.svc_chunk_seconds.setRange(0.0, 120.0)
         self.svc_chunk_seconds.setValue(4.0)
         self.svc_chunk_seconds.setSingleStep(0.5)
@@ -162,26 +187,20 @@ class SceneVoiceTab(QWidget):
         self.btn_run.clicked.connect(self.start_scene_voice)
         row.addWidget(self.btn_run)
 
-        layout.addLayout(row)
+        opts_layout.addLayout(row)
+        layout.addWidget(opts_frame)
 
         # Progress bar
         self.progress_bar = QProgressBar()
         self.progress_bar.setRange(0, 100)
         self.progress_bar.setValue(0)
-        self.progress_bar.setTextVisible(True)
+        self.progress_bar.setTextVisible(False)
         self.progress_bar.setFixedHeight(8)
-        self.progress_bar.setStyleSheet("""
-            QProgressBar {
-                background: #161b22;
-                border: 1px solid #30363d;
-                border-radius: 4px;
-            }
-            QProgressBar::chunk {
-                background: #f0883e;
-                border-radius: 3px;
-            }
-        """)
         layout.addWidget(self.progress_bar)
+
+        log_header = QLabel("TIẾN ĐỘ & NHẬT KÝ KHỚP CẢNH")
+        log_header.setObjectName("sectionHeader")
+        layout.addWidget(log_header)
 
         self.svc_log = QPlainTextEdit()
         self.svc_log.setReadOnly(True)

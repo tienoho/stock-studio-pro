@@ -58,14 +58,14 @@ class ApiKeyManagerWidget(QFrame):
         self.setObjectName("apiKeyCard")
         self.setStyleSheet("""
             #apiKeyCard {
-                background: #101623;
-                border: 1px solid #1e293b;
-                border-radius: 10px;
+                background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #121826, stop:1 #0c101a);
+                border: 1px solid #1f2b3f;
+                border-radius: 12px;
             }
         """)
 
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(10, 10, 10, 10)
+        layout.setContentsMargins(12, 12, 12, 12)
         layout.setSpacing(8)
 
         # Header with vector key icon and expand/collapse toggle
@@ -77,35 +77,35 @@ class ApiKeyManagerWidget(QFrame):
         header_h.addWidget(self.header_icon)
 
         self.header_lbl = QLabel(t("api_keys.header_title"))
-        self.header_lbl.setStyleSheet("color: #818cf8; font-size: 11px; font-weight: 800; letter-spacing: 0.8px;")
+        self.header_lbl.setObjectName("sectionHeader")
         header_h.addWidget(self.header_lbl)
         header_h.addStretch()
 
         self.btn_backup = QPushButton()
         self.btn_backup.setIcon(get_svg_icon("database", "#38bdf8", 13))
-        self.btn_backup.setFixedSize(22, 22)
+        self.btn_backup.setFixedSize(24, 24)
         self.btn_backup.setToolTip(t("common.backup"))
         self.btn_backup.setStyleSheet("""
             QPushButton {
-                background-color: #1e293b;
-                border-radius: 4px;
-                border: none;
+                background-color: #172133;
+                border-radius: 6px;
+                border: 1px solid #25334d;
             }
-            QPushButton:hover { background-color: #0369a1; }
+            QPushButton:hover { background-color: #0369a1; border-color: #38bdf8; }
         """)
         self.btn_backup.clicked.connect(self._backup_db)
         header_h.addWidget(self.btn_backup)
 
         self.btn_toggle_expand = QPushButton()
         self.btn_toggle_expand.setIcon(get_svg_icon("chevron-down", "#94a3b8", 12))
-        self.btn_toggle_expand.setFixedSize(22, 22)
+        self.btn_toggle_expand.setFixedSize(24, 24)
         self.btn_toggle_expand.setStyleSheet("""
             QPushButton {
-                background-color: #1e293b;
-                border-radius: 4px;
-                border: none;
+                background-color: #172133;
+                border-radius: 6px;
+                border: 1px solid #25334d;
             }
-            QPushButton:hover { background-color: #334155; }
+            QPushButton:hover { background-color: #25334d; border-color: #3b4d6e; }
         """)
         self.btn_toggle_expand.clicked.connect(self._toggle_expand)
         header_h.addWidget(self.btn_toggle_expand)
@@ -120,13 +120,13 @@ class ApiKeyManagerWidget(QFrame):
 
         for b in [self.badge_pexels, self.badge_pixabay, self.badge_vecteezy]:
             b.setStyleSheet("""
-                background: #0c0f17;
+                background: #090d15;
                 color: #94a3b8;
-                font-size: 9px;
+                font-size: 9.5px;
                 font-weight: 700;
-                padding: 2px 5px;
-                border-radius: 4px;
-                border: 1px solid #1e293b;
+                padding: 3px 6px;
+                border-radius: 5px;
+                border: 1px solid #1f2b3f;
             """)
             b.setAlignment(Qt.AlignmentFlag.AlignCenter)
             self.status_badges_layout.addWidget(b)
@@ -135,26 +135,26 @@ class ApiKeyManagerWidget(QFrame):
 
         # Quick Add Box
         add_box = QVBoxLayout()
-        add_box.setSpacing(4)
+        add_box.setSpacing(6)
 
         input_row = QHBoxLayout()
         input_row.setSpacing(4)
         self.combo_platform = QComboBox()
         self.combo_platform.addItems(["Pexels", "Pixabay", "Vecteezy"])
-        self.combo_platform.setFixedHeight(26)
-        self.combo_platform.setStyleSheet("font-size: 10px; font-weight: bold; padding: 2px 4px;")
+        self.combo_platform.setFixedHeight(28)
+        self.combo_platform.setStyleSheet("font-size: 11px; font-weight: bold; padding: 2px 6px;")
         input_row.addWidget(self.combo_platform)
 
         self.input_key = QLineEdit()
         self.input_key.setPlaceholderText(t("api_keys.input_placeholder"))
         self.input_key.setEchoMode(QLineEdit.EchoMode.Password)
-        self.input_key.setFixedHeight(26)
-        self.input_key.setStyleSheet("font-size: 10px; padding: 2px 6px;")
+        self.input_key.setFixedHeight(28)
+        self.input_key.setStyleSheet("font-size: 11px; padding: 2px 8px;")
         input_row.addWidget(self.input_key, 1)
 
         self.btn_toggle_vis = QPushButton()
         self.btn_toggle_vis.setIcon(get_svg_icon("eye", "#94a3b8", 13))
-        self.btn_toggle_vis.setFixedSize(26, 26)
+        self.btn_toggle_vis.setFixedSize(28, 28)
         self.btn_toggle_vis.setToolTip("Hiện/ẩn ký tự key")
         self.btn_toggle_vis.clicked.connect(self._toggle_password_echo)
         input_row.addWidget(self.btn_toggle_vis)
@@ -162,30 +162,30 @@ class ApiKeyManagerWidget(QFrame):
 
         # Button row: Add Key & Test Key
         btn_row = QHBoxLayout()
-        btn_row.setSpacing(4)
+        btn_row.setSpacing(6)
 
         self.btn_add = QPushButton(t("api_keys.add_key_btn"))
         self.btn_add.setIcon(get_svg_icon("plus", "#ffffff", 12))
         self.btn_add.setObjectName("primaryBtn")
-        self.btn_add.setFixedHeight(26)
-        self.btn_add.setStyleSheet("font-size: 10px; font-weight: bold; padding: 2px 8px;")
+        self.btn_add.setFixedHeight(28)
+        self.btn_add.setStyleSheet("font-size: 11px; font-weight: bold; padding: 2px 10px;")
         self.btn_add.clicked.connect(self._add_key)
         btn_row.addWidget(self.btn_add)
 
         self.btn_test = QPushButton(t("api_keys.test_key_btn"))
         self.btn_test.setIcon(get_svg_icon("zap", "#38bdf8", 12))
-        self.btn_test.setFixedHeight(26)
+        self.btn_test.setFixedHeight(28)
         self.btn_test.setStyleSheet("""
             QPushButton {
-                background: #1e293b;
+                background: #172133;
                 color: #38bdf8;
                 border: 1px solid rgba(56, 189, 248, 0.4);
-                border-radius: 4px;
-                font-size: 10px;
+                border-radius: 6px;
+                font-size: 11px;
                 font-weight: bold;
-                padding: 2px 8px;
+                padding: 2px 10px;
             }
-            QPushButton:hover { background: #0369a1; color: #ffffff; }
+            QPushButton:hover { background: #0369a1; color: #ffffff; border-color: #38bdf8; }
         """)
         self.btn_test.clicked.connect(self._test_input_key)
         btn_row.addWidget(self.btn_test)
@@ -195,7 +195,7 @@ class ApiKeyManagerWidget(QFrame):
 
         # Test feedback label
         self.test_feedback_label = QLabel("")
-        self.test_feedback_label.setStyleSheet("font-size: 9px; font-weight: 600; padding: 1px 0;")
+        self.test_feedback_label.setStyleSheet("font-size: 10px; font-weight: 600; padding: 2px 0;")
         self.test_feedback_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.test_feedback_label.setVisible(False)
         layout.addWidget(self.test_feedback_label)
@@ -209,8 +209,8 @@ class ApiKeyManagerWidget(QFrame):
         self.keys_scroll.setStyleSheet("""
             QScrollArea {
                 background: #090d16;
-                border: 1px solid #1e293b;
-                border-radius: 6px;
+                border: 1px solid #1f2b3f;
+                border-radius: 8px;
             }
         """)
 

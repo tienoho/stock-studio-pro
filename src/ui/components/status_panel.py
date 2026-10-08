@@ -19,8 +19,8 @@ class StatusPanel(QFrame):
         self.setObjectName("statusPanel")
         self.setStyleSheet("""
             #statusPanel {
-                background-color: #131926;
-                border: 1px solid #1e293b;
+                background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #121826, stop:1 #0c101a);
+                border: 1px solid #1f2b3f;
                 border-radius: 12px;
             }
         """)
@@ -37,8 +37,8 @@ class StatusPanel(QFrame):
         mon_icon.setPixmap(get_svg_pixmap("activity", "#818cf8", 14))
         header_h.addWidget(mon_icon)
 
-        header_label = QLabel("TRẠNG THÁI")
-        header_label.setStyleSheet("color: #818cf8; font-size: 11px; font-weight: 800; letter-spacing: 1.2px;")
+        header_label = QLabel("TRẠNG THÁI HỆ THỐNG")
+        header_label.setObjectName("sectionHeader")
         header_h.addWidget(header_label)
 
         header_h.addStretch()
@@ -49,7 +49,7 @@ class StatusPanel(QFrame):
             color: #818cf8;
             border: 1px solid rgba(99, 102, 241, 0.35);
             border-radius: 6px;
-            padding: 3px 10px;
+            padding: 2px 8px;
             font-size: 10px;
             font-weight: 800;
             letter-spacing: 0.5px;
@@ -61,7 +61,7 @@ class StatusPanel(QFrame):
         # Separator
         sep = QFrame()
         sep.setFrameShape(QFrame.Shape.HLine)
-        sep.setStyleSheet("background-color: #1e293b; max-height: 1px;")
+        sep.setStyleSheet("background-color: #192233; max-height: 1px;")
         layout.addWidget(sep)
 
         # === Main message ===

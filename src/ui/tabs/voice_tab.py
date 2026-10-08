@@ -24,6 +24,7 @@ from ...core.models.scene import srt_time_to_seconds, extract_scenes_from_json
 from ...infrastructure.media.ffmpeg_processor import FFmpegProcessor
 from ...application.services.edge_tts_service import EdgeTTSService, AVAILABLE_VOICES
 from ..styles.icons import get_svg_icon, get_svg_pixmap
+from ..components.stat_box import StatBox
 
 
 class VoiceGenerationWorker(QThread):
@@ -203,6 +204,7 @@ class VoiceTab(QWidget):
         txt_grid.addWidget(self.voice_txt_dir, 0, 1)
         b = QPushButton("Chọn...")
         b.setIcon(get_svg_icon("folder", "#ffffff", 14))
+        b.setFixedHeight(34)
         b.clicked.connect(lambda: self._browse_line_path(self.voice_txt_dir, True))
         txt_grid.addWidget(b, 0, 2)
 
@@ -210,6 +212,7 @@ class VoiceTab(QWidget):
         txt_grid.addWidget(self.voice_input_path, 1, 1)
         b = QPushButton("Chọn...")
         b.setIcon(get_svg_icon("file", "#ffffff", 14))
+        b.setFixedHeight(34)
         b.clicked.connect(lambda: self._browse_line_path(self.voice_input_path))
         txt_grid.addWidget(b, 1, 2)
 
@@ -217,6 +220,7 @@ class VoiceTab(QWidget):
         txt_grid.addWidget(self.voice_output_dir, 2, 1)
         b = QPushButton("Chọn...")
         b.setIcon(get_svg_icon("folder", "#ffffff", 14))
+        b.setFixedHeight(34)
         b.clicked.connect(lambda: self._browse_line_path(self.voice_output_dir, True))
         txt_grid.addWidget(b, 2, 2)
 
@@ -231,6 +235,7 @@ class VoiceTab(QWidget):
         edge_voice_box.addWidget(self.edge_voice_combo, 1)
         self.btn_preview_voice = QPushButton("Nghe Thử")
         self.btn_preview_voice.setIcon(get_svg_icon("play", "#4ec9b0", 14))
+        self.btn_preview_voice.setFixedHeight(34)
         self.btn_preview_voice.setToolTip("Nghe thử một câu mẫu của giọng đọc đã chọn")
         self.btn_preview_voice.clicked.connect(self._test_selected_voice)
         edge_voice_box.addWidget(self.btn_preview_voice)
@@ -252,6 +257,7 @@ class VoiceTab(QWidget):
         ]:
             btn = QPushButton(text)
             btn.setIcon(get_svg_icon(icon_name, "#ffffff", 14))
+            btn.setFixedHeight(36)
             if text == "Tạo Giọng Đọc":
                 btn.setObjectName("primaryBtn")
             btn.clicked.connect(fn)
@@ -279,6 +285,7 @@ class VoiceTab(QWidget):
         srt_grid.addWidget(self.srt_dir_input, 0, 1)
         b = QPushButton("Chọn Thư Mục")
         b.setIcon(get_svg_icon("folder", "#ffffff", 14))
+        b.setFixedHeight(34)
         b.clicked.connect(lambda: self._browse_line_path(self.srt_dir_input, True))
         srt_grid.addWidget(b, 0, 2)
 
@@ -286,6 +293,7 @@ class VoiceTab(QWidget):
         srt_grid.addWidget(self.srt_output_input, 1, 1)
         b = QPushButton("Chọn File")
         b.setIcon(get_svg_icon("file", "#ffffff", 14))
+        b.setFixedHeight(34)
         b.clicked.connect(lambda: self._browse_line_path(self.srt_output_input))
         srt_grid.addWidget(b, 1, 2)
 
@@ -296,22 +304,26 @@ class VoiceTab(QWidget):
         row = QHBoxLayout()
         scan = QPushButton("Quét Thư Mục")
         scan.setIcon(get_svg_icon("refresh", "#ffffff", 14))
+        scan.setFixedHeight(36)
         scan.clicked.connect(self._voice_scan_srt)
         row.addWidget(scan)
 
         merge = QPushButton("Ghép Phụ Đề")
         merge.setIcon(get_svg_icon("layers", "#ffffff", 14))
         merge.setObjectName("primaryBtn")
+        merge.setFixedHeight(36)
         merge.clicked.connect(lambda: self.merge_srt_native(False))
         row.addWidget(merge)
 
         merge_audio_btn = QPushButton("Ghép Master Audio")
         merge_audio_btn.setIcon(get_svg_icon("volume", "#ffffff", 14))
+        merge_audio_btn.setFixedHeight(36)
         merge_audio_btn.clicked.connect(lambda: self.merge_audio_native(False))
         row.addWidget(merge_audio_btn)
 
         clear = QPushButton("Xóa Danh Sách")
         clear.setIcon(get_svg_icon("trash", "#ffffff", 14))
+        clear.setFixedHeight(36)
         clear.clicked.connect(lambda: self.srt_files_list.clear())
         row.addWidget(clear)
         row.addStretch()
@@ -334,6 +346,7 @@ class VoiceTab(QWidget):
         jgrid.addWidget(self.json_script_input, 0, 1)
         b = QPushButton("Chọn File")
         b.setIcon(get_svg_icon("file", "#ffffff", 14))
+        b.setFixedHeight(34)
         b.clicked.connect(lambda: self._browse_line_path(self.json_script_input))
         jgrid.addWidget(b, 0, 2)
 
@@ -341,6 +354,7 @@ class VoiceTab(QWidget):
         jgrid.addWidget(self.json_parts_input, 1, 1)
         b = QPushButton("Chọn File")
         b.setIcon(get_svg_icon("file", "#ffffff", 14))
+        b.setFixedHeight(34)
         b.clicked.connect(lambda: self._browse_line_path(self.json_parts_input))
         jgrid.addWidget(b, 1, 2)
 
@@ -348,9 +362,19 @@ class VoiceTab(QWidget):
         jgrid.addWidget(self.json_output_dir, 2, 1)
         b = QPushButton("Chọn Thư Mục")
         b.setIcon(get_svg_icon("folder", "#ffffff", 14))
+        b.setFixedHeight(34)
         b.clicked.connect(lambda: self._browse_line_path(self.json_output_dir, True))
         jgrid.addWidget(b, 2, 2)
         json_l.addLayout(jgrid)
+
+        # Standardize height for all inputs
+        for inp in [
+            self.voice_txt_dir, self.voice_input_path, self.voice_output_dir,
+            self.voice_provider_combo, self.edge_voice_combo, self.voice_speed_spin,
+            self.srt_dir_input, self.srt_output_input, self.srt_gap_spin,
+            self.json_script_input, self.json_parts_input, self.json_output_dir
+        ]:
+            inp.setFixedHeight(34)
 
         info = QLabel("Đọc các phân đoạn trong file kịch bản, trích xuất lời thoại và tạo âm thanh theo thứ tự.")
         info.setObjectName("mutedText")
@@ -361,6 +385,7 @@ class VoiceTab(QWidget):
         run = QPushButton("Tạo Giọng Đọc Phân Đoạn")
         run.setIcon(get_svg_icon("play", "#ffffff", 14))
         run.setObjectName("primaryBtn")
+        run.setFixedHeight(36)
         run.clicked.connect(self._start_json_parts_voice_native)
         row.addWidget(run)
         row.addStretch()
@@ -381,25 +406,15 @@ class VoiceTab(QWidget):
         stats_box = QFrame()
         stats_layout = QHBoxLayout(stats_box)
         stats_layout.setContentsMargins(0, 0, 0, 0)
+        stats_layout.setSpacing(10)
 
-        d_box = QFrame()
-        d_box.setObjectName("statCard")
-        d_l = QVBoxLayout(d_box)
-        d_l.addWidget(QLabel("Đã hoàn tất:"))
-        self.voice_done_label = QLabel("0")
-        self.voice_done_label.setStyleSheet("color: #34d399; font-size: 20px; font-weight: 800;")
-        d_l.addWidget(self.voice_done_label)
-        stats_layout.addWidget(d_box)
+        self.stat_done = StatBox("0", "ĐÃ HOÀN TẤT", "qlineargradient(x1:0, y1:0, x2:1, y2:1, stop:0 rgba(16, 185, 129, 0.22), stop:1 rgba(5, 150, 105, 0.08))")
+        self.stat_total = StatBox("0", "TỔNG FILE", "qlineargradient(x1:0, y1:0, x2:1, y2:1, stop:0 rgba(99, 102, 241, 0.22), stop:1 rgba(79, 70, 229, 0.08))")
+        self.voice_done_label = self.stat_done.value_label
+        self.voice_total_label = self.stat_total.value_label
 
-        t_box = QFrame()
-        t_box.setObjectName("statCard")
-        t_l = QVBoxLayout(t_box)
-        t_l.addWidget(QLabel("Tổng file:"))
-        self.voice_total_label = QLabel("0")
-        self.voice_total_label.setStyleSheet("color: #58a6ff; font-size: 20px; font-weight: 800;")
-        t_l.addWidget(self.voice_total_label)
-        stats_layout.addWidget(t_box)
-
+        stats_layout.addWidget(self.stat_done)
+        stats_layout.addWidget(self.stat_total)
         right_l.addWidget(stats_box)
 
         self.voice_progress = QProgressBar()
