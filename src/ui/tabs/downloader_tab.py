@@ -16,7 +16,8 @@ from typing import List, Dict, Any, Optional
 from PyQt6.QtWidgets import (
     QWidget, QFrame, QVBoxLayout, QHBoxLayout, QGridLayout, QLabel,
     QPushButton, QComboBox, QCheckBox, QLineEdit, QTextEdit, QScrollArea,
-    QSpinBox, QMessageBox, QDialog, QApplication, QSplitter, QStackedWidget
+    QSpinBox, QMessageBox, QDialog, QApplication, QSplitter, QStackedWidget,
+    QFileDialog
 )
 from PyQt6.QtCore import Qt, pyqtSignal, QTimer
 from PyQt6.QtGui import QCursor, QShortcut, QKeySequence
@@ -326,6 +327,17 @@ class DownloaderTab(QWidget):
             ToastNotification.show_toast(self, f"Đã nạp {len(scenes)} cảnh từ {file_name} [{fmt_badge}]", "success", 3000)
         except Exception as e:
             ToastNotification.show_toast(self, f"Lỗi đọc kịch bản: {str(e)[:45]}", "error", 4000)
+
+    def prompt_load_script(self):
+        """Opens interactive file picker to import any supported script format."""
+        file_path, _ = QFileDialog.getOpenFileName(
+            self,
+            "Chọn tệp kịch bản",
+            "",
+            "Tất cả định dạng kịch bản (*.json *.txt *.srt *.xlsx *.xls *.csv *.tsv);;JSON (*.json);;TXT (*.txt);;SRT (*.srt);;Excel (*.xlsx *.xls);;CSV (*.csv *.tsv);;Tất cả tệp (*.*)"
+        )
+        if file_path:
+            self._load_script_from_file(file_path)
 
     def _load_json_from_file(self, file_path: str):
         """Backward compatibility alias."""
@@ -1983,8 +1995,9 @@ class DownloaderTab(QWidget):
         self._clear_grid()
         box = QFrame()
         box.setObjectName("dragDropOverlay")
+        box.setStyleSheet("background-color: #0c0f17; border: 2px dashed #1e293b; border-radius: 12px;")
         box_layout = QVBoxLayout(box)
-        box_layout.setContentsMargins(40, 60, 40, 60)
+        box_layout.setContentsMargins(40, 50, 40, 50)
         box_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
         box_layout.setSpacing(12)
 
@@ -1998,10 +2011,31 @@ class DownloaderTab(QWidget):
         txt_lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
         box_layout.addWidget(txt_lbl)
 
-        hint_lbl = QLabel("Mẹo: Kéo thả file kịch bản (.json) vào đây • Dùng Alt+Left/Right để chuyển cảnh")
+        hint_lbl = QLabel("Hỗ trợ mọi định dạng: JSON, TXT, SRT, Excel (.xlsx), CSV • Kéo thả tệp vào đây")
         hint_lbl.setStyleSheet("color: #94a3b8; font-size: 11px; background: transparent; border: none;")
         hint_lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
         box_layout.addWidget(hint_lbl)
+
+        btn_load = QPushButton("📥 Nạp Kịch Bản Ngay")
+        btn_load.setIcon(get_svg_icon("folder", "#ffffff", 13))
+        btn_load.setFixedHeight(34)
+        btn_load.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
+        btn_load.setStyleSheet("""
+            QPushButton {
+                background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #4f46e5, stop:1 #6366f1);
+                color: #ffffff;
+                font-size: 11.5px;
+                font-weight: 800;
+                border: 1px solid rgba(255, 255, 255, 0.2);
+                border-radius: 6px;
+                padding: 0 16px;
+            }
+            QPushButton:hover {
+                background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #4338ca, stop:1 #4f46e5);
+            }
+        """)
+        btn_load.clicked.connect(self.prompt_load_script)
+        box_layout.addWidget(btn_load, 0, Qt.AlignmentFlag.AlignCenter)
 
         self.placeholder_label = box
         self.grid_layout.addWidget(self.placeholder_label, 0, 0, GRID_ROWS, GRID_COLS)
@@ -2023,19 +2057,40 @@ class DownloaderTab(QWidget):
             box = QFrame()
             box.setStyleSheet("background-color: #0c0f17; border: 1px dashed #2d3748; border-radius: 12px;")
             box_layout = QVBoxLayout(box)
-            box_layout.setContentsMargins(30, 50, 30, 50)
+            box_layout.setContentsMargins(30, 40, 30, 40)
             box_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
-            box_layout.setSpacing(10)
+            box_layout.setSpacing(12)
 
             icon_lbl = QLabel()
             icon_lbl.setPixmap(get_svg_pixmap("search", "#64748b", 36))
             icon_lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
             box_layout.addWidget(icon_lbl)
 
-            lbl = QLabel(f"Cảnh #{self.current_scene_id} chưa có media phù hợp với bộ lọc\nBấm 'TÌM TẤT CẢ' hoặc đổi bộ lọc để xem media")
+            lbl = QLabel(f"Cảnh #{self.current_scene_id} chưa có media phù hợp với bộ lọc\nBấm nút bên dưới để tìm kiếm tự động")
             lbl.setStyleSheet("color: #94a3b8; font-size: 12px; font-weight: 600; line-height: 1.5; background: transparent; border: none;")
             lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
             box_layout.addWidget(lbl)
+
+            btn_find = QPushButton("🔍 Tìm Tất Cả Media Cho Kịch Bản")
+            btn_find.setIcon(get_svg_icon("search", "#ffffff", 13))
+            btn_find.setFixedHeight(34)
+            btn_find.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
+            btn_find.setStyleSheet("""
+                QPushButton {
+                    background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #4f46e5, stop:1 #6366f1);
+                    color: #ffffff;
+                    font-size: 11.5px;
+                    font-weight: 800;
+                    border: 1px solid rgba(255, 255, 255, 0.2);
+                    border-radius: 6px;
+                    padding: 0 16px;
+                }
+                QPushButton:hover {
+                    background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #4338ca, stop:1 #4f46e5);
+                }
+            """)
+            btn_find.clicked.connect(self.start_search)
+            box_layout.addWidget(btn_find, 0, Qt.AlignmentFlag.AlignCenter)
 
             self.placeholder_label = box
             self.grid_layout.addWidget(self.placeholder_label, 0, 0, GRID_ROWS, GRID_COLS)

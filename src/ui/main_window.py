@@ -3,6 +3,9 @@ AutoStockMainWindow Thin Controller.
 Coordinates tabs, application services, and settings persistence.
 """
 
+import os
+import sys
+import subprocess
 import json
 from pathlib import Path
 from typing import Optional
@@ -582,6 +585,21 @@ class AutoStockMainWindow(QMainWindow):
                 ToastNotification.show_toast(self, f"Đã nạp {len(scenes)} phân đoạn cảnh thành công!", "success", 3000)
 
     def _open_output_folder(self):
+        # If final video has been rendered in Step 3, prioritize opening final video destination
+        final_dir = getattr(self.scene_voice_tab, "svc_out", None)
+        if final_dir and final_dir.text().strip() and Path(final_dir.text().strip()).exists() and self.project_state.get("video_status") == "Đã hoàn tất":
+            target = Path(final_dir.text().strip())
+            try:
+                if os.name == "nt":
+                    os.startfile(str(target))
+                elif sys.platform == "darwin":
+                    subprocess.Popen(["open", str(target)])
+                else:
+                    subprocess.Popen(["xdg-open", str(target)])
+                ToastNotification.show_toast(self, f"Đang mở thư mục video thành phẩm: {target.name}", "success", 2500)
+                return
+            except Exception:
+                pass
         self.downloader_tab._open_output_folder_in_explorer()
 
     def dragEnterEvent(self, event):
