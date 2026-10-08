@@ -373,6 +373,20 @@ class SceneVoiceTab(QWidget):
         status = "[HOÀN TẤT THÀNH CÔNG] " if ok else "[LỖI XỬ LÝ] "
         self.svc_log.appendPlainText(f"\n{status}{message}")
         if ok:
+            if hasattr(self, "btn_open_out"):
+                self.btn_open_out.setStyleSheet("""
+                    QPushButton#secondaryBtn {
+                        background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #10b981, stop:1 #059669);
+                        color: #ffffff;
+                        font-weight: 800;
+                        font-size: 11px;
+                        border: 1px solid rgba(255,255,255,0.3);
+                    }
+                    QPushButton#secondaryBtn:hover {
+                        background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #059669, stop:1 #047857);
+                    }
+                """)
+                self.btn_open_out.setText("🎬 MỞ XEM VIDEO THÀNH PHẨM TRÊN MÁY")
             ToastNotification.show_toast(self, "Khớp video và giọng đọc thành công!", "success", 3000)
         else:
             ToastNotification.show_toast(self, f"Khớp video gặp lỗi: {message[:40]}", "error", 3500)

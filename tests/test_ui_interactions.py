@@ -238,6 +238,72 @@ class TestUIInteractions(unittest.TestCase):
         self.assertTrue(win.step_buttons[2].isChecked())
         self.assertFalse(win.step_buttons[0].isChecked())
 
+    def test_linear_3step_pipeline_and_dashboard_sync(self):
+        """Test the 3-step linear pipeline tabs and project mini-dashboard state synchronization."""
+        from src.ui.main_window import AutoStockMainWindow
+        win = AutoStockMainWindow()
+
+        # 1. Verify correct linear order
+        self.assertEqual(win.main_tabs.widget(0), win.downloader_tab)
+        self.assertEqual(win.main_tabs.widget(1), win.voice_tab)
+        self.assertEqual(win.main_tabs.widget(2), win.scene_voice_tab)
+        self.assertEqual(win.main_tabs.widget(3), win.cut_mix_tab)
+        self.assertEqual(win.main_tabs.widget(4), win.auto_tab)
+        self.assertEqual(win.main_tabs.widget(5), win.workflow_tab)
+
+        # 2. Verify project dashboard initialized
+        self.assertTrue(hasattr(win, "project_dashboard"))
+        self.assertIn("Chưa nạp", win.dash_script_lbl.text())
+        self.assertIn("0", win.dash_scenes_lbl.text())
+        self.assertIn("0 clips", win.dash_media_lbl.text())
+        self.assertIn("Chưa tạo", win.dash_voice_lbl.text())
+        self.assertIn("Chưa ghép", win.dash_video_lbl.text())
+
+        # 3. Simulate script loaded
+        mock_scenes = [
+            {"id": "s1", "title": "Scene 1", "narration": "Hello world", "search_terms": ["city"]},
+            {"id": "s2", "title": "Scene 2", "narration": "Sunset beauty", "search_terms": ["sunset"]}
+        ]
+        win._on_json_loaded({"scenes": mock_scenes}, mock_scenes, "C:/projects/demo_script.json")
+        self.assertIn("demo_script.json", win.dash_script_lbl.text())
+        self.assertIn("2/2", win.dash_scenes_lbl.text())
+
+        # 4. Simulate download finished
+        win._on_download_finished(4, 0, "C:/projects/output_media", {})
+        self.assertIn("4 clips", win.dash_media_lbl.text())
+        self.assertEqual(win.scene_voice_tab.svc_root.text(), "C:/projects/output_media")
+
+        # 5. Simulate voice finished
+        win._on_voice_finished(True, "Created 2 voice clips")
+        self.assertIn("Đã tạo", win.dash_voice_lbl.text())
+
+        # 6. Simulate video matching finished
+        win._on_scene_voice_finished(True, "Final video rendered successfully")
+        self.assertIn("Sẵn sàng", win.dash_video_lbl.text())
+
+        win.close()
+        win.deleteLater()
+
+    def test_guided_next_step_transitions(self):
+        """Test Smart Guided Next-Step Buttons smoothly advance tabs and inherit parameters."""
+        from src.ui.main_window import AutoStockMainWindow
+        win = AutoStockMainWindow()
+
+        # Step 1 -> Step 2
+        mock_scenes = [{"id": "s1", "title": "Intro", "narration": "Welcome"}]
+        win._on_json_loaded({"scenes": mock_scenes}, mock_scenes, "C:/scripts/test.json")
+        win.main_tabs.setCurrentIndex(0)
+
+        # Trigger next step on DownloaderTab
+        win.downloader_tab.btn_next_step.click()
+        self.assertEqual(win.main_tabs.currentIndex(), 1)
+        self.assertEqual(win.voice_tab.json_script_input.text(), "C:/scripts/test.json")
+
+        # Step 2 -> Step 3
+        # Trigger next step on VoiceTab
+        win.voice_tab.btn_next_step.click()
+        self.assertEqual(win.main_tabs.currentIndex(), 2)
+
         win.close()
         win.deleteLater()
 

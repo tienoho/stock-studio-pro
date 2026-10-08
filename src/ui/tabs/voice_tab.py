@@ -118,6 +118,7 @@ class VoiceTab(QWidget):
 
     log_message = pyqtSignal(str)
     finished = pyqtSignal(bool, str)
+    nextStepRequested = pyqtSignal()
 
     def __init__(self, tool_root_fn=None, config=None, save_config_fn=None, parent=None):
         super().__init__(parent)
@@ -437,6 +438,28 @@ class VoiceTab(QWidget):
         self.voice_log.setPlaceholderText("Nhật ký sinh giọng AI và tiến trình xử lý...")
         right_l.addWidget(self.voice_log, 1)
 
+        self.btn_next_step = QPushButton("Bước 3: Ghép Video Thành Phẩm ➔")
+        self.btn_next_step.setIcon(get_svg_icon("activity", "#ffffff", 14))
+        self.btn_next_step.setObjectName("accentBtn")
+        self.btn_next_step.setFixedHeight(36)
+        self.btn_next_step.setStyleSheet("""
+            QPushButton#accentBtn {
+                background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #6366f1, stop:1 #8b5cf6);
+                color: #ffffff;
+                font-size: 11px;
+                font-weight: 800;
+                padding: 0 14px;
+                border-radius: 6px;
+                border: 1px solid rgba(255,255,255,0.18);
+            }
+            QPushButton#accentBtn:hover {
+                background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #4f46e5, stop:1 #7c3aed);
+            }
+        """)
+        self.btn_next_step.setToolTip(format_tooltip("Chuyển sang Bước 3: Ghép video khớp với giọng đọc AI", "Ctrl+3"))
+        self.btn_next_step.clicked.connect(lambda: self.nextStepRequested.emit())
+        right_l.addWidget(self.btn_next_step)
+
         root.addWidget(right, 2)
 
         self._on_provider_changed()
@@ -649,6 +672,22 @@ class VoiceTab(QWidget):
             if self.generate_srt_checkbox.isChecked():
                 self.merge_srt_native(silent=True)
             self.merge_audio_native(silent=True)
+            if hasattr(self, "btn_next_step"):
+                self.btn_next_step.setStyleSheet("""
+                    QPushButton#accentBtn {
+                        background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #10b981, stop:1 #059669);
+                        color: #ffffff;
+                        font-size: 11px;
+                        font-weight: 800;
+                        padding: 0 14px;
+                        border-radius: 6px;
+                        border: 1px solid rgba(255,255,255,0.3);
+                    }
+                    QPushButton#accentBtn:hover {
+                        background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #059669, stop:1 #047857);
+                    }
+                """)
+                self.btn_next_step.setText("TIẾP TỤC: GHÉP VIDEO THÀNH PHẨM ➔")
 
         self.finished.emit(success > 0 or total == 0, msg)
 

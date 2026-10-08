@@ -133,11 +133,11 @@ class AutoStockMainWindow(QMainWindow):
         self.step_buttons = []
         steps_info = [
             ("1. KHO MEDIA", "film", "#4ec9b0", 0),
-            ("2. CẮT & GHÉP", "scissors", "#58a6ff", 1),
-            ("3. GIỌNG ĐỌC", "mic", "#bc8cff", 2),
-            ("4. KHỚP CẢNH", "activity", "#f0883e", 3),
-            ("5. TỰ ĐỘNG HÓA", "zap", "#e3b341", 4),
-            ("6. WORKFLOW", "workflow", "#58a6ff", 5),
+            ("2. GIỌNG ĐỌC AI", "mic", "#bc8cff", 1),
+            ("3. GHÉP THÀNH PHẨM", "activity", "#f0883e", 2),
+            ("4. CẮT & GHÉP LẺ", "scissors", "#58a6ff", 3),
+            ("5. AUTO 1-CHẠM", "zap", "#e3b341", 4),
+            ("6. WORKFLOW PRO", "workflow", "#58a6ff", 5),
         ]
         for name, icon, color, idx in steps_info:
             btn = QPushButton(name)
@@ -196,6 +196,87 @@ class AutoStockMainWindow(QMainWindow):
 
         root_layout.addWidget(self.workflow_stepper)
 
+        # Project Status Dashboard (Breadcrumb Bar)
+        self.project_state = {
+            "script_name": None,
+            "script_path": None,
+            "total_scenes": 0,
+            "selected_media_count": 0,
+            "downloaded_media_count": 0,
+            "project_dir": None,
+            "voice_status": "Chưa tạo",
+            "video_status": "Chưa ghép",
+        }
+        self.project_dashboard = QFrame()
+        self.project_dashboard.setObjectName("projectDashboard")
+        self.project_dashboard.setFixedHeight(32)
+        dash_layout = QHBoxLayout(self.project_dashboard)
+        dash_layout.setContentsMargins(16, 2, 16, 2)
+        dash_layout.setSpacing(10)
+
+        self.dash_script_lbl = QLabel("📁 Kịch bản: Chưa nạp")
+        self.dash_script_lbl.setStyleSheet("color: #64748b; font-size: 11px;")
+        dash_layout.addWidget(self.dash_script_lbl)
+
+        sep1 = QLabel("│")
+        sep1.setStyleSheet("color: #27354a; font-size: 10px;")
+        dash_layout.addWidget(sep1)
+
+        self.dash_scenes_lbl = QLabel("🎬 Cảnh: 0")
+        self.dash_scenes_lbl.setStyleSheet("color: #64748b; font-size: 11px;")
+        dash_layout.addWidget(self.dash_scenes_lbl)
+
+        sep2 = QLabel("│")
+        sep2.setStyleSheet("color: #27354a; font-size: 10px;")
+        dash_layout.addWidget(sep2)
+
+        self.dash_media_lbl = QLabel("📦 Media: 0 clips")
+        self.dash_media_lbl.setStyleSheet("color: #64748b; font-size: 11px;")
+        dash_layout.addWidget(self.dash_media_lbl)
+
+        sep3 = QLabel("│")
+        sep3.setStyleSheet("color: #27354a; font-size: 10px;")
+        dash_layout.addWidget(sep3)
+
+        self.dash_voice_lbl = QLabel("🎙️ Voice: Chưa tạo")
+        self.dash_voice_lbl.setStyleSheet("color: #64748b; font-size: 11px;")
+        dash_layout.addWidget(self.dash_voice_lbl)
+
+        sep4 = QLabel("│")
+        sep4.setStyleSheet("color: #27354a; font-size: 10px;")
+        dash_layout.addWidget(sep4)
+
+        self.dash_video_lbl = QLabel("🎞️ Video: Chưa ghép")
+        self.dash_video_lbl.setStyleSheet("color: #64748b; font-size: 11px;")
+        dash_layout.addWidget(self.dash_video_lbl)
+
+        dash_layout.addStretch()
+
+        self.dash_action_btn = QPushButton("Nạp kịch bản mới ➔")
+        self.dash_action_btn.setIcon(get_svg_icon("arrow_right", "#818cf8", 11))
+        self.dash_action_btn.setFixedHeight(22)
+        self.dash_action_btn.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
+        self.dash_action_btn.setStyleSheet("""
+            QPushButton {
+                background: transparent;
+                color: #818cf8;
+                font-size: 10px;
+                font-weight: 700;
+                border: 1px solid #2d3748;
+                border-radius: 4px;
+                padding: 0 8px;
+            }
+            QPushButton:hover {
+                background: #1e293b;
+                color: #ffffff;
+                border-color: #818cf8;
+            }
+        """)
+        self.dash_action_btn.clicked.connect(self._on_dash_action_clicked)
+        dash_layout.addWidget(self.dash_action_btn)
+
+        root_layout.addWidget(self.project_dashboard)
+
         self.main_tabs = QTabWidget()
         self.main_tabs.currentChanged.connect(self._on_tab_changed)
         root_layout.addWidget(self.main_tabs, 1)
@@ -249,20 +330,24 @@ class AutoStockMainWindow(QMainWindow):
         self.downloader_tab.status_message.connect(self._on_status_message)
         self.downloader_tab.search_finished.connect(self._on_search_finished)
         self.downloader_tab.download_finished.connect(self._on_download_finished)
+        self.downloader_tab.nextStepRequested.connect(self._on_downloader_next_step)
+        self.downloader_tab.json_loaded.connect(self._on_json_loaded)
+        self.downloader_tab.selection_changed.connect(self._on_downloader_selection_changed)
         if hasattr(self.downloader_tab, "api_key_widget"):
             self.downloader_tab.api_key_widget.keysChanged.connect(self._on_config_changed)
 
-        # 2. Cut & Mix Tab
-        self.cut_mix_tab = CutMixTab(parent=self)
-        self.cut_mix_tab.finished.connect(self._on_cut_mix_finished)
-
-        # 3. Voice TXT Studio Tab
+        # 2. Voice Tab (Step 2)
         self.voice_tab = VoiceTab(config=self.config, save_config_fn=self.config_repo.save_config, parent=self)
         self.voice_tab.finished.connect(self._on_voice_finished)
+        self.voice_tab.nextStepRequested.connect(self._on_voice_next_step)
 
-        # 4. Scene Voice Match Tab
+        # 3. Scene Voice Match Tab (Step 3)
         self.scene_voice_tab = SceneVoiceTab(parent=self)
         self.scene_voice_tab.finished.connect(self._on_scene_voice_finished)
+
+        # 4. Cut & Mix Tab (Pro tool)
+        self.cut_mix_tab = CutMixTab(parent=self)
+        self.cut_mix_tab.finished.connect(self._on_cut_mix_finished)
 
         # 5. Auto Mode Tab
         self.auto_tab = AutoTab(parent=self)
@@ -274,9 +359,9 @@ class AutoStockMainWindow(QMainWindow):
 
         # Assemble Tabs with Vector SVG Icons and i18n
         self.main_tabs.addTab(self.downloader_tab, get_svg_icon("film", "#4ec9b0", 16), t("tabs.downloader"))
-        self.main_tabs.addTab(self.cut_mix_tab, get_svg_icon("scissors", "#58a6ff", 16), t("tabs.cut_mix"))
         self.main_tabs.addTab(self.voice_tab, get_svg_icon("mic", "#bc8cff", 16), t("tabs.voice"))
         self.main_tabs.addTab(self.scene_voice_tab, get_svg_icon("activity", "#f0883e", 16), t("tabs.scene_voice"))
+        self.main_tabs.addTab(self.cut_mix_tab, get_svg_icon("scissors", "#58a6ff", 16), t("tabs.cut_mix"))
         self.main_tabs.addTab(self.auto_tab, get_svg_icon("zap", "#e3b341", 16), t("tabs.auto"))
         self.main_tabs.addTab(self.workflow_tab, get_svg_icon("workflow", "#58a6ff", 16), t("tabs.workflow"))
 
@@ -331,7 +416,8 @@ class AutoStockMainWindow(QMainWindow):
         if dialog.exec() == QDialog.DialogCode.Accepted and dialog.result_data:
             scenes = extract_scenes_from_json(dialog.result_data)
             if scenes:
-                self.downloader_tab.load_scenes(scenes, dialog.result_data)
+                source_file = getattr(dialog, "source_file_path", None)
+                self._on_json_loaded(dialog.result_data, scenes, source_file)
                 self.main_tabs.setCurrentIndex(0)
                 ToastNotification.show_toast(self, f"Đã nạp {len(scenes)} phân đoạn cảnh thành công!", "success", 3000)
 
@@ -370,7 +456,7 @@ class AutoStockMainWindow(QMainWindow):
                 data = json.load(f)
             scenes = extract_scenes_from_json(data)
             if scenes:
-                self.downloader_tab.load_scenes(scenes, data)
+                self._on_json_loaded(data, scenes, path_str)
                 self.main_tabs.setCurrentIndex(0)
                 ToastNotification.show_toast(self, f"Đã nạp {len(scenes)} scenes từ: {Path(path_str).name}", "success", 3000)
             else:
@@ -476,7 +562,7 @@ class AutoStockMainWindow(QMainWindow):
         btn_checked_bg = "#1e293b" if is_dark else "#e0e7ff"
         text_color = "#94a3b8" if is_dark else "#64748b"
 
-        steps_colors = ["#4ec9b0", "#58a6ff", "#bc8cff", "#f0883e", "#e3b341", "#58a6ff"]
+        steps_colors = ["#4ec9b0", "#bc8cff", "#f0883e", "#58a6ff", "#e3b341", "#58a6ff"]
         if hasattr(self, "step_buttons"):
             for idx, btn in enumerate(self.step_buttons):
                 color = steps_colors[idx]
@@ -500,6 +586,17 @@ class AutoStockMainWindow(QMainWindow):
                         border: 1px solid {color};
                     }}
                 """)
+
+        if hasattr(self, "project_dashboard"):
+            dash_bg = "#090e18" if is_dark else "#f8fafc"
+            dash_border = "#1a2333" if is_dark else "#e2e8f0"
+            self.project_dashboard.setStyleSheet(f"""
+                QFrame#projectDashboard {{
+                    background: {dash_bg};
+                    border-bottom: 1px solid {dash_border};
+                }}
+            """)
+            self._update_project_dashboard()
 
         quick_bg = "#121a29" if is_dark else "#ffffff"
         quick_border = "#1f2b3f" if is_dark else "#cbd5e1"
@@ -627,9 +724,9 @@ class AutoStockMainWindow(QMainWindow):
 
         # Update tab titles
         self.main_tabs.setTabText(0, t("tabs.downloader"))
-        self.main_tabs.setTabText(1, t("tabs.cut_mix"))
-        self.main_tabs.setTabText(2, t("tabs.voice"))
-        self.main_tabs.setTabText(3, t("tabs.scene_voice"))
+        self.main_tabs.setTabText(1, t("tabs.voice"))
+        self.main_tabs.setTabText(2, t("tabs.scene_voice"))
+        self.main_tabs.setTabText(3, t("tabs.cut_mix"))
         self.main_tabs.setTabText(4, t("tabs.auto"))
         self.main_tabs.setTabText(5, t("tabs.workflow"))
 
@@ -724,7 +821,14 @@ class AutoStockMainWindow(QMainWindow):
             self.downloader_tab.api_key_widget.refresh_keys_display()
 
     def _on_json_loaded(self, json_data: dict, scenes: list, file_path: Optional[str] = None):
-        self.downloader_tab.load_scenes(scenes, json_data)
+        if getattr(self.downloader_tab, "scenes", None) != scenes:
+            self.downloader_tab.load_scenes(scenes, json_data, file_path or "")
+        self.project_state["script_path"] = file_path
+        self.project_state["script_name"] = Path(file_path).name if file_path else "Kịch bản tùy biến"
+        self.project_state["total_scenes"] = len(scenes)
+        self.project_state["voice_status"] = "Chưa tạo"
+        self.project_state["video_status"] = "Chưa ghép"
+        self._update_project_dashboard()
         if file_path:
             if hasattr(self, "scene_voice_tab") and hasattr(self.scene_voice_tab, "svc_json"):
                 self.scene_voice_tab.svc_json.setText(file_path)
@@ -732,6 +836,135 @@ class AutoStockMainWindow(QMainWindow):
                 self.voice_tab.json_script_input.setText(file_path)
                 self.voice_tab.json_parts_input.setText(file_path)
         self.status_bar.showMessage(t("downloader.loaded_json_status", count=len(scenes)), 4000)
+
+    def _update_project_dashboard(self):
+        if not hasattr(self, "project_dashboard"):
+            return
+        is_dark = ThemeManager.get_instance().is_dark()
+        muted_color = "#64748b" if is_dark else "#94a3b8"
+
+        # 1. Script name
+        script_name = self.project_state.get("script_name")
+        if script_name:
+            self.dash_script_lbl.setText(f"📁 Dự án: {script_name}")
+            self.dash_script_lbl.setStyleSheet("color: #38bdf8; font-weight: 700; font-size: 11px;")
+        else:
+            self.dash_script_lbl.setText("📁 Kịch bản: Chưa nạp")
+            self.dash_script_lbl.setStyleSheet(f"color: {muted_color}; font-size: 11px;")
+
+        # 2. Scenes
+        total_scenes = self.project_state.get("total_scenes", 0)
+        if total_scenes > 0:
+            self.dash_scenes_lbl.setText(f"🎬 Cảnh: {total_scenes}/{total_scenes}")
+            self.dash_scenes_lbl.setStyleSheet("color: #818cf8; font-weight: 700; font-size: 11px;")
+        else:
+            self.dash_scenes_lbl.setText("🎬 Cảnh: 0")
+            self.dash_scenes_lbl.setStyleSheet(f"color: {muted_color}; font-size: 11px;")
+
+        # 3. Media
+        dl_count = self.project_state.get("downloaded_media_count", 0)
+        sel_count = self.project_state.get("selected_media_count", 0)
+        if dl_count > 0:
+            self.dash_media_lbl.setText(f"📦 Media: {dl_count} clips (Đã tải)")
+            self.dash_media_lbl.setStyleSheet("color: #34d399; font-weight: 700; font-size: 11px;")
+        elif sel_count > 0:
+            self.dash_media_lbl.setText(f"📦 Media: {sel_count} clips (Đã chọn)")
+            self.dash_media_lbl.setStyleSheet("color: #fbbf24; font-weight: 700; font-size: 11px;")
+        else:
+            self.dash_media_lbl.setText("📦 Media: 0 clips")
+            self.dash_media_lbl.setStyleSheet(f"color: {muted_color}; font-size: 11px;")
+
+        # 4. Voice
+        v_status = self.project_state.get("voice_status", "Chưa tạo")
+        if v_status == "Đã tạo":
+            self.dash_voice_lbl.setText("🎙️ Voice: Đã tạo")
+            self.dash_voice_lbl.setStyleSheet("color: #c084fc; font-weight: 700; font-size: 11px;")
+        else:
+            self.dash_voice_lbl.setText("🎙️ Voice: Chưa tạo")
+            self.dash_voice_lbl.setStyleSheet(f"color: {muted_color}; font-size: 11px;")
+
+        # 5. Video
+        vid_status = self.project_state.get("video_status", "Chưa ghép")
+        if vid_status == "Đã hoàn tất":
+            self.dash_video_lbl.setText("🎞️ Video: Sẵn sàng")
+            self.dash_video_lbl.setStyleSheet("color: #10b981; font-weight: 800; font-size: 11px;")
+        else:
+            self.dash_video_lbl.setText("🎞️ Video: Chưa ghép")
+            self.dash_video_lbl.setStyleSheet(f"color: {muted_color}; font-size: 11px;")
+
+        # Context action button label
+        if not self.project_state.get("script_name"):
+            self.dash_action_btn.setText("Nạp kịch bản mới ➔")
+        elif self.project_state.get("downloaded_media_count", 0) == 0:
+            self.dash_action_btn.setText("Bước 1: Tải Media ➔")
+        elif self.project_state.get("voice_status") != "Đã tạo":
+            self.dash_action_btn.setText("Bước 2: Tạo Giọng Đọc ➔")
+        elif self.project_state.get("video_status") != "Đã hoàn tất":
+            self.dash_action_btn.setText("Bước 3: Ghép Video ➔")
+        else:
+            self.dash_action_btn.setText("Mở Thư Mục Xuất ➔")
+
+    def _on_downloader_selection_changed(self, count: int):
+        self.project_state["selected_media_count"] = count
+        self._update_project_dashboard()
+
+    def _on_downloader_next_step(self):
+        """Advances workflow from Step 1 (Media Downloader) to Step 2 (Voice Studio)."""
+        self.main_tabs.setCurrentIndex(1)
+        script_path = self.project_state.get("script_path")
+        if script_path:
+            if hasattr(self.voice_tab, "json_script_input"):
+                self.voice_tab.json_script_input.setText(str(script_path))
+            if hasattr(self.voice_tab, "json_parts_input"):
+                self.voice_tab.json_parts_input.setText(str(script_path))
+            if hasattr(self.voice_tab, "voice_tabs"):
+                self.voice_tab.voice_tabs.setCurrentIndex(2)
+        ToastNotification.show_toast(self, "Đã chuyển sang Bước 2: Tạo giọng đọc AI", "info", 2500)
+
+    def _on_voice_next_step(self):
+        """Advances workflow from Step 2 (Voice Studio) to Step 3 (Scene Voice Matcher)."""
+        self.main_tabs.setCurrentIndex(2)
+        v_dir = Path(self.voice_tab.voice_output_dir.text().strip() or "voices")
+        master_audio = v_dir / "master_voice.mp3"
+        master_srt = v_dir / "kich_ban_hoan_chinh.srt"
+        if not master_srt.exists():
+            srts = list(v_dir.glob("*.srt"))
+            if srts:
+                master_srt = srts[0]
+
+        if hasattr(self.scene_voice_tab, "svc_full_voice") and master_audio.exists():
+            self.scene_voice_tab.svc_full_voice.setText(str(master_audio))
+        if hasattr(self.scene_voice_tab, "svc_voice"):
+            if master_srt.exists():
+                self.scene_voice_tab.svc_voice.setText(str(master_srt))
+            elif v_dir.exists():
+                self.scene_voice_tab.svc_voice.setText(str(v_dir))
+
+        proj_dir = self.project_state.get("project_dir")
+        if proj_dir and hasattr(self.scene_voice_tab, "svc_root"):
+            if not self.scene_voice_tab.svc_root.text().strip():
+                self.scene_voice_tab.svc_root.setText(str(proj_dir))
+
+        if hasattr(self.scene_voice_tab, "svc_out") and not self.scene_voice_tab.svc_out.text().strip():
+            if proj_dir:
+                self.scene_voice_tab.svc_out.setText(str(Path(proj_dir) / "final_output"))
+            else:
+                self.scene_voice_tab.svc_out.setText(str(v_dir.parent / "final_output"))
+
+        ToastNotification.show_toast(self, "Đã kế thừa toàn bộ dữ liệu sang Bước 3: Sẵn sàng ghép thành phẩm!", "success", 3000)
+
+    def _on_dash_action_clicked(self):
+        if not self.project_state.get("script_name"):
+            self._prompt_load_json()
+        elif self.project_state.get("downloaded_media_count", 0) == 0:
+            self.main_tabs.setCurrentIndex(0)
+            ToastNotification.show_toast(self, "Bước 1: Hãy chọn và tải media cho các cảnh", "info", 2500)
+        elif self.project_state.get("voice_status") != "Đã tạo":
+            self._on_downloader_next_step()
+        elif self.project_state.get("video_status") != "Đã hoàn tất":
+            self._on_voice_next_step()
+        else:
+            self._open_output_folder()
 
     # ═══════════════════════════════════════════════════════════════
     # AUTO MODE PIPELINE
@@ -769,6 +1002,9 @@ class AutoStockMainWindow(QMainWindow):
 
     def _on_download_finished(self, success: int, fail: int, project_dir: str, error_breakdown: dict):
         if project_dir:
+            self.project_state["project_dir"] = project_dir
+            self.project_state["downloaded_media_count"] = success
+            self._update_project_dashboard()
             # Cross-tab folder synchronization
             if hasattr(self, "cut_mix_tab") and hasattr(self.cut_mix_tab, "cut_folder_input"):
                 self.cut_mix_tab.cut_folder_input.setText(project_dir)
@@ -778,7 +1014,7 @@ class AutoStockMainWindow(QMainWindow):
         if self._auto_mode_config.get("then_voice"):
             self._auto_mode_config["then_voice"] = False
             self.auto_tab.auto_log.appendPlainText("Tự động: Tải hoàn tất. Chuyển sang tạo giọng đọc...")
-            self.main_tabs.setCurrentIndex(2)
+            self.main_tabs.setCurrentIndex(1)
 
         if self._workflow_waiting_for == "Download selected":
             self._workflow_waiting_for = None
@@ -861,13 +1097,13 @@ class AutoStockMainWindow(QMainWindow):
 
             if step == "Cut/Mix video":
                 self._workflow_waiting_for = "Cut/Mix video"
-                self.main_tabs.setCurrentIndex(1)
+                self.main_tabs.setCurrentIndex(3)
                 self.cut_mix_tab.start_cut_merge()
                 return
 
             if step == "Create voice":
                 self._workflow_waiting_for = "Create voice"
-                self.main_tabs.setCurrentIndex(2)
+                self.main_tabs.setCurrentIndex(1)
                 mode = str(config.get("mode") or "TXT folder/file")
                 if "JSON" in mode:
                     self.voice_tab._start_json_parts_voice_native()
@@ -877,7 +1113,7 @@ class AutoStockMainWindow(QMainWindow):
 
             if step == "Scene voice match":
                 self._workflow_waiting_for = "Scene voice match"
-                self.main_tabs.setCurrentIndex(3)
+                self.main_tabs.setCurrentIndex(2)
                 self.scene_voice_tab.start_scene_voice()
                 return
 
@@ -896,14 +1132,32 @@ class AutoStockMainWindow(QMainWindow):
                 self._workflow_continue()
 
     def _on_voice_finished(self, ok: bool, message: str):
+        self.project_state["voice_status"] = "Đã tạo" if ok else "Lỗi"
+        self._update_project_dashboard()
         # Propagate generated voices to Scene Voice tab
         if hasattr(self, "scene_voice_tab") and hasattr(self.voice_tab, "voice_output_dir"):
             v_dir = Path(self.voice_tab.voice_output_dir.text().strip() or "voices")
             if v_dir.exists():
-                self.scene_voice_tab.svc_voice.setText(str(v_dir))
+                master_srt = v_dir / "kich_ban_hoan_chinh.srt"
+                if not master_srt.exists():
+                    srts = list(v_dir.glob("*.srt"))
+                    if srts:
+                        master_srt = srts[0]
+                if master_srt.exists():
+                    self.scene_voice_tab.svc_voice.setText(str(master_srt))
+                else:
+                    self.scene_voice_tab.svc_voice.setText(str(v_dir))
+
                 master_audio = v_dir / "master_voice.mp3"
                 if master_audio.exists():
                     self.scene_voice_tab.svc_full_voice.setText(str(master_audio))
+
+                if not self.scene_voice_tab.svc_out.text().strip():
+                    proj_dir = self.project_state.get("project_dir")
+                    if proj_dir:
+                        self.scene_voice_tab.svc_out.setText(str(Path(proj_dir) / "final_output"))
+                    else:
+                        self.scene_voice_tab.svc_out.setText(str(v_dir.parent / "final_output"))
 
         if self._workflow_waiting_for == "Create voice":
             self._workflow_waiting_for = None
@@ -914,6 +1168,8 @@ class AutoStockMainWindow(QMainWindow):
                 self._workflow_continue()
 
     def _on_scene_voice_finished(self, ok: bool, message: str):
+        self.project_state["video_status"] = "Đã hoàn tất" if ok else "Lỗi"
+        self._update_project_dashboard()
         if self._workflow_waiting_for == "Scene voice match":
             self._workflow_waiting_for = None
             if self._workflow_index > 0 and self._workflow_index <= len(self._workflow_running_nodes):
@@ -921,52 +1177,6 @@ class AutoStockMainWindow(QMainWindow):
             self.workflow_tab.workflow_log.appendPlainText(f"Khớp Video & Voice: {'thành công' if ok else 'lỗi'} -> {message}")
             if ok:
                 self._workflow_continue()
-
-    # ═══════════════════════════════════════════════════════════════
-    # DRAG & DROP SCRIPT IMPORT
-    # ═══════════════════════════════════════════════════════════════
-
-    def dragEnterEvent(self, event):
-        if event.mimeData().hasUrls():
-            for url in event.mimeData().urls():
-                if url.toLocalFile().lower().endswith(".json"):
-                    event.acceptProposedAction()
-                    return
-        super().dragEnterEvent(event)
-
-    def dragMoveEvent(self, event):
-        if event.mimeData().hasUrls():
-            for url in event.mimeData().urls():
-                if url.toLocalFile().lower().endswith(".json"):
-                    event.acceptProposedAction()
-                    return
-        super().dragMoveEvent(event)
-
-    def dropEvent(self, event):
-        if event.mimeData().hasUrls():
-            for url in event.mimeData().urls():
-                local_path = url.toLocalFile()
-                if local_path.lower().endswith(".json"):
-                    event.acceptProposedAction()
-                    try:
-                        with open(local_path, "r", encoding="utf-8") as f:
-                            data = json.load(f)
-                        scenes = extract_scenes_from_json(data)
-                        if scenes:
-                            self._on_json_loaded(data, scenes, local_path)
-                            self.main_tabs.setCurrentIndex(0)
-                            ToastNotification.show_toast(
-                                self,
-                                f"Đã nạp {len(scenes)} cảnh từ {Path(local_path).name}",
-                                "success",
-                                3000
-                            )
-                        else:
-                            ToastNotification.show_toast(self, "File JSON không có danh sách cảnh hợp lệ", "warning", 3000)
-                    except Exception as e:
-                        ToastNotification.show_toast(self, f"Lỗi đọc kịch bản: {str(e)[:45]}", "error", 4000)
-                    return
-        super().dropEvent(event)
 
     # ═══════════════════════════════════════════════════════════════
     # CLEANUP & CLOSING

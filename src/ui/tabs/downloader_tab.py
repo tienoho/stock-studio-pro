@@ -50,6 +50,9 @@ class DownloaderTab(QWidget):
     status_message = pyqtSignal(str, int)
     search_finished = pyqtSignal()
     download_finished = pyqtSignal(int, int, str, dict)
+    nextStepRequested = pyqtSignal()
+    json_loaded = pyqtSignal(dict, list, str)
+    selection_changed = pyqtSignal(int)
 
     def __init__(
         self,
@@ -290,7 +293,7 @@ class DownloaderTab(QWidget):
             if not scenes:
                 ToastNotification.show_toast(self, "File JSON không chứa scenes hợp lệ", "warning", 3000)
                 return
-            self.load_scenes(scenes, data)
+            self.load_scenes(scenes, data, file_path)
             file_name = Path(file_path).name
             ToastNotification.show_toast(self, f"Đã nạp {len(scenes)} scenes từ {file_name}", "success", 3000)
         except Exception as e:
@@ -790,6 +793,28 @@ class DownloaderTab(QWidget):
         self.btn_download.clicked.connect(self.start_download)
         action_h.addWidget(self.btn_download)
 
+        self.btn_next_step = QPushButton("Bước 2: Tạo Giọng Đọc ➔")
+        self.btn_next_step.setIcon(get_svg_icon("mic", "#ffffff", 14))
+        self.btn_next_step.setObjectName("accentBtn")
+        self.btn_next_step.setFixedHeight(34)
+        self.btn_next_step.setStyleSheet("""
+            QPushButton#accentBtn {
+                background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #6366f1, stop:1 #8b5cf6);
+                color: #ffffff;
+                font-size: 11px;
+                font-weight: 800;
+                padding: 0 14px;
+                border-radius: 6px;
+                border: 1px solid rgba(255,255,255,0.18);
+            }
+            QPushButton#accentBtn:hover {
+                background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #4f46e5, stop:1 #7c3aed);
+            }
+        """)
+        self.btn_next_step.setToolTip(format_tooltip("Chuyển sang Bước 2: Tạo giọng đọc AI & Phụ đề SRT", "Ctrl+2"))
+        self.btn_next_step.clicked.connect(lambda: self.nextStepRequested.emit())
+        action_h.addWidget(self.btn_next_step)
+
         layout.addLayout(action_h)
 
         # Grid container
@@ -1131,10 +1156,12 @@ class DownloaderTab(QWidget):
     # DATA BINDING & STATE
     # ═══════════════════════════════════════════════════════════════
 
-    def load_scenes(self, scenes: list, json_data: dict = None):
+    def load_scenes(self, scenes: list, json_data: dict = None, file_path: str = ""):
         """Loads scene data into the timeline and resets UI state."""
         self.scenes = scenes or []
         self.json_data = json_data
+        if file_path:
+            self.file_path = file_path
         self.scene_items = {s.get("id"): [] for s in self.scenes}
         self.selected_items = {s.get("id"): {} for s in self.scenes}
         self.current_scene_id = None
@@ -1172,6 +1199,7 @@ class DownloaderTab(QWidget):
 
         if self.scenes:
             self._on_scene_clicked(self.scenes[0])
+            self.json_loaded.emit(self.json_data or {}, self.scenes, getattr(self, "file_path", ""))
 
     def restore_state(self, state: dict):
         """Restores scenes and downloaded items from saved state."""
@@ -2068,6 +2096,7 @@ class DownloaderTab(QWidget):
             self.stat_selected_scene.set_value(len(self.selected_items.get(self.current_scene_id, {})))
         total_selected = sum(len(s) for s in self.selected_items.values())
         self.stat_selected_total.set_value(total_selected)
+        self.selection_changed.emit(total_selected)
 
         # Dynamic CTA visual count feedback
         if hasattr(self, "btn_download"):
@@ -2372,6 +2401,23 @@ class DownloaderTab(QWidget):
                     os.startfile(project_dir)
                 except Exception:
                     pass
+
+        if project_dir and success > 0 and hasattr(self, "btn_next_step"):
+            self.btn_next_step.setStyleSheet("""
+                QPushButton#accentBtn {
+                    background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #10b981, stop:1 #059669);
+                    color: #ffffff;
+                    font-size: 11px;
+                    font-weight: 800;
+                    padding: 0 14px;
+                    border-radius: 6px;
+                    border: 1px solid rgba(255,255,255,0.3);
+                }
+                QPushButton#accentBtn:hover {
+                    background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #059669, stop:1 #047857);
+                }
+            """)
+            self.btn_next_step.setText("TIẾP TỤC: TẠO GIỌNG ĐỌC AI ➔")
 
         self.download_finished.emit(success, fail, project_dir, error_breakdown)
 
