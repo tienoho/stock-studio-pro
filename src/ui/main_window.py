@@ -189,6 +189,14 @@ class AutoStockMainWindow(QMainWindow):
         self.btn_quick_load.clicked.connect(self._prompt_load_json)
         stepper_layout.addWidget(self.btn_quick_load)
 
+        self.btn_sample_templates = QPushButton("Mẫu & Prompt")
+        self.btn_sample_templates.setIcon(get_svg_icon("sparkles", "#a78bfa", 12))
+        self.btn_sample_templates.setToolTip(format_tooltip("Tải file mẫu Excel/TXT/SRT & sao chép prompt AI", "Ctrl+H"))
+        self.btn_sample_templates.setFixedHeight(28)
+        self.btn_sample_templates.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
+        self.btn_sample_templates.clicked.connect(self._prompt_show_templates)
+        stepper_layout.addWidget(self.btn_sample_templates)
+
         self.btn_quick_out = QPushButton("Thư Mục Xuất")
         self.btn_quick_out.setIcon(get_svg_icon("folder", "#34d399", 12))
         self.btn_quick_out.setToolTip(format_tooltip("Mở thư mục xuất sản phẩm", "Ctrl+Shift+O"))
@@ -405,6 +413,9 @@ class AutoStockMainWindow(QMainWindow):
         sc_update = QShortcut(QKeySequence("F12"), self)
         sc_update.activated.connect(self._on_update_btn_clicked)
 
+        sc_help = QShortcut(QKeySequence("Ctrl+H"), self)
+        sc_help.activated.connect(self._prompt_show_templates)
+
     def _on_tab_changed(self, index: int):
         if hasattr(self, "step_buttons"):
             for i, btn in enumerate(self.step_buttons):
@@ -413,6 +424,17 @@ class AutoStockMainWindow(QMainWindow):
     def _prompt_load_json(self):
         from .dialogs import JsonInputDialog
         dialog = JsonInputDialog(parent=self)
+        if dialog.exec() == QDialog.DialogCode.Accepted and dialog.result_data:
+            scenes = getattr(dialog, "extracted_scenes", None) or extract_scenes_from_json(dialog.result_data)
+            if scenes:
+                source_file = getattr(dialog, "selected_file", None) or getattr(dialog, "source_file_path", None)
+                self._on_json_loaded(dialog.result_data, scenes, source_file)
+                self.main_tabs.setCurrentIndex(0)
+                ToastNotification.show_toast(self, f"Đã nạp {len(scenes)} phân đoạn cảnh thành công!", "success", 3000)
+
+    def _prompt_show_templates(self):
+        from .dialogs import JsonInputDialog
+        dialog = JsonInputDialog(parent=self, initial_tab=3)
         if dialog.exec() == QDialog.DialogCode.Accepted and dialog.result_data:
             scenes = getattr(dialog, "extracted_scenes", None) or extract_scenes_from_json(dialog.result_data)
             if scenes:

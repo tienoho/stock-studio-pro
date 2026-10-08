@@ -55,12 +55,18 @@
 - Kiểm tra tính toàn vẹn gói nén ZIP và giải nén an toàn chống lỗ hổng Zip Slip.
 - Tự động cài đặt tại chỗ (In-Place Auto-Installer): Tự động sinh kịch bản ngầm (`_apply_update.bat`), thay thế tệp và khởi động lại ứng dụng mượt mà không cần người dùng can thiệp thủ công.
 
-### 📜 8. Universal Script Ingestion (Đa Định Dạng Kịch Bản Toàn Diện)
+### 📜 8. Universal Script Ingestion (Đa Định Dạng Kịch Bản, Mẫu & Prompt AI)
 - **Hỗ Trợ 5+ Định Dạng Kịch Bản Phổ Biến**:
   - 📄 **JSON (`.json`)**: Kịch bản Claude AI, OpenAI, hoặc cấu trúc phân cảnh tùy biến.
-  - 📝 **Văn Bản Thuần (`.txt`)**: Tự động bóc tách phân cảnh có đánh số (`Cảnh 1:`, `Scene 1:`, `Phần 1:`), mốc thời gian (`[00:00 - 00:05]`, `(5s)`), từ khóa đi kèm (`| Từ khóa: ...`), hoặc từng đoạn văn bản.
+  - 📝 **Văn Bản Thuần (`.txt`)**: Tự động bóc tách phân cảnh có đánh số (`Cảnh 1:`, `Scene 1:`, `Phần 1:`), mốc thời gian (`[00:00 - 00:05]`, `(5s)`), từ khóa đi kèm (`| Từ khóa: ...`), hoặc từng đoạn văn bản. Dòng chú thích bắt đầu bằng `#` được tự động bỏ qua.
   - 💬 **Phụ Đề Video (`.srt`)**: Bóc tách chỉ số phân cảnh, timecode chuẩn xác từng mili-giây, tính toán thời lượng và chuyển phụ đề thành thoại kịch bản.
   - 📊 **Bảng Tính Excel (`.xlsx`, `.xls`) & CSV/TSV (`.csv`, `.tsv`)**: Tự động ánh xạ thông minh các cột tiếng Việt & tiếng Anh (`Cảnh / STT / Scene`, `Lời thoại / Nội dung`, `Từ khóa / Keywords`, `Thời lượng / Duration`). Tích hợp engine thuần XML/ZIP dự phòng.
+- **Tải Tệp Mẫu Chuẩn Về Máy (Template Exporter)**:
+  - Cho phép xuất file mẫu riêng lẻ (`.xlsx`, `.csv`, `.txt`, `.srt`, `.json`) hoặc xuất trọn gói cả 5 file kèm `README_HUONG_DAN.txt` vào thư mục tùy chọn chỉ với 1 click.
+- **Thư Viện Prompt Gợi Ý Cho AI (ChatGPT / Claude / Gemini / DeepSeek)**:
+  - Tích hợp sẵn 4 bộ Prompt chuẩn hóa chuyên sâu theo từng định dạng. Người dùng chỉ cần 1 click để sao chép vào bộ nhớ tạm (Clipboard), dán vào AI để AI sinh kịch bản chuẩn 100% kỹ thuật của Stock Studio Pro.
+  - Nút **"⚡ Thử Nghiệm Kịch Bản Mẫu Này"** giúp nạp ngay dữ liệu mẫu vào Studio để xem trước mà không cần tải file về máy.
+  - Phím tắt **`Ctrl+H`** hoặc nút **"Mẫu & Prompt"** trên thanh công cụ mở trực tiếp trung tâm hướng dẫn kịch bản.
 - **Trích Xuất Từ Khóa Tự Động (Smart Keyword Extractor)**:
   - Tự động làm sạch, lọc từ dừng (Stopwords tiếng Việt & tiếng Anh), nhận diện cụm danh từ và vị trí địa danh, sinh bộ từ khóa tìm kiếm stock media tối ưu (`primary_keywords`, `secondary_keywords`).
 - **Kéo Thả Trực Quan (Drag & Drop Everywhere)**:
@@ -76,17 +82,19 @@ Mã nguồn được phân tách chặt chẽ theo các tầng độc lập, tu�
 stock-studio-pro/
 ├── .github/
 │   └── workflows/
-│       ├── ci.yml                       # 🔄 CI: Code quality (flake8), compileall, 119 unit tests (Qt offscreen)
+│       ├── ci.yml                       # 🔄 CI: Code quality (flake8), compileall, 142 unit tests (Qt offscreen)
 │       └── release.yml                  # 🚀 CD: PyInstaller packaging & automated GitHub Release
 ├── main.py                              # 🚀 Điểm khởi chạy chính của ứng dụng
 ├── run.bat                              # ⚡ Khởi chạy nhanh ứng dụng từ mã nguồn Python
 ├── run_exe.bat                          # 📦 Khởi chạy bản phát hành độc lập AutoStockStudio.exe
 ├── build.bat                            # 🛠️ Đóng gói bản Portable Release bằng PyInstaller
 ├── build_release.py                     # 📦 Kịch bản đóng gói tự động & tạo file ZIP phát hành
-├── run_tests.py                         # 🧪 Trình chạy tự động toàn bộ Unit Tests (119 tests)
+├── run_tests.py                         # 🧪 Trình chạy tự động toàn bộ Unit Tests (142 tests)
 ├── AutoStockStudio.spec                 # ⚙️ Cấu hình đóng gói PyInstaller
 ├── requirements.txt                     # 📋 Danh sách thư viện Python
-├── tests/                               # 🧪 Bộ Unit Test tự động (119 tests)
+├── tests/                               # 🧪 Bộ Unit Test tự động (142 tests)
+│   ├── test_script_parser.py            # Kiểm thử bóc tách đa định dạng (JSON, TXT, SRT, XLSX, CSV)
+│   ├── test_script_template.py          # Kiểm thử xuất tệp mẫu, prompt AI & tab hướng dẫn
 │   ├── test_clean_architecture.py       # Kiểm thử tuân thủ SOLID & Interface Liskov
 │   ├── test_free_providers.py           # Kiểm thử Wikimedia, Openverse, Coverr & Zero-key
 │   ├── test_core_models.py              # Kiểm thử Scene, format_duration, srt_time_to_seconds
@@ -154,7 +162,7 @@ pip install -r requirements.txt
 
 ### 4. Kiểm Thử Hệ Thống (Automated Test Suite)
 
-Dự án sở hữu bộ test tự động toàn diện với **119 unit tests** và **8 bài kiểm thử áp lực**:
+Dự án sở hữu bộ test tự động toàn diện với **142 unit tests** và **8 bài kiểm thử áp lực**:
 ```bash
 # Chạy bộ Unit Tests
 python run_tests.py

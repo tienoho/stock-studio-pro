@@ -367,6 +367,8 @@ class ScriptParserService:
         numbered_re = re.compile(r"^(\d+)[\.\)\]]\s+(.*)$")
 
         for idx, line in enumerate(lines, 1):
+            if line.startswith("#") or line.startswith("//"):
+                continue
             scene_id = idx
             content = line
             duration_val = 0.0

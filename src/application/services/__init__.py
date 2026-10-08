@@ -9,6 +9,7 @@ from .subtitle_service import SubtitleService
 from .media_organizer_service import MediaOrganizerService
 from .browser_service import BrowserService
 from .script_parser_service import ScriptParserService
+from .script_template_service import ScriptTemplateService
 
 __all__ = [
     "KeyManager",
@@ -22,5 +23,6 @@ __all__ = [
     "MediaOrganizerService",
     "BrowserService",
     "ScriptParserService",
+    "ScriptTemplateService",
 ]
 
