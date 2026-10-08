@@ -168,6 +168,17 @@ class TestFreeMediaProviders(unittest.TestCase):
         self.assertTrue(ok_o)
         self.assertIn("miễn phí", msg_o.lower())
 
+    def test_query_sanitization_newlines_and_truncation(self):
+        wiki = WikimediaProvider()
+        with patch("requests.get") as mock_get:
+            mock_get.return_value.status_code = 200
+            mock_get.return_value.json.return_value = {"query": {"pages": {}}}
+            wiki.search_photos("sunset\n\r\tview " + "a" * 200, per_page=5)
+            call_params = mock_get.call_args[1]["params"]
+            self.assertNotIn("\n", call_params["gsrsearch"])
+            self.assertNotIn("\r", call_params["gsrsearch"])
+            self.assertLessEqual(len(call_params["gsrsearch"]), 150)
+
 
 if __name__ == "__main__":
     unittest.main()

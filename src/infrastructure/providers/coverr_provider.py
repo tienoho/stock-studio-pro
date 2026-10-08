@@ -26,7 +26,8 @@ class CoverrProvider(IMediaProvider):
         return self.km.get_coverr_key() if self.km else None
 
     def search_videos(self, query: str, per_page: int = 30) -> List[Dict[str, Any]]:
-        clean_query = str(query).strip()
+        import re
+        clean_query = re.sub(r"[\r\n\t]+", " ", str(query)).strip()[:100]
         if not clean_query:
             return []
 

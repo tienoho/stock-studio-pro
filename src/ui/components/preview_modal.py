@@ -9,7 +9,7 @@ from PyQt6.QtWidgets import (
     QDialog, QVBoxLayout, QHBoxLayout, QFrame, QLabel, QPushButton, QSlider
 )
 from PyQt6.QtCore import Qt, QUrl, QTimer
-from PyQt6.QtGui import QPixmap
+from PyQt6.QtGui import QPixmap, QDesktopServices
 from PyQt6.QtMultimedia import QMediaPlayer, QAudioOutput
 from PyQt6.QtMultimediaWidgets import QVideoWidget
 
@@ -98,6 +98,16 @@ class PreviewModal(QDialog):
         info_h.addWidget(author_label)
 
         info_h.addStretch()
+
+        page_url = item.get("page_url") or item.get("download_url") or ""
+        if page_url and str(page_url).startswith("http"):
+            btn_open_web = QPushButton("Xem Nguồn")
+            btn_open_web.setIcon(get_svg_icon("globe", "#38bdf8", 13))
+            btn_open_web.setObjectName("secondaryBtn")
+            btn_open_web.setFixedHeight(34)
+            btn_open_web.setToolTip("Mở trang web nguồn trên trình duyệt")
+            btn_open_web.clicked.connect(lambda _, u=page_url: QDesktopServices.openUrl(QUrl(u)))
+            info_h.addWidget(btn_open_web)
 
         # Close button
         btn_close = QPushButton("Đóng (ESC)")

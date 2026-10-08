@@ -139,7 +139,24 @@ class DownloadWorker(QThread):
                         break
                     done += 1
 
-                    ext = ".mp4" if item.get("type") == "video" else ".jpg"
+                    dl_url = (item.get("download_url") or "").lower()
+                    if item.get("type") == "video":
+                        if ".webm" in dl_url:
+                            ext = ".webm"
+                        elif ".mov" in dl_url:
+                            ext = ".mov"
+                        elif ".mkv" in dl_url:
+                            ext = ".mkv"
+                        else:
+                            ext = ".mp4"
+                    else:
+                        if ".png" in dl_url:
+                            ext = ".png"
+                        elif ".webp" in dl_url:
+                            ext = ".webp"
+                        else:
+                            ext = ".jpg"
+
                     filename = f"{scene_name}_{item_idx:02d}{ext}"
                     filepath = output_base / filename
                     while filepath.exists():

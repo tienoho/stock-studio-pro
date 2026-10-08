@@ -29,7 +29,8 @@ class OpenverseProvider(IMediaProvider):
         }
 
     def search_photos(self, query: str, per_page: int = 30) -> List[Dict[str, Any]]:
-        clean_query = str(query).strip()
+        import re
+        clean_query = re.sub(r"[\r\n\t]+", " ", str(query)).strip()[:120]
         if not clean_query:
             return []
 
