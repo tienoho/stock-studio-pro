@@ -429,6 +429,10 @@ class AutoStockMainWindow(QMainWindow):
 
         dash_layout.addStretch()
 
+        self.dash_status_lbl = QLabel(t("app.status_ready"))
+        self.dash_status_lbl.setStyleSheet("color: #94a3b8; font-size: 10.5px; font-weight: 600; padding: 0 8px;")
+        dash_layout.addWidget(self.dash_status_lbl)
+
         self.dash_action_btn = QPushButton("Nạp kịch bản mới ➔")
         self.dash_action_btn.setIcon(get_svg_icon("arrow_right", "#818cf8", 11))
         self.dash_action_btn.setFixedHeight(22)
@@ -507,10 +511,10 @@ class AutoStockMainWindow(QMainWindow):
         self.main_tabs.addTab(self.auto_tab, get_svg_icon("zap", "#e3b341", 16), t("tabs.auto"))
         self.main_tabs.addTab(self.workflow_tab, get_svg_icon("workflow", "#58a6ff", 16), t("tabs.workflow"))
 
-        # Status Bar
+        # Status Bar (Unified into single sleek project_dashboard footer strip)
         self.status_bar = QStatusBar()
         self.setStatusBar(self.status_bar)
-        self.status_bar.showMessage(t("app.status_ready"))
+        self.status_bar.hide()
 
         # Setup Global Productivity Shortcuts
         self._setup_shortcuts()
@@ -908,9 +912,13 @@ class AutoStockMainWindow(QMainWindow):
         if hasattr(self, "btn_update"):
             self.btn_update.setToolTip(t("update.check_btn"))
 
+        if hasattr(self, "dash_status_lbl"):
+            self.dash_status_lbl.setText(t("app.status_ready"))
         self.status_bar.showMessage(t("app.status_ready"), 3000)
 
     def _on_status_message(self, message: str, timeout: int = 0):
+        if hasattr(self, "dash_status_lbl"):
+            self.dash_status_lbl.setText(message)
         self.status_bar.showMessage(message, timeout)
 
     # ═══════════════════════════════════════════════════════════════

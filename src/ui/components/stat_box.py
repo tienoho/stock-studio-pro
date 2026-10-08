@@ -7,37 +7,50 @@ from PyQt6.QtCore import Qt
 
 
 class StatBox(QFrame):
-    """Studio glassmorphic stat box with glowing value and sleek label."""
+    """Studio sleek glassmorphic stat card with glowing value and refined label."""
 
     def __init__(self, value, label: str, color: str = None, parent=None):
         super().__init__(parent)
         self.setObjectName("statBox")
 
+        accent = "#38bdf8"
         if color:
-            self.setStyleSheet(f"""
-                QFrame#statBox {{
-                    background: {color};
-                    border-radius: 12px;
-                    border: 1px solid rgba(255, 255, 255, 0.14);
-                    border-top: 1px solid rgba(255, 255, 255, 0.32);
-                }}
-            """)
-        self.setMinimumHeight(64)
-        self.setMaximumHeight(74)
+            color_lower = str(color).lower()
+            if "#1e3a8a" in color_lower or "#1d4ed8" in color_lower or "blue" in color_lower:
+                accent = "#38bdf8"
+            elif "#4c1d95" in color_lower or "#6d28d9" in color_lower or "purple" in color_lower:
+                accent = "#c084fc"
+            elif "#831843" in color_lower or "#be123c" in color_lower or "red" in color_lower or "rose" in color_lower:
+                accent = "#fb7185"
+            elif "#064e3b" in color_lower or "#047857" in color_lower or "green" in color_lower or "emerald" in color_lower:
+                accent = "#34d399"
+            elif color.startswith("#"):
+                accent = color
+        self.accent_color = accent
+
+        self.setStyleSheet(f"""
+            QFrame#statBox {{
+                background-color: #0c121e;
+                border-radius: 8px;
+                border: 1px solid #1a2538;
+                border-top: 2px solid {accent};
+            }}
+        """)
+        self.setFixedHeight(46)
 
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(12, 6, 12, 6)
+        layout.setContentsMargins(8, 4, 8, 4)
         layout.setSpacing(1)
 
         self.value_label = QLabel(str(value))
         self.value_label.setObjectName("statValue")
-        self.value_label.setStyleSheet("color: #ffffff; font-size: 20px; font-weight: 900; background: transparent;")
+        self.value_label.setStyleSheet(f"color: {accent}; font-size: 16px; font-weight: 900; background: transparent;")
         self.value_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         layout.addWidget(self.value_label)
 
         self.title_label = QLabel(label.upper())
         self.title_label.setObjectName("statTitle")
-        self.title_label.setStyleSheet("color: rgba(255, 255, 255, 0.75); font-size: 9.5px; font-weight: 800; letter-spacing: 0.8px; background: transparent;")
+        self.title_label.setStyleSheet("color: #94a3b8; font-size: 9px; font-weight: 700; letter-spacing: 0.5px; background: transparent;")
         self.title_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         layout.addWidget(self.title_label)
 
