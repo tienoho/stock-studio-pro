@@ -59,38 +59,43 @@ class SceneVoiceMatcher:
 
     @staticmethod
     def parse_script_json(json_path: Path) -> List[Dict[str, Any]]:
-        """Extracts scenes and dialogue text from JSON screenplay."""
+        """Extracts scenes and dialogue text from JSON or multi-format screenplay (TXT, SRT, Excel, CSV)."""
         if not json_path or not json_path.exists():
             return []
         try:
-            raw = json_path.read_text(encoding="utf-8", errors="ignore")
-            data = json.loads(raw)
-            scenes = extract_scenes_from_json(data)
-            segments = []
-            for s in scenes:
-                if isinstance(s, dict):
-                    text = s.get("dialogue") or s.get("dialogue_es") or s.get("description") or s.get("title") or s.get("text") or ""
-                    try:
-                        raw_dur = float(s.get("duration") or s.get("duration_seconds") or 0.0)
-                    except (ValueError, TypeError):
-                        raw_dur = 0.0
-                    sid = s.get("id") or s.get("scene_id") or ""
-                else:
-                    text = getattr(s, "dialogue", "") or getattr(s, "description", "") or getattr(s, "title", "")
-                    raw_dur = float(getattr(s, "duration_seconds", 0.0) or getattr(s, "duration", 0.0))
-                    sid = getattr(s, "id", "")
-
-                dur = raw_dur if raw_dur > 0.5 else 4.0
-                segments.append({
-                    "start": 0.0,
-                    "end": dur,
-                    "duration": dur,
-                    "text": text,
-                    "scene_id": sid
-                })
-            return segments
+            from .script_parser_service import ScriptParserService
+            scenes, _ = ScriptParserService().parse_file(json_path)
         except Exception:
-            return []
+            try:
+                raw = json_path.read_text(encoding="utf-8", errors="ignore")
+                data = json.loads(raw)
+                scenes = extract_scenes_from_json(data)
+            except Exception:
+                return []
+
+        segments = []
+        for s in scenes:
+            if isinstance(s, dict):
+                text = s.get("dialogue") or s.get("dialogue_es") or s.get("description") or s.get("title") or s.get("text") or ""
+                try:
+                    raw_dur = float(s.get("duration") or s.get("duration_seconds") or 0.0)
+                except (ValueError, TypeError):
+                    raw_dur = 0.0
+                sid = s.get("id") or s.get("scene_id") or ""
+            else:
+                text = getattr(s, "dialogue", "") or getattr(s, "description", "") or getattr(s, "title", "")
+                raw_dur = float(getattr(s, "duration_seconds", 0.0) or getattr(s, "duration", 0.0))
+                sid = getattr(s, "id", "")
+
+            dur = raw_dur if raw_dur > 0.5 else 4.0
+            segments.append({
+                "start": 0.0,
+                "end": dur,
+                "duration": dur,
+                "text": text,
+                "scene_id": sid
+            })
+        return segments
 
     @staticmethod
     def get_scene_folders(root_dir: Path) -> List[Path]:

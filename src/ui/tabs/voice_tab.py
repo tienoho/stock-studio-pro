@@ -492,19 +492,22 @@ class VoiceTab(QWidget):
         txt_dir = out_dir / "parts_txt"
         txt_dir.mkdir(parents=True, exist_ok=True)
         try:
-            data = json.loads(json_file.read_text(encoding="utf-8-sig"))
-        except Exception as e:
-            QMessageBox.warning(self, "Lỗi đọc JSON", str(e))
-            self.finished.emit(False, f"Lỗi đọc JSON: {e}")
-            return
+            from ...application.services.script_parser_service import ScriptParserService
+            parts, _ = ScriptParserService().parse_file(json_file)
+        except Exception:
+            try:
+                data = json.loads(json_file.read_text(encoding="utf-8-sig"))
+                parts = data.get("parts") or data.get("scenes") or (data if isinstance(data, list) else [])
+                if not parts:
+                    parts = extract_scenes_from_json(data)
+            except Exception as e:
+                QMessageBox.warning(self, "Lỗi đọc kịch bản", str(e))
+                self.finished.emit(False, f"Lỗi đọc kịch bản: {e}")
+                return
 
-        parts = data.get("parts") or data.get("scenes") or (data if isinstance(data, list) else [])
         if not parts:
-            parts = extract_scenes_from_json(data)
-
-        if not parts:
-            QMessageBox.information(self, "Không có phân đoạn", "File JSON không chứa danh sách phân đoạn kịch bản.")
-            self.finished.emit(False, "File JSON không chứa phân đoạn.")
+            QMessageBox.information(self, "Không có phân đoạn", "Tệp kịch bản không chứa danh sách phân đoạn kịch bản.")
+            self.finished.emit(False, "Tệp kịch bản không chứa phân đoạn.")
             return
 
         self.voice_files_list.clear()

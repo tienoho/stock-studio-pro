@@ -11,6 +11,7 @@ from PyQt6.QtWidgets import (
 from ...core.models.scene import extract_scenes_from_json
 from ...core.exceptions import PartMergeError
 from ...application.services.part_merger import PartMerger
+from ...application.services.script_parser_service import ScriptParserService
 from ...core.i18n import t
 from ..styles.icons import get_svg_icon, get_svg_pixmap
 from ..styles.tokens import load_stylesheet
@@ -53,12 +54,19 @@ class JsonInputDialog(QDialog):
         paste_tab = QWidget()
         paste_layout = QVBoxLayout(paste_tab)
         paste_layout.setContentsMargins(15, 15, 15, 15)
-        paste_label = QLabel("Dán nội dung kịch bản JSON vào ô bên dưới:")
+        paste_label = QLabel("Dán nội dung kịch bản (JSON, Văn bản TXT, Phụ đề SRT, hoặc CSV/TSV):")
         paste_label.setObjectName("fieldLabel")
         paste_layout.addWidget(paste_label)
 
         self.text_area = QPlainTextEdit()
-        self.text_area.setPlaceholderText('{\n  "scenes": [...]\n}')
+        self.text_area.setPlaceholderText(
+            '{\n  "scenes": [...]\n}\n'
+            '-- HOẶC VĂN BẢN (TXT) --\n'
+            'Cảnh 1: Lời thoại giới thiệu... | Từ khóa: vlog, công nghệ\n'
+            'Cảnh 2 (5s): Đánh giá chi tiết tính năng\n'
+            '-- HOẶC PHỤ ĐỀ (SRT) --\n'
+            '1\n00:00:01,000 --> 00:00:05,000\nLời thoại phân đoạn video'
+        )
         self.text_area.setStyleSheet("font-family: Consolas, monospace; font-size: 11px;")
         paste_layout.addWidget(self.text_area, 1)
         self.tabs.addTab(paste_tab, t("json_input.paste_tab"))
@@ -68,7 +76,7 @@ class JsonInputDialog(QDialog):
         file_tab = QWidget()
         file_layout = QVBoxLayout(file_tab)
         file_layout.setContentsMargins(15, 30, 15, 15)
-        file_label = QLabel("Chọn file kịch bản JSON đã lưu:")
+        file_label = QLabel("Chọn tệp kịch bản (JSON, TXT, SRT, Excel XLSX/XLS, CSV/TSV):")
         file_label.setObjectName("fieldLabel")
         file_layout.addWidget(file_label)
 
@@ -83,7 +91,7 @@ class JsonInputDialog(QDialog):
         btn_browse.setIcon(get_svg_icon("folder", "#ffffff", 14))
         btn_browse.setFixedWidth(120)
         btn_browse.setFixedHeight(34)
-        btn_browse.setToolTip(format_tooltip("Chọn tệp JSON kịch bản đã lưu trên máy"))
+        btn_browse.setToolTip(format_tooltip("Chọn tệp kịch bản (JSON, TXT, SRT, Excel, CSV)"))
         btn_browse.clicked.connect(self._browse_file)
         file_h.addWidget(btn_browse)
         file_layout.addLayout(file_h)
@@ -176,7 +184,7 @@ class JsonInputDialog(QDialog):
 
     def _browse_file(self):
         path, _ = QFileDialog.getOpenFileName(
-            self, "Chọn JSON", "", "JSON Files (*.json);;All Files (*.*)"
+            self, "Chọn Kịch Bản", "", ScriptParserService.get_supported_filter_string()
         )
         if path:
             self.selected_file = path
@@ -351,6 +359,7 @@ class JsonInputDialog(QDialog):
 
     def _load(self):
         try:
+            parser = ScriptParserService()
             current_tab = self.tabs.currentIndex()
             if current_tab == 0:
                 text = self.text_area.toPlainText().strip()
@@ -358,54 +367,28 @@ class JsonInputDialog(QDialog):
                     QMessageBox.warning(self, "Chưa nhập", "Vui lòng dán nội dung kịch bản trước khi tiếp tục.")
                     return
 
-                # Auto-strip markdown ```json ... ``` blocks if present
-                if text.startswith("```"):
-                    lines = text.splitlines()
-                    if lines and lines[0].startswith("```"):
-                        lines = lines[1:]
-                    if lines and lines[-1].strip() == "```":
-                        lines = lines[:-1]
-                    text = "\n".join(lines).strip()
-                elif not (text.startswith("{") or text.startswith("[")):
-                    # Extract outermost JSON if surrounded by explanation text
-                    first_brace = text.find('{')
-                    first_bracket = text.find('[')
-                    start_idx = -1
-                    if first_brace != -1 and first_bracket != -1:
-                        start_idx = min(first_brace, first_bracket)
-                    elif first_brace != -1:
-                        start_idx = first_brace
-                    elif first_bracket != -1:
-                        start_idx = first_bracket
-
-                    if start_idx != -1:
-                        last_brace = text.rfind('}')
-                        last_bracket = text.rfind(']')
-                        end_idx = max(last_brace, last_bracket)
-                        if end_idx > start_idx:
-                            text = text[start_idx:end_idx + 1].strip()
-
-                if not (text.startswith("{") or text.startswith("[")):
-                    QMessageBox.critical(
-                        self, "Định dạng không hợp lệ",
-                        f"Nội dung kịch bản phải bắt đầu bằng '{{' hoặc '['\n\nNội dung bắt đầu bằng: '{text[:50]}...'"
-                    )
+                scenes, meta = parser.parse_text(text)
+                if not scenes:
+                    QMessageBox.critical(self, "Định dạng không hợp lệ", "Không tìm thấy danh sách cảnh hợp lệ trong nội dung đã dán.")
                     return
-                try:
-                    self.result_data = json.loads(text)
-                except json.JSONDecodeError as e:
-                    QMessageBox.critical(self, "Định dạng không hợp lệ", f"Không đọc được nội dung kịch bản:\n{e}")
-                    return
+                self.extracted_scenes = scenes
+                self.result_data = meta if isinstance(meta, dict) and meta.get("scenes") else {"scenes": scenes, **meta}
+
             elif current_tab == 1:
                 if not self.selected_file:
                     QMessageBox.warning(self, "Chưa chọn file", "Vui lòng chọn file kịch bản trước khi tiếp tục.")
                     return
                 try:
-                    with open(self.selected_file, 'r', encoding='utf-8-sig') as f:
-                        self.result_data = json.load(f)
+                    scenes, meta = parser.parse_file(self.selected_file)
+                    if not scenes:
+                        QMessageBox.critical(self, "Định dạng không hợp lệ", "Tệp kịch bản không chứa danh sách phân đoạn hợp lệ.")
+                        return
+                    self.extracted_scenes = scenes
+                    self.result_data = meta if isinstance(meta, dict) and meta.get("scenes") else {"scenes": scenes, **meta}
                 except Exception as e:
-                    QMessageBox.critical(self, t("common.error"), f"Không đọc được file:\n{e}")
+                    QMessageBox.critical(self, t("common.error"), f"Không đọc được tệp kịch bản:\n{e}")
                     return
+
             elif current_tab == 2:
                 part_texts = []
                 for i, item in enumerate(self.part_textareas):
@@ -429,12 +412,14 @@ class JsonInputDialog(QDialog):
                     QMessageBox.critical(self, t("json_input.merge_error"), f"Không ghép được kịch bản:\n\n{e}")
                     return
 
-            scenes = extract_scenes_from_json(self.result_data)
+            scenes = getattr(self, "extracted_scenes", None) or extract_scenes_from_json(self.result_data)
             if not scenes:
                 QMessageBox.critical(self, "Định dạng không hợp lệ", "Không tìm thấy danh sách cảnh trong kịch bản.")
                 self.result_data = None
                 return
 
+            self.extracted_scenes = scenes
             self.accept()
         except Exception as e:
             QMessageBox.critical(self, t("common.error"), f"{type(e).__name__}: {e}")
+

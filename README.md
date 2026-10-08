@@ -55,6 +55,17 @@
 - Kiểm tra tính toàn vẹn gói nén ZIP và giải nén an toàn chống lỗ hổng Zip Slip.
 - Tự động cài đặt tại chỗ (In-Place Auto-Installer): Tự động sinh kịch bản ngầm (`_apply_update.bat`), thay thế tệp và khởi động lại ứng dụng mượt mà không cần người dùng can thiệp thủ công.
 
+### 📜 8. Universal Script Ingestion (Đa Định Dạng Kịch Bản Toàn Diện)
+- **Hỗ Trợ 5+ Định Dạng Kịch Bản Phổ Biến**:
+  - 📄 **JSON (`.json`)**: Kịch bản Claude AI, OpenAI, hoặc cấu trúc phân cảnh tùy biến.
+  - 📝 **Văn Bản Thuần (`.txt`)**: Tự động bóc tách phân cảnh có đánh số (`Cảnh 1:`, `Scene 1:`, `Phần 1:`), mốc thời gian (`[00:00 - 00:05]`, `(5s)`), từ khóa đi kèm (`| Từ khóa: ...`), hoặc từng đoạn văn bản.
+  - 💬 **Phụ Đề Video (`.srt`)**: Bóc tách chỉ số phân cảnh, timecode chuẩn xác từng mili-giây, tính toán thời lượng và chuyển phụ đề thành thoại kịch bản.
+  - 📊 **Bảng Tính Excel (`.xlsx`, `.xls`) & CSV/TSV (`.csv`, `.tsv`)**: Tự động ánh xạ thông minh các cột tiếng Việt & tiếng Anh (`Cảnh / STT / Scene`, `Lời thoại / Nội dung`, `Từ khóa / Keywords`, `Thời lượng / Duration`). Tích hợp engine thuần XML/ZIP dự phòng.
+- **Trích Xuất Từ Khóa Tự Động (Smart Keyword Extractor)**:
+  - Tự động làm sạch, lọc từ dừng (Stopwords tiếng Việt & tiếng Anh), nhận diện cụm danh từ và vị trí địa danh, sinh bộ từ khóa tìm kiếm stock media tối ưu (`primary_keywords`, `secondary_keywords`).
+- **Kéo Thả Trực Quan (Drag & Drop Everywhere)**:
+  - Kéo thả tệp bất kỳ (`.json`, `.txt`, `.srt`, `.xlsx`, `.csv`) vào cửa sổ chính hoặc thanh Timeline để nạp kịch bản tức thì.
+
 ---
 
 ## 🏛️ Kiến Trúc Mã Nguồn (Clean Architecture & SOLID)

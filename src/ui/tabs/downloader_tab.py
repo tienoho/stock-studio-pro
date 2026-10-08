@@ -43,6 +43,9 @@ from ..workers.search_worker import SearchWorker
 from ..workers.download_worker import DownloadWorker
 from ...infrastructure.persistence.sqlite_downloads_repo import SqliteDownloadsRepository
 from ...application.services.browser_service import BrowserService
+from ...application.services.script_parser_service import ScriptParserService
+
+SUPPORTED_SCRIPT_EXTS = tuple(ScriptParserService.SUPPORTED_EXTENSIONS)
 from ...application.services.media_organizer_service import MediaOrganizerService
 from ...application.services.media_provider_registry import MediaProviderRegistry
 
@@ -283,7 +286,7 @@ class DownloaderTab(QWidget):
     def dragEnterEvent(self, event):
         if event.mimeData().hasUrls():
             for url in event.mimeData().urls():
-                if url.toLocalFile().lower().endswith(".json"):
+                if url.toLocalFile().lower().endswith(SUPPORTED_SCRIPT_EXTS):
                     event.acceptProposedAction()
                     return
         super().dragEnterEvent(event)
@@ -291,7 +294,7 @@ class DownloaderTab(QWidget):
     def dragMoveEvent(self, event):
         if event.mimeData().hasUrls():
             for url in event.mimeData().urls():
-                if url.toLocalFile().lower().endswith(".json"):
+                if url.toLocalFile().lower().endswith(SUPPORTED_SCRIPT_EXTS):
                     event.acceptProposedAction()
                     return
         super().dragMoveEvent(event)
@@ -300,25 +303,30 @@ class DownloaderTab(QWidget):
         if event.mimeData().hasUrls():
             for url in event.mimeData().urls():
                 local_path = url.toLocalFile()
-                if local_path.lower().endswith(".json"):
+                if local_path.lower().endswith(SUPPORTED_SCRIPT_EXTS):
                     event.acceptProposedAction()
-                    self._load_json_from_file(local_path)
+                    self._load_script_from_file(local_path)
                     return
         super().dropEvent(event)
 
-    def _load_json_from_file(self, file_path: str):
+    def _load_script_from_file(self, file_path: str):
+        """Loads and parses scripts across JSON, SRT, TXT, CSV, and Excel formats."""
         try:
-            with open(file_path, "r", encoding="utf-8-sig") as f:
-                data = json.load(f)
-            scenes = extract_scenes_from_json(data)
+            parser = ScriptParserService()
+            scenes, data = parser.parse_file(file_path)
             if not scenes:
-                ToastNotification.show_toast(self, "File JSON không chứa scenes hợp lệ", "warning", 3000)
+                ToastNotification.show_toast(self, "Tệp kịch bản không chứa phân đoạn hợp lệ", "warning", 3000)
                 return
             self.load_scenes(scenes, data, file_path)
             file_name = Path(file_path).name
-            ToastNotification.show_toast(self, f"Đã nạp {len(scenes)} scenes từ {file_name}", "success", 3000)
+            fmt_badge = Path(file_path).suffix.upper().lstrip(".")
+            ToastNotification.show_toast(self, f"Đã nạp {len(scenes)} cảnh từ {file_name} [{fmt_badge}]", "success", 3000)
         except Exception as e:
-            ToastNotification.show_toast(self, f"Lỗi đọc JSON: {str(e)[:45]}", "error", 4000)
+            ToastNotification.show_toast(self, f"Lỗi đọc kịch bản: {str(e)[:45]}", "error", 4000)
+
+    def _load_json_from_file(self, file_path: str):
+        """Backward compatibility alias."""
+        self._load_script_from_file(file_path)
 
     def _section_header(self, text: str, icon_name: Optional[str] = None) -> QWidget:
         container = QWidget()

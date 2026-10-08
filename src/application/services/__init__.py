@@ -8,6 +8,7 @@ from .media_provider_registry import MediaProviderRegistry
 from .subtitle_service import SubtitleService
 from .media_organizer_service import MediaOrganizerService
 from .browser_service import BrowserService
+from .script_parser_service import ScriptParserService
 
 __all__ = [
     "KeyManager",
@@ -20,5 +21,6 @@ __all__ = [
     "SubtitleService",
     "MediaOrganizerService",
     "BrowserService",
+    "ScriptParserService",
 ]
 

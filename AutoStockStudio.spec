@@ -22,6 +22,7 @@ a = Analysis(
         'sqlite3',
         'edge_tts',
         'aiohttp',
+        'openpyxl',
         'src',
         'src.core',
         'src.infrastructure',

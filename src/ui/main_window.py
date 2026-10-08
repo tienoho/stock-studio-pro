@@ -29,8 +29,11 @@ from .tabs import DownloaderTab, CutMixTab, VoiceTab, SceneVoiceTab, AutoTab, Wo
 from .dialogs import SettingsDialog, UpdateDialog
 from .workers import UpdateCheckWorker
 from ..application.services.update_checker import ReleaseInfo
+from ..application.services.script_parser_service import ScriptParserService
 from .components.toast_notification import ToastNotification
 from .styles.ui_enhancer import enhance_widget_interactions, format_tooltip, set_hand_cursor
+
+SUPPORTED_SCRIPT_EXTS = tuple(ScriptParserService.SUPPORTED_EXTENSIONS)
 
 
 class AutoStockMainWindow(QMainWindow):
@@ -180,7 +183,7 @@ class AutoStockMainWindow(QMainWindow):
 
         self.btn_quick_load = QPushButton("Nạp Kịch Bản")
         self.btn_quick_load.setIcon(get_svg_icon("file-text", "#38bdf8", 12))
-        self.btn_quick_load.setToolTip(format_tooltip("Nạp kịch bản Claude AI JSON", "Ctrl+O"))
+        self.btn_quick_load.setToolTip(format_tooltip("Nạp kịch bản (JSON, TXT, SRT, Excel XLSX, CSV)", "Ctrl+O"))
         self.btn_quick_load.setFixedHeight(28)
         self.btn_quick_load.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
         self.btn_quick_load.clicked.connect(self._prompt_load_json)
@@ -411,9 +414,9 @@ class AutoStockMainWindow(QMainWindow):
         from .dialogs import JsonInputDialog
         dialog = JsonInputDialog(parent=self)
         if dialog.exec() == QDialog.DialogCode.Accepted and dialog.result_data:
-            scenes = extract_scenes_from_json(dialog.result_data)
+            scenes = getattr(dialog, "extracted_scenes", None) or extract_scenes_from_json(dialog.result_data)
             if scenes:
-                source_file = getattr(dialog, "source_file_path", None)
+                source_file = getattr(dialog, "selected_file", None) or getattr(dialog, "source_file_path", None)
                 self._on_json_loaded(dialog.result_data, scenes, source_file)
                 self.main_tabs.setCurrentIndex(0)
                 ToastNotification.show_toast(self, f"Đã nạp {len(scenes)} phân đoạn cảnh thành công!", "success", 3000)
@@ -424,7 +427,7 @@ class AutoStockMainWindow(QMainWindow):
     def dragEnterEvent(self, event):
         if event.mimeData().hasUrls():
             for url in event.mimeData().urls():
-                if url.toLocalFile().lower().endswith(".json"):
+                if url.toLocalFile().lower().endswith(SUPPORTED_SCRIPT_EXTS):
                     event.acceptProposedAction()
                     return
         super().dragEnterEvent(event)
@@ -432,7 +435,7 @@ class AutoStockMainWindow(QMainWindow):
     def dragMoveEvent(self, event):
         if event.mimeData().hasUrls():
             for url in event.mimeData().urls():
-                if url.toLocalFile().lower().endswith(".json"):
+                if url.toLocalFile().lower().endswith(SUPPORTED_SCRIPT_EXTS):
                     event.acceptProposedAction()
                     return
         super().dragMoveEvent(event)
@@ -441,25 +444,29 @@ class AutoStockMainWindow(QMainWindow):
         if event.mimeData().hasUrls():
             for url in event.mimeData().urls():
                 local_path = url.toLocalFile()
-                if local_path.lower().endswith(".json"):
+                if local_path.lower().endswith(SUPPORTED_SCRIPT_EXTS):
                     event.acceptProposedAction()
-                    self._load_json_path(local_path)
+                    self._load_script_path(local_path)
                     return
         super().dropEvent(event)
 
-    def _load_json_path(self, path_str: str):
+    def _load_script_path(self, path_str: str):
         try:
-            with open(path_str, "r", encoding="utf-8-sig") as f:
-                data = json.load(f)
-            scenes = extract_scenes_from_json(data)
+            parser = ScriptParserService()
+            scenes, data = parser.parse_file(path_str)
             if scenes:
                 self._on_json_loaded(data, scenes, path_str)
                 self.main_tabs.setCurrentIndex(0)
-                ToastNotification.show_toast(self, f"Đã nạp {len(scenes)} scenes từ: {Path(path_str).name}", "success", 3000)
+                fmt_badge = Path(path_str).suffix.upper().lstrip(".")
+                ToastNotification.show_toast(self, f"Đã nạp {len(scenes)} cảnh từ: {Path(path_str).name} [{fmt_badge}]", "success", 3000)
             else:
-                ToastNotification.show_toast(self, "File JSON không chứa phân đoạn scene hợp lệ", "warning", 3000)
+                ToastNotification.show_toast(self, "Tệp kịch bản không chứa phân đoạn cảnh hợp lệ", "warning", 3000)
         except Exception as e:
-            ToastNotification.show_toast(self, f"Lỗi đọc JSON: {e}", "error", 3000)
+            ToastNotification.show_toast(self, f"Lỗi đọc kịch bản: {e}", "error", 3000)
+
+    def _load_json_path(self, path_str: str):
+        """Backward compatibility alias."""
+        self._load_script_path(path_str)
 
     def _save_session_state(self):
         try:
