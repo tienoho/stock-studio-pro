@@ -1,0 +1,459 @@
+"""
+AutoStockMainWindow Thin Controller.
+Coordinates tabs, application services, and settings persistence.
+"""
+
+import json
+from pathlib import Path
+from typing import Optional
+
+from PyQt6.QtWidgets import (
+    QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QTabWidget, QStatusBar,
+    QMessageBox, QApplication, QDialog, QPushButton
+)
+from PyQt6.QtCore import Qt, QSize
+
+from ..core.constants import APP_NAME, APP_VERSION, CONFIG_FILE, STATE_FILE, CACHE_DIR
+from ..core.i18n import I18nService, t
+from ..core.models.scene import extract_scenes_from_json
+from ..infrastructure.persistence.sqlite_config_repo import SqliteConfigRepository
+from ..infrastructure.persistence.sqlite_state_repo import SqliteStateRepository
+from ..infrastructure.media.thumbnail_cache import ThumbnailCache
+from ..infrastructure.watcher.downloads_watcher import DownloadsWatcher
+from .components.thumbnail_card import ThumbnailLoader
+from .styles.tokens import load_stylesheet
+from .styles.icons import get_svg_icon
+from .tabs import DownloaderTab, CutMixTab, VoiceTab, SceneVoiceTab, AutoTab, WorkflowTab
+from .dialogs.settings_dialog import SettingsDialog
+from .components.toast_notification import ToastNotification
+
+
+class AutoStockMainWindow(QMainWindow):
+    """Main application window coordinating all studio tabs and services."""
+
+    def __init__(self):
+        super().__init__()
+
+        # Infrastructure / Production SQLite Repositories (with auto-migration from legacy JSON/Pickle)
+        self.config_repo = SqliteConfigRepository()
+        self.state_repo = SqliteStateRepository()
+        self.config = self.config_repo.load_config()
+
+        # Enterprise i18n Service
+        saved_locale = self.config.get("locale", "vi")
+        self.i18n = I18nService.get_instance(default_locale=saved_locale)
+        self.i18n.set_locale(saved_locale)
+        self.i18n.languageChanged.connect(self._on_language_changed)
+
+        self._update_window_title()
+
+        # Responsive window sizing
+        screen = QApplication.primaryScreen()
+        screen_w = screen.availableGeometry().width() if screen else 1920
+        screen_h = screen.availableGeometry().height() if screen else 1080
+
+        self.setMinimumSize(1200, 700)
+        window_w = min(1700, int(screen_w * 0.92))
+        window_h = min(950, int(screen_h * 0.92))
+        x = (screen_w - window_w) // 2 + (screen.geometry().x() if screen else 0)
+        y = (screen_h - window_h) // 2 + (screen.geometry().y() if screen else 0)
+        self.setGeometry(x, y, window_w, window_h)
+
+        if screen_w < 1500 or screen_h < 850:
+            self.showMaximized()
+
+        self.setAcceptDrops(True)
+
+        # Cache & background services
+        self.thumbnail_cache = ThumbnailCache(CACHE_DIR)
+        self.thumb_loader = ThumbnailLoader(self.thumbnail_cache)
+        self.downloads_watcher = DownloadsWatcher()
+
+        # Workflow / Auto execution state
+        self._auto_after_search = False
+        self._auto_mode_config = {}
+        self._workflow_running_nodes = []
+        self._workflow_index = 0
+        self._workflow_waiting_for = None
+
+        # Build UI layout & stylesheet
+        self.setStyleSheet(load_stylesheet())
+        self._build_ui()
+
+        # Restore previous state
+        state = self.state_repo.load_state()
+        if state:
+            self.downloader_tab.restore_state(state)
+
+    def _update_window_title(self):
+        badge = t("app.version_badge")
+        self.setWindowTitle(f"{APP_NAME} v{APP_VERSION} [{badge}]")
+
+    def _build_ui(self):
+        central = QWidget()
+        self.setCentralWidget(central)
+
+        root_layout = QVBoxLayout(central)
+        root_layout.setContentsMargins(0, 0, 0, 0)
+        root_layout.setSpacing(0)
+
+        self.main_tabs = QTabWidget()
+        root_layout.addWidget(self.main_tabs, 1)
+
+        # Tab corner: Language toggle button
+        self.btn_lang = QPushButton()
+        self.btn_lang.setIcon(get_svg_icon("globe", "#58a6ff", 14))
+        self.btn_lang.setIconSize(QSize(14, 14))
+        curr_loc = self.i18n.get_locale().upper()
+        self.btn_lang.setText(f" {curr_loc}")
+        self.btn_lang.setToolTip(t("app.switch_lang"))
+        self.btn_lang.setFixedHeight(30)
+        self.btn_lang.setStyleSheet("""
+            QPushButton {
+                background: #161b22;
+                color: #58a6ff;
+                border: 1px solid #30363d;
+                border-radius: 6px;
+                padding: 0 10px;
+                font-size: 11px;
+                font-weight: 800;
+                margin-right: 8px;
+            }
+            QPushButton:hover {
+                background: #1f2937;
+                border-color: #58a6ff;
+                color: #ffffff;
+            }
+        """)
+        self.btn_lang.clicked.connect(self._toggle_language)
+        self.main_tabs.setCornerWidget(self.btn_lang, Qt.Corner.TopRightCorner)
+
+        # 1. Downloader Tab
+        self.downloader_tab = DownloaderTab(
+            config=self.config,
+            config_repo=self.config_repo,
+            state_repo=self.state_repo,
+            thumbnail_cache=self.thumbnail_cache,
+            thumb_loader=self.thumb_loader,
+            downloads_watcher=self.downloads_watcher,
+            parent=self
+        )
+        self.downloader_tab.open_settings_requested.connect(self._open_settings_dialog)
+        self.downloader_tab.status_message.connect(self._on_status_message)
+        self.downloader_tab.search_finished.connect(self._on_search_finished)
+        self.downloader_tab.download_finished.connect(self._on_download_finished)
+        if hasattr(self.downloader_tab, "api_key_widget"):
+            self.downloader_tab.api_key_widget.keysChanged.connect(self._on_config_changed)
+
+        # 2. Cut & Mix Tab
+        self.cut_mix_tab = CutMixTab(parent=self)
+        self.cut_mix_tab.finished.connect(self._on_cut_mix_finished)
+
+        # 3. Voice TXT Studio Tab
+        self.voice_tab = VoiceTab(config=self.config, save_config_fn=self.config_repo.save_config, parent=self)
+
+        # 4. Scene Voice Match Tab
+        self.scene_voice_tab = SceneVoiceTab(parent=self)
+        self.scene_voice_tab.finished.connect(self._on_scene_voice_finished)
+
+        # 5. Auto Mode Tab
+        self.auto_tab = AutoTab(parent=self)
+        self.auto_tab.runAutoRequested.connect(self._run_auto_mode)
+
+        # 6. Workflow Node Tab
+        self.workflow_tab = WorkflowTab(parent_window=self, parent=self)
+        self.workflow_tab.runWorkflowRequested.connect(self._run_workflow)
+
+        # Assemble Tabs with Vector SVG Icons and i18n
+        self.main_tabs.addTab(self.downloader_tab, get_svg_icon("film", "#4ec9b0", 16), t("tabs.downloader"))
+        self.main_tabs.addTab(self.cut_mix_tab, get_svg_icon("scissors", "#58a6ff", 16), t("tabs.cut_mix"))
+        self.main_tabs.addTab(self.voice_tab, get_svg_icon("mic", "#bc8cff", 16), t("tabs.voice"))
+        self.main_tabs.addTab(self.scene_voice_tab, get_svg_icon("activity", "#f0883e", 16), t("tabs.scene_voice"))
+        self.main_tabs.addTab(self.auto_tab, get_svg_icon("zap", "#e3b341", 16), t("tabs.auto"))
+        self.main_tabs.addTab(self.workflow_tab, get_svg_icon("workflow", "#58a6ff", 16), t("tabs.workflow"))
+
+        # Status Bar
+        self.status_bar = QStatusBar()
+        self.setStatusBar(self.status_bar)
+        self.status_bar.showMessage(t("app.status_ready"))
+
+    def _toggle_language(self):
+        """Switches between VI and EN, persisting to SQLite."""
+        curr = self.i18n.get_locale()
+        new_loc = "en" if curr == "vi" else "vi"
+        self.config["locale"] = new_loc
+        self.config_repo.save_config(self.config)
+        self.i18n.set_locale(new_loc)
+
+    def _on_language_changed(self, locale: str):
+        """Reactively updates all UI text when language changes."""
+        self._update_window_title()
+        self.btn_lang.setText(f" {locale.upper()}")
+        self.btn_lang.setToolTip(t("app.switch_lang"))
+
+        # Update tab titles
+        self.main_tabs.setTabText(0, t("tabs.downloader"))
+        self.main_tabs.setTabText(1, t("tabs.cut_mix"))
+        self.main_tabs.setTabText(2, t("tabs.voice"))
+        self.main_tabs.setTabText(3, t("tabs.scene_voice"))
+        self.main_tabs.setTabText(4, t("tabs.auto"))
+        self.main_tabs.setTabText(5, t("tabs.workflow"))
+
+        # Notify child tabs
+        if hasattr(self.downloader_tab, "retranslate_ui"):
+            self.downloader_tab.retranslate_ui()
+        if hasattr(self.workflow_tab, "retranslate_ui"):
+            self.workflow_tab.retranslate_ui()
+
+        self.status_bar.showMessage(t("app.status_ready"), 3000)
+
+    def _on_status_message(self, message: str, timeout: int = 0):
+        self.status_bar.showMessage(message, timeout)
+
+    # ═══════════════════════════════════════════════════════════════
+    # SETTINGS & JSON IMPORT
+    # ═══════════════════════════════════════════════════════════════
+
+    def _open_settings_dialog(self):
+        dialog = SettingsDialog(
+            config=self.config,
+            save_config_fn=self.config_repo.save_config,
+            parent=self
+        )
+        dialog.jsonLoaded.connect(self._on_json_loaded)
+        dialog.configChanged.connect(self._on_config_changed)
+        dialog.exec()
+
+    def _on_config_changed(self):
+        self.config = self.config_repo.load_config()
+        self.downloader_tab.config = self.config
+        if hasattr(self.downloader_tab, "api_key_widget"):
+            self.downloader_tab.api_key_widget.refresh_keys_display()
+
+    def _on_json_loaded(self, json_data: dict, scenes: list, file_path: Optional[str] = None):
+        self.downloader_tab.load_scenes(scenes, json_data)
+        if file_path and hasattr(self, "scene_voice_tab") and hasattr(self.scene_voice_tab, "svc_json"):
+            self.scene_voice_tab.svc_json.setText(file_path)
+        self.status_bar.showMessage(t("downloader.loaded_json_status", count=len(scenes)), 4000)
+
+    # ═══════════════════════════════════════════════════════════════
+    # AUTO MODE PIPELINE
+    # ═══════════════════════════════════════════════════════════════
+
+    def _run_auto_mode(self, mode: str, count: int, then_voice: bool):
+        if not self.downloader_tab.scenes:
+            QMessageBox.warning(self, "Chưa có kịch bản", "Vui lòng nạp kịch bản vào hệ thống trước khi chạy Tự động.")
+            return
+
+        self._auto_after_search = True
+        self._auto_mode_config = {"mode": mode, "count": count, "then_voice": then_voice}
+
+        # Apply media type filters
+        lower = mode.lower()
+        self.downloader_tab.search_videos_check.setChecked("video" in lower)
+        self.downloader_tab.search_photos_check.setChecked("ảnh" in lower or "+" in lower)
+
+        self.auto_tab.auto_log.appendPlainText("Tự động: Bắt đầu tìm kiếm media...")
+        self.downloader_tab.start_search()
+
+    def _on_search_finished(self):
+        if self._auto_after_search:
+            self._auto_after_search = False
+            count = self._auto_mode_config.get("count", 1)
+            self.downloader_tab.auto_random_all_scenes(count)
+            self.auto_tab.auto_log.appendPlainText(f"Tự động: Đã chọn ngẫu nhiên {count} media/cảnh. Bắt đầu tải...")
+            self.downloader_tab.start_download(confirmless=True)
+            return
+
+        if self._workflow_waiting_for == "Search stock":
+            self._workflow_waiting_for = None
+            self.workflow_tab.workflow_log.appendPlainText("Tìm kiếm media: Hoàn tất, tiếp tục bước sau...")
+            self._workflow_continue()
+
+    def _on_download_finished(self, success: int, fail: int, project_dir: str, error_breakdown: dict):
+        if project_dir:
+            # Cross-tab folder synchronization
+            if hasattr(self, "cut_mix_tab") and hasattr(self.cut_mix_tab, "cut_folder_input"):
+                self.cut_mix_tab.cut_folder_input.setText(project_dir)
+            if hasattr(self, "scene_voice_tab") and hasattr(self.scene_voice_tab, "svc_root"):
+                self.scene_voice_tab.svc_root.setText(project_dir)
+
+        if self._auto_mode_config.get("then_voice"):
+            self._auto_mode_config["then_voice"] = False
+            self.auto_tab.auto_log.appendPlainText("Tự động: Tải hoàn tất. Chuyển sang tạo giọng đọc...")
+            self.main_tabs.setCurrentIndex(2)
+
+        if self._workflow_waiting_for == "Download selected":
+            self._workflow_waiting_for = None
+            self.workflow_tab.workflow_log.appendPlainText("Tải đã chọn: Hoàn tất, tiếp tục bước sau...")
+            self._workflow_continue()
+
+    # ═══════════════════════════════════════════════════════════════
+    # WORKFLOW NODE CANVAS RUNNER
+    # ═══════════════════════════════════════════════════════════════
+
+    def _run_workflow(self):
+        nodes = self.workflow_tab.workflow_canvas.workflow_nodes()
+        if not nodes:
+            QMessageBox.information(self, "Quy trình trống", "Vui lòng thêm ít nhất một bước trước khi chạy.")
+            return
+
+        self._workflow_running_nodes = nodes
+        self._workflow_index = 0
+        steps = [node.title for node in nodes]
+        self.workflow_tab.workflow_log.appendPlainText(f"BẮT ĐẦU: {' -> '.join(steps)}")
+        self._workflow_continue()
+
+    def _workflow_continue(self):
+        nodes = self._workflow_running_nodes
+        while self._workflow_index < len(nodes):
+            node = nodes[self._workflow_index]
+            self._workflow_index += 1
+            step = node.title
+            config = getattr(node, "config", {}) or {}
+
+            self.workflow_tab.workflow_log.appendPlainText(f"Bước: {step}")
+
+            if step == "Load JSON":
+                if config.get("json"):
+                    try:
+                        raw = Path(str(config.get("json"))).read_text(encoding="utf-8")
+                        data = json.loads(raw)
+                        scenes = extract_scenes_from_json(data)
+                        self._on_json_loaded(data, scenes, str(config.get("json")))
+                        continue
+                    except Exception as e:
+                        QMessageBox.warning(self, "Lỗi đọc kịch bản", str(e))
+                self.main_tabs.setCurrentIndex(0)
+                self.downloader_tab._open_json_input_dialog()
+                if self.downloader_tab.scenes:
+                    continue
+                else:
+                    self.workflow_tab.workflow_log.appendPlainText("Quy trình dừng: Chưa nạp kịch bản.")
+                    return
+
+
+            if step == "Search stock":
+                self._workflow_waiting_for = "Search stock"
+                self.main_tabs.setCurrentIndex(0)
+                self.downloader_tab.start_search()
+                return
+
+            if step == "Random select":
+                count = int(config.get("count") or 1)
+                self.downloader_tab.auto_random_all_scenes(count)
+                continue
+
+            if step == "Download selected":
+                self._workflow_waiting_for = "Download selected"
+                self.main_tabs.setCurrentIndex(0)
+                self.downloader_tab.start_download(confirmless=True)
+                return
+
+            if step == "Cut/Mix video":
+                self._workflow_waiting_for = "Cut/Mix video"
+                self.main_tabs.setCurrentIndex(1)
+                self.cut_mix_tab.start_cut_merge()
+                return
+
+            if step == "Create voice":
+                self.main_tabs.setCurrentIndex(2)
+                mode = str(config.get("mode") or "TXT folder/file")
+                if "JSON" in mode:
+                    self.voice_tab._start_json_parts_voice_native()
+                else:
+                    self.voice_tab.start_native_voice()
+                continue
+
+            if step == "Scene voice match":
+                self._workflow_waiting_for = "Scene voice match"
+                self.main_tabs.setCurrentIndex(3)
+                self.scene_voice_tab.start_scene_voice()
+                return
+
+        self.workflow_tab.workflow_log.appendPlainText("Quy trình: Đã hoàn tất toàn bộ các bước!")
+        self._workflow_waiting_for = None
+
+    def _on_cut_mix_finished(self, ok: bool, message: str):
+        if self._workflow_waiting_for == "Cut/Mix video":
+            self._workflow_waiting_for = None
+            self.workflow_tab.workflow_log.appendPlainText(f"Cắt & Ghép video: {'thành công' if ok else 'lỗi'} -> {message}")
+            self._workflow_continue()
+
+    def _on_scene_voice_finished(self, ok: bool, message: str):
+        if self._workflow_waiting_for == "Scene voice match":
+            self._workflow_waiting_for = None
+            self.workflow_tab.workflow_log.appendPlainText(f"Khớp Video & Voice: {'thành công' if ok else 'lỗi'} -> {message}")
+            self._workflow_continue()
+
+    # ═══════════════════════════════════════════════════════════════
+    # DRAG & DROP SCRIPT IMPORT
+    # ═══════════════════════════════════════════════════════════════
+
+    def dragEnterEvent(self, event):
+        if event.mimeData().hasUrls():
+            for url in event.mimeData().urls():
+                if url.toLocalFile().lower().endswith(".json"):
+                    event.acceptProposedAction()
+                    return
+        super().dragEnterEvent(event)
+
+    def dragMoveEvent(self, event):
+        if event.mimeData().hasUrls():
+            for url in event.mimeData().urls():
+                if url.toLocalFile().lower().endswith(".json"):
+                    event.acceptProposedAction()
+                    return
+        super().dragMoveEvent(event)
+
+    def dropEvent(self, event):
+        if event.mimeData().hasUrls():
+            for url in event.mimeData().urls():
+                local_path = url.toLocalFile()
+                if local_path.lower().endswith(".json"):
+                    event.acceptProposedAction()
+                    try:
+                        with open(local_path, "r", encoding="utf-8") as f:
+                            data = json.load(f)
+                        scenes = extract_scenes_from_json(data)
+                        if scenes:
+                            self._on_json_loaded(data, scenes, local_path)
+                            self.main_tabs.setCurrentIndex(0)
+                            ToastNotification.show_toast(
+                                self,
+                                f"Đã nạp {len(scenes)} cảnh từ {Path(local_path).name}",
+                                "success",
+                                3000
+                            )
+                        else:
+                            ToastNotification.show_toast(self, "File JSON không có danh sách cảnh hợp lệ", "warning", 3000)
+                    except Exception as e:
+                        ToastNotification.show_toast(self, f"Lỗi đọc kịch bản: {str(e)[:45]}", "error", 4000)
+                    return
+        super().dropEvent(event)
+
+    # ═══════════════════════════════════════════════════════════════
+    # CLEANUP & CLOSING
+    # ═══════════════════════════════════════════════════════════════
+
+    def closeEvent(self, event):
+        try:
+            self.downloader_tab._save_state()
+            if self.downloads_watcher:
+                self.downloads_watcher.stop()
+            if self.thumb_loader:
+                self.thumb_loader.shutdown()
+            if self.downloader_tab.search_worker and self.downloader_tab.search_worker.isRunning():
+                self.downloader_tab.search_worker.stop()
+            if self.downloader_tab.download_worker and self.downloader_tab.download_worker.isRunning():
+                self.downloader_tab.download_worker.stop()
+            if hasattr(self, "state_repo") and hasattr(self.state_repo, "db"):
+                self.state_repo.db.close()
+        except Exception:
+            pass
+        super().closeEvent(event)
+
+
+# Alias for backwards compatibility
+StockStudioMainWindow = AutoStockMainWindow
+
