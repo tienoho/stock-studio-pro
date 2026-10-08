@@ -169,8 +169,18 @@
     "changelog": "What's New (Changelog):",
     "auto_check_startup": "Automatically check for updates on startup",
     "remind_later": "Later",
+    "cancel": "Cancel",
+    "close": "Close",
     "view_on_github": "View on GitHub",
     "download_now": "⚡ Download & Update (.ZIP)",
-    "check_failed": "Unable to check for updates: {error}"
+    "auto_download_install": "⚡ Auto Update Now",
+    "downloading": "Downloading update...",
+    "extracting": "Verifying & extracting update package...",
+    "ready_to_restart": "✅ Download complete! Restart the application to update.",
+    "restart_and_update": "🚀 Restart To Update",
+    "dev_mode_ready": "✅ Update extracted successfully (Developer Mode).",
+    "open_staged_folder": "📂 Open Staged Folder",
+    "check_failed": "Unable to check for updates: {error}",
+    "download_failed": "Error downloading update: {error}"
   }
 }

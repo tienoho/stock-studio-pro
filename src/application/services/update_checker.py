@@ -4,8 +4,16 @@ Queries GitHub Releases API to detect new versions, parse release notes, and pro
 Pure Python - fully decoupled from UI code.
 """
 
+import os
 import re
+import sys
+import time
+import zipfile
+import tempfile
+import subprocess
+import shutil
 import requests
+from pathlib import Path
 from dataclasses import dataclass
 from typing import Tuple, Optional, List, Dict, Any
 
@@ -140,3 +148,262 @@ class UpdateCheckerService:
             return False, None, f"Không thể kết nối đến máy chủ cập nhật: {e}"
         except Exception as e:
             return False, None, f"Lỗi kiểm tra cập nhật: {e}"
+
+    def download_asset(
+        self,
+        download_url: str,
+        dest_path: Path,
+        progress_cb=None,
+        cancel_fn=None,
+        chunk_size: int = 65536,
+        timeout: float = 30.0,
+        estimated_total: int = 0
+    ) -> Path:
+        """
+        Streams and downloads an update asset to dest_path.
+        Calls progress_cb(downloaded_bytes, total_bytes, speed_bps).
+        """
+        dest_path = Path(dest_path)
+        dest_path.parent.mkdir(parents=True, exist_ok=True)
+
+        headers = {
+            "Accept": "application/octet-stream",
+            "User-Agent": f"AutoStockStudio/{APP_VERSION}",
+        }
+
+        resp = requests.get(download_url, stream=True, headers=headers, timeout=timeout)
+        resp.raise_for_status()
+
+        content_len_header = resp.headers.get("content-length")
+        total_bytes = (
+            int(content_len_header)
+            if content_len_header and content_len_header.isdigit()
+            else estimated_total
+        )
+
+        downloaded = 0
+        start_time = time.time()
+        last_report_time = 0.0
+
+        with open(dest_path, "wb") as f:
+            for chunk in resp.iter_content(chunk_size=chunk_size):
+                if cancel_fn and cancel_fn():
+                    raise InterruptedError("Download cancelled by user.")
+                if not chunk:
+                    continue
+                f.write(chunk)
+                downloaded += len(chunk)
+                now = time.time()
+                if progress_cb and (now - last_report_time >= 0.12 or (total_bytes > 0 and downloaded >= total_bytes)):
+                    elapsed = max(now - start_time, 0.001)
+                    speed = downloaded / elapsed
+                    progress_cb(downloaded, total_bytes, speed)
+                    last_report_time = now
+
+        if progress_cb and downloaded > 0:
+            elapsed = max(time.time() - start_time, 0.001)
+            progress_cb(downloaded, total_bytes if total_bytes > 0 else downloaded, downloaded / elapsed)
+
+        return dest_path
+
+    def extract_archive(self, zip_path: Path, target_dir: Path) -> Path:
+        """
+        Safely extracts the zip archive into target_dir.
+        Guards against Zip Slip path traversal.
+        Returns the root directory containing the extracted application payload.
+        """
+        zip_path = Path(zip_path)
+        target_dir = Path(target_dir)
+        target_dir.mkdir(parents=True, exist_ok=True)
+
+        if not zipfile.is_zipfile(zip_path):
+            raise ValueError(f"Tệp không phải là tệp nén ZIP hợp lệ: {zip_path}")
+
+        with zipfile.ZipFile(zip_path, "r") as zf:
+            corrupted = zf.testzip()
+            if corrupted:
+                raise ValueError(f"Gói nén ZIP bị lỗi hoặc hỏng tại: {corrupted}")
+
+            resolved_target = target_dir.resolve()
+            for member in zf.infolist():
+                member_path = (target_dir / member.filename).resolve()
+                if not str(member_path).startswith(str(resolved_target)):
+                    raise PermissionError(f"Phát hiện nguy cơ bảo mật đường dẫn ZIP: {member.filename}")
+
+            zf.extractall(target_dir)
+
+        # Unnest if the zip has a single root folder
+        items = [p for p in target_dir.iterdir() if p.name not in ("__MACOSX", ".DS_Store")]
+        if len(items) == 1 and items[0].is_dir():
+            return items[0]
+
+        return target_dir
+
+    @staticmethod
+    def is_app_frozen() -> bool:
+        """Returns True if the application is running as a compiled PyInstaller executable."""
+        return getattr(sys, "frozen", False)
+
+    @classmethod
+    def resolve_update_target(cls, staged_payload_dir: Path) -> Tuple[Path, Path, str]:
+        """
+        Resolves (src_dir, target_dir, exe_name) for copying and relaunching.
+        """
+        staged_payload_dir = Path(staged_payload_dir).resolve()
+
+        if cls.is_app_frozen():
+            current_exe = Path(sys.executable).resolve()
+            current_app_dir = current_exe.parent
+            exe_name = current_exe.name
+
+            # If staged_payload_dir directly contains the executable
+            if (staged_payload_dir / exe_name).exists():
+                return staged_payload_dir, current_app_dir, exe_name
+
+            # If staged_payload_dir has a subdirectory with the executable
+            found_exes = list(staged_payload_dir.rglob(exe_name))
+            if found_exes:
+                matched_exe = found_exes[0]
+                if (current_app_dir.parent / "run_exe.bat").exists() and (staged_payload_dir / "run_exe.bat").exists():
+                    return staged_payload_dir, current_app_dir.parent, exe_name
+                return matched_exe.parent, current_app_dir, exe_name
+
+            return staged_payload_dir, current_app_dir, exe_name
+        else:
+            # Dev mode (running from source): do not overwrite repo
+            found_exes = list(staged_payload_dir.rglob("AutoStockStudio.exe"))
+            exe_name = found_exes[0].name if found_exes else "AutoStockStudio.exe"
+            src_dir = found_exes[0].parent if found_exes else staged_payload_dir
+            return src_dir, src_dir, exe_name
+
+    def generate_updater_script(
+        self,
+        staged_dir: Path,
+        target_dir: Path,
+        exe_name: str,
+        app_pid: Optional[int] = None,
+        output_script_path: Optional[Path] = None
+    ) -> Path:
+        """
+        Generates the detached Windows batch script that waits for current process to exit,
+        replaces the files in target_dir using robocopy, relaunches the app, and cleans up.
+        """
+        if app_pid is None:
+            app_pid = os.getpid()
+
+        staged_dir = Path(staged_dir).resolve()
+        target_dir = Path(target_dir).resolve()
+
+        if output_script_path is None:
+            temp_dir = Path(tempfile.gettempdir()) / "autostock_updater"
+            temp_dir.mkdir(parents=True, exist_ok=True)
+            output_script_path = temp_dir / "_apply_update.bat"
+        else:
+            output_script_path = Path(output_script_path)
+            output_script_path.parent.mkdir(parents=True, exist_ok=True)
+
+        bat_content = f"""@echo off
+setlocal enabledelayedexpansion
+chcp 65001 >nul
+title AutoStock Studio - Trinh Cap Nhat Tu Dong
+
+set PID=%1
+set "STAGED=%~2"
+set "TARGET=%~3"
+set "EXE=%~4"
+
+if "%PID%"=="" set PID={app_pid}
+if "%STAGED%"=="" set "STAGED={str(staged_dir)}"
+if "%TARGET%"=="" set "TARGET={str(target_dir)}"
+if "%EXE%"=="" set "EXE={exe_name}"
+
+echo ========================================================
+echo   AutoStock Studio - Dang Tu Dong Cap Nhat Phien Ban Moi
+echo ========================================================
+echo.
+echo Dang cho ung dung (PID: %PID%) dong hoan toan...
+
+set WAIT_COUNT=0
+:wait_loop
+timeout /t 1 /nobreak >nul
+set /a WAIT_COUNT+=1
+tasklist /fi "PID eq %PID%" 2>nul | findstr /i "%PID%" >nul
+if not errorlevel 1 (
+    if !WAIT_COUNT! GEQ 30 (
+        echo [Thong bao] Dang dong tien trinh cu...
+        taskkill /F /PID %PID% >nul 2>nul
+    ) else (
+        goto wait_loop
+    )
+)
+
+echo Tien trinh cu da tat. Dang cap nhat cac tep tin moi...
+echo Nguon: "!STAGED!"
+echo Dich:  "!TARGET!"
+
+:: Sao chep toan bo tep sang thu muc ung dung
+robocopy "!STAGED!" "!TARGET!" /E /IS /IT /NP /NDL /NFL /NJH /NJS /R:3 /W:1 >nul
+
+timeout /t 1 /nobreak >nul
+
+echo Dang khoi dong lai AutoStock Studio...
+cd /d "!TARGET!"
+if exist "!TARGET!\\!EXE!" (
+    start "" "!TARGET!\\!EXE!"
+) else if exist "!TARGET!\\AutoStockStudio\\!EXE!" (
+    start "" "!TARGET!\\AutoStockStudio\\!EXE!"
+) else (
+    echo [Canh bao] Khong tim thay !EXE! tai !TARGET!
+)
+
+:: Don dep thu muc giai nen tam va tu xoa script
+rd /s /q "!STAGED!" 2>nul
+(goto) 2>nul & del "%~f0"
+"""
+        output_script_path.write_text(bat_content, encoding="utf-8")
+        return output_script_path
+
+    def launch_updater(
+        self,
+        script_path: Path,
+        staged_dir: Path,
+        target_dir: Path,
+        exe_name: str,
+        app_pid: Optional[int] = None
+    ) -> None:
+        """
+        Spawns the updater batch script as a detached background process.
+        """
+        if app_pid is None:
+            app_pid = os.getpid()
+
+        script_path = Path(script_path).resolve()
+        staged_dir = Path(staged_dir).resolve()
+        target_dir = Path(target_dir).resolve()
+
+        if sys.platform == "win32":
+            DETACHED_PROCESS = 0x00000008
+            CREATE_NEW_PROCESS_GROUP = 0x00000200
+            flags = DETACHED_PROCESS | CREATE_NEW_PROCESS_GROUP
+
+            cmd = [
+                "cmd.exe",
+                "/c",
+                str(script_path),
+                str(app_pid),
+                str(staged_dir),
+                str(target_dir),
+                str(exe_name),
+            ]
+            subprocess.Popen(
+                cmd,
+                creationflags=flags,
+                close_fds=True,
+                shell=False
+            )
+        else:
+            subprocess.Popen(
+                ["sh", str(script_path), str(app_pid), str(staged_dir), str(target_dir), str(exe_name)],
+                close_fds=True
+            )
+

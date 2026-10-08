@@ -34,9 +34,11 @@
   - Phím tắt năng suất cao: `Ctrl+1..6` (chuyển tab), `Ctrl+S` (lưu phiên vào SQLite), `F5` (chạy quy trình).
   - Lưu và nạp các preset mẫu quy trình một chạm bằng SQLite & JSON.
 
-- 🚀 **Enterprise Auto-Updater & CI/CD Pipeline (Cập nhật tự động chuẩn phần mềm xịn)**:
+- 🚀 **Enterprise Auto-Updater & In-Place Installer (Tự động tải về và tự động cài đặt 100%)**:
   - Tự động kiểm tra bản phát hành mới từ **GitHub Releases** khi khởi động app (chạy ngầm bất đồng bộ không gây khựng giao diện).
-  - Hộp thoại cập nhật chuẩn phong cách Obsidian Dark hiển thị chi tiết Changelog, dung lượng file và nút tải trực tiếp bản `.zip` hoặc mở GitHub.
+  - Tải về nền theo luồng (Streaming Background Download) với thanh tiến trình trực quan, hiển thị phần trăm, dung lượng và tốc độ tải thực (MB/s).
+  - Kiểm tra tính toàn vẹn gói nén ZIP và giải nén an toàn chống lỗ hổng Zip Slip.
+  - Cơ chế tự động cài đặt tại chỗ (In-Place Auto-Installer): Tự động sinh kịch bản ngầm (`_apply_update.bat`), đợi tiến trình cũ đóng an toàn, sao chép tệp mới và tự khởi động lại ứng dụng mà người dùng không cần thao tác tay.
   - Tích hợp đầy đủ CI/CD GitHub Actions: Tự động lint, chạy kiểm thử Qt headless, đóng gói PyInstaller độc lập và đính kèm mã băm SHA-256 Checksum.
 
 ---
@@ -59,7 +61,7 @@ stock-studio-pro/
 ├── run_tests.py                     # 🧪 Trình chạy tự động toàn bộ Unit Tests
 ├── AutoStockStudio.spec             # ⚙️ Cấu hình đóng gói PyInstaller
 ├── requirements.txt                 # 📋 Danh sách thư viện Python
-├── tests/                           # 🧪 Bộ Unit Test tự động (75 tests)
+├── tests/                           # 🧪 Bộ Unit Test tự động (80 tests)
 │   ├── test_core_models.py
 │   ├── test_part_merger.py
 │   ├── test_rate_limiter.py

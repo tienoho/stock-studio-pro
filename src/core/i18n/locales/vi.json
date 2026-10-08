@@ -169,8 +169,18 @@
     "changelog": "Nhật ký thay đổi (What's New):",
     "auto_check_startup": "Tự động kiểm tra cập nhật khi mở ứng dụng",
     "remind_later": "Để Sau",
+    "cancel": "Hủy Bỏ",
+    "close": "Đóng",
     "view_on_github": "Xem Trên GitHub",
     "download_now": "⚡ Tải & Cập Nhật (.ZIP)",
-    "check_failed": "Không thể kiểm tra cập nhật: {error}"
+    "auto_download_install": "⚡ Tự Động Cập Nhật Ngay",
+    "downloading": "Đang tải bản cập nhật...",
+    "extracting": "Đang kiểm tra & giải nén gói cập nhật...",
+    "ready_to_restart": "✅ Đã tải xong! Khởi động lại ứng dụng để hoàn tất cập nhật.",
+    "restart_and_update": "🚀 Khởi Động Lại Để Cập Nhật",
+    "dev_mode_ready": "✅ Đã giải nén bản cập nhật thành công (Chế độ Nhà phát triển).",
+    "open_staged_folder": "📂 Mở Thư Mục Bản Dựng",
+    "check_failed": "Không thể kiểm tra cập nhật: {error}",
+    "download_failed": "Lỗi trong quá trình tải cập nhật: {error}"
   }
 }
