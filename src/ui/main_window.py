@@ -9,7 +9,7 @@ from typing import Optional
 
 from PyQt6.QtWidgets import (
     QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QTabWidget, QStatusBar,
-    QMessageBox, QApplication, QDialog, QPushButton
+    QMessageBox, QApplication, QDialog, QPushButton, QFrame, QLabel
 )
 from PyQt6.QtCore import Qt, QSize, QTimer
 
@@ -103,7 +103,120 @@ class AutoStockMainWindow(QMainWindow):
         root_layout.setContentsMargins(0, 0, 0, 0)
         root_layout.setSpacing(0)
 
+        # Macro Workflow Stepper Bar
+        self.workflow_stepper = QFrame()
+        self.workflow_stepper.setObjectName("workflowStepper")
+        self.workflow_stepper.setFixedHeight(40)
+        self.workflow_stepper.setStyleSheet("""
+            QFrame#workflowStepper {
+                background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #0f1523, stop:0.5 #141c2e, stop:1 #0f1523);
+                border-bottom: 1px solid #1f2b3f;
+            }
+        """)
+        stepper_layout = QHBoxLayout(self.workflow_stepper)
+        stepper_layout.setContentsMargins(16, 4, 16, 4)
+        stepper_layout.setSpacing(6)
+
+        step_brand = QLabel("QUY TRÌNH")
+        step_brand.setStyleSheet("color: #818cf8; font-size: 10px; font-weight: 900; letter-spacing: 1px; padding-right: 4px;")
+        stepper_layout.addWidget(step_brand)
+
+        self.step_buttons = []
+        steps_info = [
+            ("1. KHO MEDIA", "film", "#4ec9b0", 0),
+            ("2. CẮT & GHÉP", "scissors", "#58a6ff", 1),
+            ("3. GIỌNG ĐỌC", "mic", "#bc8cff", 2),
+            ("4. KHỚP CẢNH", "activity", "#f0883e", 3),
+            ("5. TỰ ĐỘNG HÓA", "zap", "#e3b341", 4),
+            ("6. WORKFLOW", "workflow", "#58a6ff", 5),
+        ]
+        for name, icon, color, idx in steps_info:
+            btn = QPushButton(name)
+            btn.setIcon(get_svg_icon(icon, color, 12))
+            btn.setCheckable(True)
+            btn.setChecked(idx == 0)
+            btn.setFixedHeight(28)
+            btn.setStyleSheet(f"""
+                QPushButton {{
+                    background: transparent;
+                    color: #94a3b8;
+                    border: 1px solid transparent;
+                    border-radius: 6px;
+                    font-size: 10px;
+                    font-weight: 700;
+                    padding: 0 8px;
+                }}
+                QPushButton:hover {{
+                    background: #172133;
+                    color: #ffffff;
+                }}
+                QPushButton:checked {{
+                    background: #1e293b;
+                    color: {color};
+                    border: 1px solid {color};
+                }}
+            """)
+            btn.clicked.connect(lambda checked, i=idx: self.main_tabs.setCurrentIndex(i))
+            stepper_layout.addWidget(btn)
+            self.step_buttons.append(btn)
+
+            if idx < 5:
+                sep = QLabel("➔")
+                sep.setStyleSheet("color: #334155; font-size: 10px; font-weight: 800;")
+                stepper_layout.addWidget(sep)
+
+        stepper_layout.addStretch()
+
+        btn_quick_load = QPushButton("Nạp Kịch Bản")
+        btn_quick_load.setIcon(get_svg_icon("file-text", "#38bdf8", 12))
+        btn_quick_load.setToolTip("Nạp kịch bản Claude AI JSON (Ctrl+O)")
+        btn_quick_load.setFixedHeight(26)
+        btn_quick_load.setStyleSheet("""
+            QPushButton {
+                background: #121a29;
+                color: #38bdf8;
+                border: 1px solid #1f2b3f;
+                border-radius: 6px;
+                font-size: 10px;
+                font-weight: 700;
+                padding: 0 8px;
+            }
+            QPushButton:hover {
+                background: #1a2438;
+                border-color: #38bdf8;
+                color: #ffffff;
+            }
+        """)
+        btn_quick_load.clicked.connect(self._prompt_load_json)
+        stepper_layout.addWidget(btn_quick_load)
+
+        btn_quick_out = QPushButton("Thư Mục Xuất")
+        btn_quick_out.setIcon(get_svg_icon("folder", "#34d399", 12))
+        btn_quick_out.setToolTip("Mở thư mục xuất sản phẩm (Ctrl+Shift+O)")
+        btn_quick_out.setFixedHeight(26)
+        btn_quick_out.setStyleSheet("""
+            QPushButton {
+                background: #121a29;
+                color: #34d399;
+                border: 1px solid #1f2b3f;
+                border-radius: 6px;
+                font-size: 10px;
+                font-weight: 700;
+                padding: 0 8px;
+            }
+            QPushButton:hover {
+                background: #1a2438;
+                border-color: #34d399;
+                color: #ffffff;
+            }
+        """)
+        btn_quick_out.clicked.connect(self._open_output_folder)
+        stepper_layout.addWidget(btn_quick_out)
+
+        root_layout.addWidget(self.workflow_stepper)
+
         self.main_tabs = QTabWidget()
+        self.main_tabs.currentChanged.connect(self._on_tab_changed)
         root_layout.addWidget(self.main_tabs, 1)
 
         # Tab corner container: Update Status & Language toggle buttons
@@ -227,8 +340,72 @@ class AutoStockMainWindow(QMainWindow):
         sc_save = QShortcut(QKeySequence("Ctrl+S"), self)
         sc_save.activated.connect(self._save_session_state)
 
+        sc_open = QShortcut(QKeySequence("Ctrl+O"), self)
+        sc_open.activated.connect(self._prompt_load_json)
+
+        sc_out = QShortcut(QKeySequence("Ctrl+Shift+O"), self)
+        sc_out.activated.connect(self._open_output_folder)
+
         sc_f5 = QShortcut(QKeySequence("F5"), self)
         sc_f5.activated.connect(self._on_f5_pressed)
+
+    def _on_tab_changed(self, index: int):
+        if hasattr(self, "step_buttons"):
+            for i, btn in enumerate(self.step_buttons):
+                btn.setChecked(i == index)
+
+    def _prompt_load_json(self):
+        from .dialogs import JsonInputDialog
+        dialog = JsonInputDialog(parent=self)
+        if dialog.exec() == QDialog.DialogCode.Accepted and dialog.result_data:
+            scenes = extract_scenes_from_json(dialog.result_data)
+            if scenes:
+                self.downloader_tab.load_scenes(scenes, dialog.result_data)
+                self.main_tabs.setCurrentIndex(0)
+                ToastNotification.show_toast(self, f"Đã nạp {len(scenes)} phân đoạn cảnh thành công!", "success", 3000)
+
+    def _open_output_folder(self):
+        self.downloader_tab._open_output_folder_in_explorer()
+
+    def dragEnterEvent(self, event):
+        if event.mimeData().hasUrls():
+            for url in event.mimeData().urls():
+                if url.toLocalFile().lower().endswith(".json"):
+                    event.acceptProposedAction()
+                    return
+        super().dragEnterEvent(event)
+
+    def dragMoveEvent(self, event):
+        if event.mimeData().hasUrls():
+            for url in event.mimeData().urls():
+                if url.toLocalFile().lower().endswith(".json"):
+                    event.acceptProposedAction()
+                    return
+        super().dragMoveEvent(event)
+
+    def dropEvent(self, event):
+        if event.mimeData().hasUrls():
+            for url in event.mimeData().urls():
+                local_path = url.toLocalFile()
+                if local_path.lower().endswith(".json"):
+                    event.acceptProposedAction()
+                    self._load_json_path(local_path)
+                    return
+        super().dropEvent(event)
+
+    def _load_json_path(self, path_str: str):
+        try:
+            with open(path_str, "r", encoding="utf-8") as f:
+                data = json.load(f)
+            scenes = extract_scenes_from_json(data)
+            if scenes:
+                self.downloader_tab.load_scenes(scenes, data)
+                self.main_tabs.setCurrentIndex(0)
+                ToastNotification.show_toast(self, f"Đã nạp {len(scenes)} scenes từ: {Path(path_str).name}", "success", 3000)
+            else:
+                ToastNotification.show_toast(self, "File JSON không chứa phân đoạn scene hợp lệ", "warning", 3000)
+        except Exception as e:
+            ToastNotification.show_toast(self, f"Lỗi đọc JSON: {e}", "error", 3000)
 
     def _save_session_state(self):
         try:

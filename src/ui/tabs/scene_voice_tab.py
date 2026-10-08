@@ -3,6 +3,8 @@ Scene Voice Matching tab widget.
 Matches scene video footage to audio / SRT voice tracks using native FFmpeg processor.
 """
 
+import os
+import subprocess
 from pathlib import Path
 from typing import Optional
 from PyQt6.QtWidgets import (
@@ -13,6 +15,7 @@ from PyQt6.QtWidgets import (
 from PyQt6.QtCore import pyqtSignal, QThread
 from ...application.services.scene_voice_matcher import SceneVoiceMatcher
 from ..styles.icons import get_svg_icon, get_svg_pixmap
+from ..components.toast_notification import ToastNotification
 
 
 class SceneVoiceWorker(QThread):
@@ -178,7 +181,16 @@ class SceneVoiceTab(QWidget):
         self.svc_concat.setChecked(True)
         row.addWidget(self.svc_concat)
 
+        self.setAcceptDrops(True)
+
         row.addStretch()
+
+        self.btn_open_out = QPushButton("Mở Folder Xuất")
+        self.btn_open_out.setIcon(get_svg_icon("folder", "#34d399", 14))
+        self.btn_open_out.setFixedHeight(36)
+        self.btn_open_out.setToolTip("Mở thư mục video thành phẩm")
+        self.btn_open_out.clicked.connect(self._open_out_folder)
+        row.addWidget(self.btn_open_out)
 
         self.btn_run = QPushButton("Bắt Đầu Khớp Video")
         self.btn_run.setObjectName("primaryBtn")
@@ -207,6 +219,56 @@ class SceneVoiceTab(QWidget):
         self.svc_log.setPlaceholderText("Nhật ký xử lý khớp cảnh sẽ xuất hiện tại đây...")
         layout.addWidget(self.svc_log, 1)
 
+    def _open_out_folder(self):
+        out_p = self.svc_out.text().strip() or (str(Path(self.svc_root.text().strip()) / "matched_output") if self.svc_root.text().strip() else "")
+        if not out_p:
+            ToastNotification.show_toast(self, "Chưa chỉ định thư mục xuất", "warning", 2000)
+            return
+        p = Path(out_p)
+        p.mkdir(parents=True, exist_ok=True)
+        if os.name == 'nt':
+            os.startfile(str(p))
+        else:
+            subprocess.Popen(["xdg-open", str(p)])
+        ToastNotification.show_toast(self, f"Đang mở: {p.name}", "info", 2000)
+
+    def dragEnterEvent(self, event):
+        if event.mimeData().hasUrls():
+            event.acceptProposedAction()
+            return
+        super().dragEnterEvent(event)
+
+    def dropEvent(self, event):
+        if event.mimeData().hasUrls():
+            for url in event.mimeData().urls():
+                lp = url.toLocalFile()
+                p = Path(lp)
+                if p.is_dir():
+                    if not self.svc_root.text():
+                        self.svc_root.setText(lp)
+                        ToastNotification.show_toast(self, f"Thư mục cảnh: {p.name}", "success", 2500)
+                    else:
+                        self.svc_out.setText(lp)
+                        ToastNotification.show_toast(self, f"Thư mục xuất: {p.name}", "success", 2500)
+                    event.acceptProposedAction()
+                    return
+                elif p.suffix.lower() == ".json":
+                    self.svc_json.setText(lp)
+                    ToastNotification.show_toast(self, f"Kịch bản JSON: {p.name}", "success", 2500)
+                    event.acceptProposedAction()
+                    return
+                elif p.suffix.lower() == ".srt":
+                    self.svc_voice.setText(lp)
+                    ToastNotification.show_toast(self, f"Phụ đề SRT: {p.name}", "success", 2500)
+                    event.acceptProposedAction()
+                    return
+                elif p.suffix.lower() in [".mp3", ".wav", ".aac", ".m4a"]:
+                    self.svc_full_voice.setText(lp)
+                    ToastNotification.show_toast(self, f"Âm thanh: {p.name}", "success", 2500)
+                    event.acceptProposedAction()
+                    return
+        super().dropEvent(event)
+
     def _default_tool_root(self) -> Path:
         here = Path(__file__).resolve()
         return here.parent.parent.parent.parent
@@ -224,6 +286,7 @@ class SceneVoiceTab(QWidget):
             )
         if path:
             line_edit.setText(path)
+            ToastNotification.show_toast(self, f"Đã chọn: {Path(path).name}", "info", 1800)
 
     def set_config(self, json_path="", root_dir="", voice_path="", full_voice="", out_dir="", chunk_seconds=0.0, random=False, concat=True):
         if json_path: self.svc_json.setText(str(json_path))
@@ -292,4 +355,8 @@ class SceneVoiceTab(QWidget):
         self.progress_bar.setValue(100 if ok else 0)
         status = "[HOÀN TẤT THÀNH CÔNG] " if ok else "[LỖI XỬ LÝ] "
         self.svc_log.appendPlainText(f"\n{status}{message}")
+        if ok:
+            ToastNotification.show_toast(self, "Khớp video và giọng đọc thành công!", "success", 3000)
+        else:
+            ToastNotification.show_toast(self, f"Khớp video gặp lỗi: {message[:40]}", "error", 3500)
         self.finished.emit(ok, message)

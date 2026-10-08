@@ -178,6 +178,23 @@ class DownloaderTab(QWidget):
         QShortcut(QKeySequence("Ctrl+A"), self, self._select_all_scene)
         QShortcut(QKeySequence("Ctrl+D"), self, self._clear_scene_selection)
 
+        # Open output directory shortcut (Ctrl+Shift+O)
+        QShortcut(QKeySequence("Ctrl+Shift+O"), self, self._open_output_folder_in_explorer)
+
+    def _open_output_folder_in_explorer(self):
+        output_dir = Path(self.config.get("output_dir") or str(DEFAULT_OUTPUT_DIR))
+        output_dir.mkdir(parents=True, exist_ok=True)
+        try:
+            if os.name == "nt":
+                os.startfile(str(output_dir))
+            elif sys.platform == "darwin":
+                subprocess.Popen(["open", str(output_dir)])
+            else:
+                subprocess.Popen(["xdg-open", str(output_dir)])
+            ToastNotification.show_toast(self, f"Đang mở thư mục xuất: {output_dir.name}", "info", 2000)
+        except Exception as e:
+            ToastNotification.show_toast(self, f"Không thể mở thư mục: {e}", "warning", 2500)
+
     def _focus_search(self):
         self.scene_search_input.setFocus()
         self.scene_search_input.selectAll()
@@ -357,7 +374,33 @@ class DownloaderTab(QWidget):
         self.api_key_widget.keysChanged.connect(self._on_api_keys_changed)
         layout.addWidget(self.api_key_widget)
 
-        # Settings button
+        # Quick tools row (Open Folder + Settings)
+        top_actions_h = QHBoxLayout()
+        top_actions_h.setSpacing(6)
+
+        self.btn_open_folder = QPushButton("Mở Thư Mục")
+        self.btn_open_folder.setIcon(get_svg_icon("folder", "#ffffff", 14))
+        self.btn_open_folder.setToolTip("Mở thư mục lưu trữ media trên máy tính (Ctrl+Shift+O)")
+        self.btn_open_folder.setFixedHeight(34)
+        self.btn_open_folder.setStyleSheet("""
+            QPushButton {
+                background-color: #121826;
+                color: #e2e8f0;
+                font-weight: 700;
+                font-size: 11px;
+                padding: 6px 10px;
+                border-radius: 8px;
+                border: 1px solid #1f2b3f;
+            }
+            QPushButton:hover {
+                background-color: #1a2335;
+                border-color: #38bdf8;
+                color: #ffffff;
+            }
+        """)
+        self.btn_open_folder.clicked.connect(self._open_output_folder_in_explorer)
+        top_actions_h.addWidget(self.btn_open_folder)
+
         self.btn_settings = QPushButton(t("downloader.settings_btn"))
         self.btn_settings.setIcon(get_svg_icon("settings", "#e2e8f0", 14))
         self.btn_settings.setToolTip("Quản lý thư mục lưu, cấu hình nâng cao, JSON input")
@@ -368,8 +411,8 @@ class DownloaderTab(QWidget):
                 background-color: #121826;
                 color: #e2e8f0;
                 font-weight: 700;
-                font-size: 11.5px;
-                padding: 6px 12px;
+                font-size: 11px;
+                padding: 6px 10px;
                 border-radius: 8px;
                 border: 1px solid #1f2b3f;
             }
@@ -379,7 +422,8 @@ class DownloaderTab(QWidget):
                 color: #ffffff;
             }
         """)
-        layout.addWidget(self.btn_settings)
+        top_actions_h.addWidget(self.btn_settings)
+        layout.addLayout(top_actions_h)
 
         # JSON status label
         self.json_status_label = QLabel(t("downloader.no_json_status"))
@@ -534,9 +578,47 @@ class DownloaderTab(QWidget):
 
         # Search box
         self.scene_search_input = QLineEdit()
+        self.scene_search_input.setFixedHeight(34)
         self.scene_search_input.setPlaceholderText(t("downloader.search_scenes_placeholder"))
         self.scene_search_input.textChanged.connect(self._filter_scenes)
         layout.addWidget(self.scene_search_input)
+
+        # Timeline status filter tabs (Tất cả / Thiếu / Đã chọn)
+        filter_seg_row = QHBoxLayout()
+        filter_seg_row.setSpacing(4)
+        self.scene_timeline_filter = "all"
+
+        self.btn_tl_all = QPushButton("Tất Cả")
+        self.btn_tl_missing = QPushButton("Thiếu Media")
+        self.btn_tl_picked = QPushButton("Đã Chọn")
+
+        for f_btn, f_mode in [(self.btn_tl_all, "all"), (self.btn_tl_missing, "missing"), (self.btn_tl_picked, "picked")]:
+            f_btn.setFixedHeight(24)
+            f_btn.setCheckable(True)
+            f_btn.setChecked(f_mode == "all")
+            f_btn.setStyleSheet("""
+                QPushButton {
+                    background: #131926;
+                    color: #94a3b8;
+                    border: 1px solid #1f2b3f;
+                    border-radius: 4px;
+                    font-size: 10px;
+                    font-weight: 700;
+                    padding: 0 4px;
+                }
+                QPushButton:checked {
+                    background: #243048;
+                    color: #38bdf8;
+                    border-color: #38bdf8;
+                }
+                QPushButton:hover {
+                    color: #ffffff;
+                }
+            """)
+            f_btn.clicked.connect(lambda checked, m=f_mode: self._set_timeline_filter(m))
+            filter_seg_row.addWidget(f_btn)
+
+        layout.addLayout(filter_seg_row)
 
         # Scrollable scenes list
         self.scenes_scroll = QScrollArea()
@@ -845,6 +927,25 @@ class DownloaderTab(QWidget):
         btn_select_none_kw.setFixedHeight(22)
         btn_select_none_kw.clicked.connect(self._ma_select_no_keywords)
         ma_header_h.addWidget(btn_select_none_kw)
+
+        btn_copy_kw = QPushButton("Chép")
+        btn_copy_kw.setIcon(get_svg_icon("copy", "#38bdf8", 11))
+        btn_copy_kw.setToolTip("Sao chép danh sách từ khóa đang chọn vào clipboard")
+        btn_copy_kw.setStyleSheet("""
+            QPushButton {
+                background-color: rgba(56, 189, 248, 0.15);
+                color: #38bdf8;
+                border: 1px solid rgba(56, 189, 248, 0.3);
+                border-radius: 4px;
+                padding: 2px 6px;
+                font-size: 10px;
+                font-weight: 700;
+            }
+            QPushButton:hover { background-color: rgba(56, 189, 248, 0.3); color: #ffffff; }
+        """)
+        btn_copy_kw.setFixedHeight(22)
+        btn_copy_kw.clicked.connect(self._ma_copy_all_keywords)
+        ma_header_h.addWidget(btn_copy_kw)
         ma_layout.addLayout(ma_header_h)
 
         ma_instr = QLabel("Chọn từ khóa để tìm trên web:")
@@ -1118,9 +1219,15 @@ class DownloaderTab(QWidget):
             except Exception:
                 pass
 
-    # ═══════════════════════════════════════════════════════════════
-    # SCENE LIST & NAVIGATION
-    # ═══════════════════════════════════════════════════════════════
+    def _set_timeline_filter(self, mode: str):
+        self.scene_timeline_filter = mode
+        if hasattr(self, "btn_tl_all"):
+            self.btn_tl_all.setChecked(mode == "all")
+        if hasattr(self, "btn_tl_missing"):
+            self.btn_tl_missing.setChecked(mode == "missing")
+        if hasattr(self, "btn_tl_picked"):
+            self.btn_tl_picked.setChecked(mode == "picked")
+        self._populate_scene_list()
 
     def _populate_scene_list(self):
         for widget in self.scene_list_widgets:
@@ -1129,8 +1236,15 @@ class DownloaderTab(QWidget):
         self.scene_list_widgets = []
 
         search_text = self.scene_search_input.text().lower()
+        tl_filter = getattr(self, "scene_timeline_filter", "all")
         filtered = []
         for scene in self.scenes:
+            sid = scene.get("id")
+            selected_count = len(self.selected_items.get(sid, {}))
+            if tl_filter == "missing" and selected_count > 0:
+                continue
+            if tl_filter == "picked" and selected_count == 0:
+                continue
             if search_text:
                 dialogue = scene.get("dialogue_es", "") or scene.get("dialogue", "")
                 kw = " ".join(scene.get("primary_keywords", []))
@@ -1140,7 +1254,8 @@ class DownloaderTab(QWidget):
                     continue
             filtered.append(scene)
 
-        self.scenes_count_label.setText(f"{len(filtered)}/{len(self.scenes)} scenes")
+        total_picked = sum(1 for s in self.scenes if len(self.selected_items.get(s.get("id"), {})) > 0)
+        self.scenes_count_label.setText(f"{len(filtered)}/{len(self.scenes)} cảnh (Đạt: {total_picked})")
 
         stretch_idx = self.scenes_layout.count() - 1
         for scene in filtered:
@@ -1213,37 +1328,60 @@ class DownloaderTab(QWidget):
                 break
 
     def _update_scene_info_panel(self, scene: dict):
-        lines = []
         time_start = scene.get("time_start", "?")
         time_end = scene.get("time_end", "?")
         duration = scene.get("duration_seconds", 0)
-        lines.append(f"THỜI GIAN: {time_start} → {time_end} ({duration}s)\n")
-
         desc_vi = scene.get("description_vi", "") or scene.get("mo_ta", "")
-        if desc_vi:
-            lines.append(f"MÔ TẢ:\n{desc_vi}\n")
-
         dialogue = scene.get("dialogue_es", "") or scene.get("dialogue_vi", "") or scene.get("dialogue", "")
-        if dialogue:
-            lines.append(f"LỜI THOẠI:\n{dialogue}\n")
-
         context = scene.get("context_summary_en", "") or scene.get("context_summary", "")
-        if context:
-            lines.append(f"BỐI CẢNH:\n{context}\n")
-
-        primary = scene.get("primary_keywords", [])
-        if primary:
-            lines.append(f"TỪ KHÓA:\n{', '.join(primary[:3])}")
-
+        primary = scene.get("primary_keywords", []) or []
         mood = scene.get("mood", "")
         shot = scene.get("shot_type", "")
-        if mood or shot:
-            extras = [f"Cảm xúc: {mood}"] if mood else []
-            if shot:
-                extras.append(f"Góc quay: {shot}")
-            lines.append(f"\n{' | '.join(extras)}")
 
-        self.scene_info_panel.setPlainText("\n".join(lines))
+        html = f"""
+        <div style="font-family: 'Segoe UI', sans-serif; font-size: 11px; line-height: 1.5; color: #cbd5e1;">
+            <div style="margin-bottom: 8px;">
+                <span style="background: rgba(99, 102, 241, 0.25); color: #818cf8; font-weight: 800; font-size: 10px; padding: 2px 6px; border-radius: 4px; border: 1px solid rgba(99, 102, 241, 0.4);">SCENE #{scene.get('id')}</span>
+                <span style="color: #38bdf8; font-weight: 700; margin-left: 6px;">⏱ {time_start} → {time_end} ({duration}s)</span>
+            </div>
+        """
+        if dialogue:
+            html += f"""
+            <div style="background: #111724; border-left: 3px solid #6366f1; border-radius: 4px; padding: 6px 8px; margin: 6px 0;">
+                <b style="color: #f8fafc; font-size: 10px; text-transform: uppercase;">Lời thoại:</b><br/>
+                <span style="color: #f1f5f9; font-style: italic;">{dialogue}</span>
+            </div>
+            """
+        if desc_vi:
+            html += f"""
+            <div style="margin: 6px 0;">
+                <b style="color: #94a3b8; font-size: 10px; text-transform: uppercase;">Mô tả cảnh:</b><br/>
+                <span style="color: #cbd5e1;">{desc_vi}</span>
+            </div>
+            """
+        if context:
+            html += f"""
+            <div style="margin: 6px 0;">
+                <b style="color: #94a3b8; font-size: 10px; text-transform: uppercase;">Bối cảnh:</b><br/>
+                <span style="color: #cbd5e1;">{context}</span>
+            </div>
+            """
+        if primary:
+            chips = "".join([f"<span style='background: #182234; color: #a78bfa; border: 1px solid #243048; border-radius: 4px; padding: 1px 5px; margin-right: 4px; font-weight: 600; font-size: 10px;'>{k}</span>" for k in primary[:5]])
+            html += f"""
+            <div style="margin-top: 8px;">
+                <b style="color: #818cf8; font-size: 10px; text-transform: uppercase;">Từ khóa chính:</b><br/>
+                <div style="margin-top: 3px;">{chips}</div>
+            </div>
+            """
+        extras = []
+        if mood: extras.append(f"Cảm xúc: <b style='color:#fbbf24;'>{mood}</b>")
+        if shot: extras.append(f"Góc quay: <b style='color:#38bdf8;'>{shot}</b>")
+        if extras:
+            html += f"<div style='margin-top: 6px; font-size: 10px; color: #94a3b8;'>{' • '.join(extras)}</div>"
+
+        html += "</div>"
+        self.scene_info_panel.setHtml(html)
 
     # ═══════════════════════════════════════════════════════════════
     # MOTIONARRAY & KEYWORDS
@@ -1343,6 +1481,21 @@ class DownloaderTab(QWidget):
     def _ma_select_no_keywords(self):
         for cb in self.ma_keyword_checks:
             cb.setChecked(False)
+
+    def _ma_copy_all_keywords(self):
+        selected_keywords = [
+            cb.property("keyword") for cb in self.ma_keyword_checks if cb.isChecked() and cb.property("keyword")
+        ]
+        if not selected_keywords:
+            selected_keywords = [
+                cb.property("keyword") for cb in self.ma_keyword_checks if cb.property("keyword")
+            ]
+        if selected_keywords:
+            kw_str = ", ".join(selected_keywords)
+            QApplication.clipboard().setText(kw_str)
+            ToastNotification.show_toast(self, f"Đã chép {len(selected_keywords)} từ khóa vào bộ nhớ tạm!", "success", 2000)
+        else:
+            ToastNotification.show_toast(self, "Không có từ khóa nào để sao chép", "warning", 2000)
 
     def _find_coccoc_path(self) -> Optional[str]:
         possible_paths = [
@@ -1595,10 +1748,15 @@ class DownloaderTab(QWidget):
             count_lbl.setStyleSheet(f"color: {status_color}; font-size: 10px; font-weight: 600; background: transparent; border: none;")
             r_lay.addWidget(count_lbl)
 
-            def open_folder(_event, p=folder_path):
-                if p.exists():
-                    os.startfile(str(p)) if os.name == 'nt' else subprocess.Popen(["xdg-open", str(p)])
-            row.mousePressEvent = open_folder
+            def on_dm_row_click(event, sc=scene, p=folder_path):
+                if event.button() == Qt.MouseButton.LeftButton:
+                    self._on_scene_clicked(sc)
+                    self._scroll_timeline_to_active()
+                elif event.button() == Qt.MouseButton.RightButton:
+                    if p.exists():
+                        os.startfile(str(p)) if os.name == 'nt' else subprocess.Popen(["xdg-open", str(p)])
+            row.mousePressEvent = on_dm_row_click
+            row.setToolTip(f"Bấm chuột trái: chuyển tới Scene #{scene_id}\nBấm chuột phải: mở thư mục lưu")
 
             insert_idx = 0
             for i in range(self.dm_container_layout.count()):

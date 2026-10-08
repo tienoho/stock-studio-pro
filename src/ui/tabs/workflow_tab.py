@@ -14,6 +14,7 @@ from ...core.i18n import t
 from ..styles.icons import get_svg_icon, get_svg_pixmap
 from ..workflow.canvas import WorkflowCanvas
 from ...infrastructure.persistence.sqlite_workflow_repo import SqliteWorkflowRepository
+from ..components.toast_notification import ToastNotification
 
 
 class WorkflowTab(QWidget):
@@ -139,6 +140,68 @@ class WorkflowTab(QWidget):
         preset_bar.addStretch()
         toolbar_layout.addLayout(preset_bar)
 
+        # Controls Row 3: Quick Templates
+        quick_tpl_bar = QHBoxLayout()
+        quick_tpl_bar.setSpacing(8)
+
+        tpl_lbl = QLabel("MẪU NHANH:")
+        tpl_lbl.setStyleSheet("color: #94a3b8; font-size: 10px; font-weight: 700;")
+        quick_tpl_bar.addWidget(tpl_lbl)
+
+        btn_tpl_full = QPushButton("★ Toàn Bộ Pipeline")
+        btn_tpl_full.setFixedHeight(26)
+        btn_tpl_full.setStyleSheet("""
+            QPushButton {
+                background: rgba(99, 102, 241, 0.15);
+                color: #818cf8;
+                border: 1px solid rgba(99, 102, 241, 0.3);
+                border-radius: 4px;
+                font-size: 10px;
+                font-weight: 700;
+                padding: 0 8px;
+            }
+            QPushButton:hover { background: rgba(99, 102, 241, 0.3); color: #ffffff; }
+        """)
+        btn_tpl_full.clicked.connect(lambda: self.load_quick_template("full"))
+        quick_tpl_bar.addWidget(btn_tpl_full)
+
+        btn_tpl_media = QPushButton("★ Kho Media")
+        btn_tpl_media.setFixedHeight(26)
+        btn_tpl_media.setStyleSheet("""
+            QPushButton {
+                background: rgba(56, 189, 248, 0.15);
+                color: #38bdf8;
+                border: 1px solid rgba(56, 189, 248, 0.3);
+                border-radius: 4px;
+                font-size: 10px;
+                font-weight: 700;
+                padding: 0 8px;
+            }
+            QPushButton:hover { background: rgba(56, 189, 248, 0.3); color: #ffffff; }
+        """)
+        btn_tpl_media.clicked.connect(lambda: self.load_quick_template("media"))
+        quick_tpl_bar.addWidget(btn_tpl_media)
+
+        btn_tpl_voice = QPushButton("★ Khớp Thoại & Cắt")
+        btn_tpl_voice.setFixedHeight(26)
+        btn_tpl_voice.setStyleSheet("""
+            QPushButton {
+                background: rgba(245, 158, 11, 0.15);
+                color: #fbbf24;
+                border: 1px solid rgba(245, 158, 11, 0.3);
+                border-radius: 4px;
+                font-size: 10px;
+                font-weight: 700;
+                padding: 0 8px;
+            }
+            QPushButton:hover { background: rgba(245, 158, 11, 0.3); color: #ffffff; }
+        """)
+        btn_tpl_voice.clicked.connect(lambda: self.load_quick_template("voice_cut"))
+        quick_tpl_bar.addWidget(btn_tpl_voice)
+
+        quick_tpl_bar.addStretch()
+        toolbar_layout.addLayout(quick_tpl_bar)
+
         layout.addWidget(toolbar_card)
 
         self.workflow_canvas = WorkflowCanvas(parent_window or self)
@@ -164,6 +227,32 @@ class WorkflowTab(QWidget):
         self.btn_save_db.setText(t("workflow.save_db"))
         self.btn_del_db.setText(t("workflow.delete_db"))
 
+    def load_quick_template(self, template_type: str):
+        self.workflow_canvas.clear()
+        if template_type == "full":
+            nodes_def = ["Load JSON", "Search stock", "Download selected", "Cut/Mix video", "Create voice", "Scene voice match"]
+            desc = "Toàn Bộ Pipeline"
+        elif template_type == "media":
+            nodes_def = ["Load JSON", "Search stock", "Random select", "Download selected"]
+            desc = "Kho Media"
+        elif template_type == "voice_cut":
+            nodes_def = ["Cut/Mix video", "Create voice", "Scene voice match"]
+            desc = "Khớp Thoại & Cắt"
+        else:
+            return
+
+        created = []
+        for n_type in nodes_def:
+            node = self.workflow_canvas.add_node(n_type)
+            created.append(node)
+
+        for i in range(len(created) - 1):
+            self.workflow_canvas.add_edge(created[i], created[i + 1])
+
+        self.workflow_canvas.auto_arrange()
+        self.workflow_log.appendPlainText(f"Đã nạp mẫu quy trình: {desc}")
+        ToastNotification.show_toast(self, f"Đã nạp mẫu: {desc}", "success", 2500)
+
     def _refresh_sqlite_presets(self):
         """Reloads preset names from SQLite into combo box."""
         self.sqlite_preset_combo.clear()
@@ -183,6 +272,7 @@ class WorkflowTab(QWidget):
             if idx >= 0:
                 self.sqlite_preset_combo.setCurrentIndex(idx)
             self.workflow_log.appendPlainText(t("workflow.save_success", name=name.strip()))
+            ToastNotification.show_toast(self, f"Đã lưu preset: {name.strip()}", "success", 2000)
 
     def _load_sqlite_preset(self):
         name = self.sqlite_preset_combo.currentText()
@@ -194,6 +284,7 @@ class WorkflowTab(QWidget):
         if payload:
             self.workflow_canvas.load_payload(payload)
             self.workflow_log.appendPlainText(t("workflow.load_success", name=name))
+            ToastNotification.show_toast(self, f"Đã nạp preset: {name}", "success", 2000)
         else:
             QMessageBox.warning(self, t("common.error"), f"Không tìm thấy dữ liệu cho mẫu '{name}'")
 
@@ -209,6 +300,7 @@ class WorkflowTab(QWidget):
             self.workflow_repo.delete_preset(name)
             self._refresh_sqlite_presets()
             self.workflow_log.appendPlainText(t("workflow.delete_success", name=name))
+            ToastNotification.show_toast(self, f"Đã xóa preset: {name}", "info", 2000)
 
     def _workflow_canvas_add(self):
         self.workflow_canvas.add_node(self.workflow_block_combo.currentText())
@@ -216,6 +308,7 @@ class WorkflowTab(QWidget):
     def _workflow_clear(self):
         self.workflow_canvas.clear()
         self.workflow_log.clear()
+        ToastNotification.show_toast(self, "Đã làm trống canvas quy trình", "info", 1500)
 
     def _workflow_save(self):
         path, _ = QFileDialog.getSaveFileName(self, "Lưu file mẫu quy trình", "workflow_preset.json", "JSON (*.json)")
@@ -225,9 +318,11 @@ class WorkflowTab(QWidget):
                 encoding="utf-8"
             )
             self.workflow_log.appendPlainText(f"Đã lưu: {path}")
+            ToastNotification.show_toast(self, f"Đã xuất file: {Path(path).name}", "success", 2000)
 
     def _workflow_load(self):
         path, _ = QFileDialog.getOpenFileName(self, "Mở file mẫu quy trình", "", "JSON (*.json)")
         if path:
             self.workflow_canvas.load_payload(json.loads(Path(path).read_text(encoding="utf-8")))
             self.workflow_log.appendPlainText(f"Đã nạp: {path}")
+            ToastNotification.show_toast(self, f"Đã nạp file: {Path(path).name}", "success", 2000)

@@ -351,6 +351,12 @@ class WorkflowCanvas(QGraphicsView):
         self.rebuild_edges()
         return node
 
+    def add_edge(self, node_a, node_b):
+        edge = WorkflowEdgeItem(node_a, node_b)
+        self.scene_obj.addItem(edge)
+        self.edges.append(edge)
+        return edge
+
     def rebuild_edges(self):
         for edge in self.edges:
             self.scene_obj.removeItem(edge)

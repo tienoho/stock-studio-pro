@@ -193,6 +193,54 @@ class TestUIInteractions(unittest.TestCase):
         self.assertTrue(hasattr(tab, "runAutoRequested"))
         tab.deleteLater()
 
+    def test_cut_mix_tab_interactions(self):
+        """Test CutMixTab has open folder buttons and updates config properly."""
+        from src.ui.tabs.cut_mix_tab import CutMixTab
+        tab = CutMixTab(parent=self.parent)
+        self.assertTrue(hasattr(tab, "btn_open_folder"))
+        self.assertTrue(hasattr(tab, "btn_open_out"))
+        tab.set_folder("/test/folder")
+        self.assertEqual(tab.cut_folder_input.text(), "/test/folder")
+        tab.set_config(folder="/test/folder", segment_seconds=2.5, final_count=3, max_clips=10)
+        self.assertEqual(tab.cut_seconds_spin.value(), 2.5)
+        self.assertEqual(tab.final_count_spin.value(), 3)
+        self.assertEqual(tab.max_clips_spin.value(), 10)
+        tab.deleteLater()
+
+    def test_workflow_quick_templates(self):
+        """Test WorkflowTab quick template loading populates nodes and links."""
+        from src.ui.tabs.workflow_tab import WorkflowTab
+        tab = WorkflowTab(parent=self.parent)
+        self.assertEqual(len(tab.workflow_canvas.nodes), 0)
+
+        # Load media template
+        tab.load_quick_template("media")
+        self.assertEqual(len(tab.workflow_canvas.nodes), 4)
+
+        # Load full template
+        tab.load_quick_template("full")
+        self.assertEqual(len(tab.workflow_canvas.nodes), 6)
+
+        # Clear canvas
+        tab._workflow_clear()
+        self.assertEqual(len(tab.workflow_canvas.nodes), 0)
+        tab.deleteLater()
+
+    def test_main_window_stepper_and_pipeline(self):
+        """Test AutoStockMainWindow creates workflow stepper and syncs active step with tabs."""
+        from src.ui.main_window import AutoStockMainWindow
+        win = AutoStockMainWindow()
+        self.assertEqual(len(win.step_buttons), 6)
+        self.assertTrue(win.step_buttons[0].isChecked())
+
+        # Switch tab and check stepper button updates
+        win.main_tabs.setCurrentIndex(2)
+        self.assertTrue(win.step_buttons[2].isChecked())
+        self.assertFalse(win.step_buttons[0].isChecked())
+
+        win.close()
+        win.deleteLater()
+
 
 if __name__ == "__main__":
     unittest.main()

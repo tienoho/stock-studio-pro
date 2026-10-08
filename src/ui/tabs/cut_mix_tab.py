@@ -2,6 +2,8 @@
 Cut & Mix Studio tab widget for automated FFmpeg scene video editing.
 """
 
+import os
+import subprocess
 from pathlib import Path
 from PyQt6.QtWidgets import (
     QWidget, QFrame, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit,
@@ -10,6 +12,7 @@ from PyQt6.QtWidgets import (
 from PyQt6.QtCore import pyqtSignal
 from ..workers.video_cut_worker import VideoCutMergeWorker
 from ..styles.icons import get_svg_icon, get_svg_pixmap
+from ..components.toast_notification import ToastNotification
 from ...core.i18n import t
 
 
@@ -57,11 +60,13 @@ class CutMixTab(QWidget):
         sec1_lbl.setObjectName("sectionHeader")
         cfg_layout.addWidget(sec1_lbl)
 
+        self.setAcceptDrops(True)
+
         folder_h = QHBoxLayout()
         folder_h.setSpacing(8)
         self.cut_folder_input = QLineEdit()
         self.cut_folder_input.setFixedHeight(34)
-        self.cut_folder_input.setPlaceholderText("Chọn thư mục tổng hoặc thư mục cảnh...")
+        self.cut_folder_input.setPlaceholderText("Chọn hoặc kéo thả thư mục cảnh vào đây...")
         folder_h.addWidget(self.cut_folder_input, 1)
 
         self.btn_browse = QPushButton(t("cut_mix.select_folder"))
@@ -69,6 +74,14 @@ class CutMixTab(QWidget):
         self.btn_browse.setFixedHeight(34)
         self.btn_browse.clicked.connect(self._browse_folder)
         folder_h.addWidget(self.btn_browse)
+
+        self.btn_open_folder = QPushButton("Mở Folder")
+        self.btn_open_folder.setIcon(get_svg_icon("folder", "#38bdf8", 14))
+        self.btn_open_folder.setFixedHeight(34)
+        self.btn_open_folder.setToolTip("Mở thư mục nguồn trong Explorer")
+        self.btn_open_folder.clicked.connect(self._open_current_folder)
+        folder_h.addWidget(self.btn_open_folder)
+
         cfg_layout.addLayout(folder_h)
 
         # Section 2: Parameters
@@ -135,6 +148,13 @@ class CutMixTab(QWidget):
         self.btn_stop.clicked.connect(self.stop_cut_merge)
         btn_h.addWidget(self.btn_stop)
 
+        self.btn_open_out = QPushButton("Mở Folder Xuất")
+        self.btn_open_out.setIcon(get_svg_icon("folder", "#34d399", 14))
+        self.btn_open_out.setFixedHeight(36)
+        self.btn_open_out.setToolTip("Mở thư mục chứa các video vừa cắt ghép")
+        self.btn_open_out.clicked.connect(self._open_current_folder)
+        btn_h.addWidget(self.btn_open_out)
+
         btn_h.addStretch()
         cfg_layout.addLayout(btn_h)
 
@@ -150,10 +170,46 @@ class CutMixTab(QWidget):
         self.cut_log.setPlaceholderText("Nhật ký xử lý hiển thị tại đây...")
         layout.addWidget(self.cut_log, 1)
 
+    def _open_current_folder(self):
+        f = self.cut_folder_input.text().strip()
+        if not f:
+            ToastNotification.show_toast(self, "Chưa chọn thư mục", "warning", 2000)
+            return
+        p = Path(f)
+        if p.exists():
+            if os.name == 'nt':
+                os.startfile(str(p))
+            else:
+                subprocess.Popen(["xdg-open", str(p)])
+            ToastNotification.show_toast(self, f"Đang mở: {p.name}", "info", 2000)
+        else:
+            ToastNotification.show_toast(self, "Thư mục không tồn tại trên ổ đĩa", "error", 2000)
+
+    def dragEnterEvent(self, event):
+        if event.mimeData().hasUrls():
+            for url in event.mimeData().urls():
+                lp = url.toLocalFile()
+                if Path(lp).is_dir():
+                    event.acceptProposedAction()
+                    return
+        super().dragEnterEvent(event)
+
+    def dropEvent(self, event):
+        if event.mimeData().hasUrls():
+            for url in event.mimeData().urls():
+                lp = url.toLocalFile()
+                if Path(lp).is_dir():
+                    self.set_folder(lp)
+                    event.acceptProposedAction()
+                    ToastNotification.show_toast(self, f"Đã nhận thư mục: {Path(lp).name}", "success", 2500)
+                    return
+        super().dropEvent(event)
+
     def _browse_folder(self):
         path = QFileDialog.getExistingDirectory(self, "Chọn folder tổng chứa 1, 2, 3... hoặc 1 folder cảnh")
         if path:
             self.cut_folder_input.setText(path)
+            ToastNotification.show_toast(self, f"Đã chọn: {Path(path).name}", "success", 2000)
 
     def set_folder(self, folder_path: str):
         self.cut_folder_input.setText(str(folder_path))
@@ -203,6 +259,10 @@ class CutMixTab(QWidget):
         self.btn_stop.setEnabled(False)
         status = "[SUCCESS]" if success else "[ERROR]"
         self.cut_log.appendPlainText(f"{status} {message}")
+        if success:
+            ToastNotification.show_toast(self, "Cắt ghép video hoàn tất thành công!", "success", 3000)
+        else:
+            ToastNotification.show_toast(self, f"Cắt ghép gặp sự cố: {message[:40]}", "error", 3500)
         self.finished.emit(success, message)
 
     def retranslate_ui(self):
