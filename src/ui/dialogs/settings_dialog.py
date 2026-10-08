@@ -5,7 +5,7 @@ SettingsDialog combining output folder, API key managers, and script loader.
 from pathlib import Path
 from PyQt6.QtWidgets import (
     QDialog, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit,
-    QPushButton, QFileDialog, QWidget, QFrame
+    QPushButton, QFileDialog, QWidget, QFrame, QComboBox
 )
 from PyQt6.QtCore import pyqtSignal
 
@@ -150,6 +150,31 @@ class SettingsDialog(QDialog):
         sec4_l.addLayout(upd_row)
         layout.addWidget(sec4)
 
+        # Section 5: Theme Card (Dark / Light)
+        sec_theme = QFrame()
+        sec_theme.setObjectName("toolCard")
+        sec_theme_l = QVBoxLayout(sec_theme)
+        sec_theme_l.setContentsMargins(16, 14, 16, 14)
+        sec_theme_l.setSpacing(10)
+        sec_theme_l.addWidget(self._section_header("GIAO DIỆN & CHẾ ĐỘ HIỂN THỊ", "sun"))
+
+        theme_row = QHBoxLayout()
+        theme_row.setSpacing(10)
+        theme_lbl = QLabel("Chế độ chủ đề:")
+        theme_lbl.setStyleSheet("color: #cbd5e1; font-size: 12px; font-weight: 600;")
+        theme_row.addWidget(theme_lbl)
+
+        self.theme_combo = QComboBox()
+        self.theme_combo.setFixedHeight(34)
+        self.theme_combo.addItem("🌙 Giao diện Tối (Obsidian Dark & Electric Neon)", "dark")
+        self.theme_combo.addItem("☀️ Giao diện Sáng (Crystal Light & Indigo Slate)", "light")
+        current_theme = self.config.get("theme", "dark")
+        self.theme_combo.setCurrentIndex(1 if current_theme == "light" else 0)
+        self.theme_combo.currentIndexChanged.connect(self._on_theme_combo_changed)
+        theme_row.addWidget(self.theme_combo, 1)
+        sec_theme_l.addLayout(theme_row)
+        layout.addWidget(sec_theme)
+
         layout.addStretch()
 
         # Close button
@@ -161,6 +186,16 @@ class SettingsDialog(QDialog):
         btn_close.clicked.connect(self.accept)
         btn_row.addWidget(btn_close)
         layout.addLayout(btn_row)
+
+    def _on_theme_combo_changed(self, idx: int):
+        new_theme = self.theme_combo.currentData()
+        self.config["theme"] = new_theme
+        from ..styles.theme_manager import ThemeManager
+        ThemeManager.get_instance().set_theme(new_theme)
+        self.setStyleSheet(load_stylesheet())
+        if self.save_config_fn:
+            self.save_config_fn(self.config)
+        self.configChanged.emit()
 
     def _section_header(self, text: str, icon_name: str = "settings"):
         container = QWidget()

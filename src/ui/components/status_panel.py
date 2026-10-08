@@ -9,6 +9,7 @@ from PyQt6.QtWidgets import (
 )
 from PyQt6.QtCore import Qt
 from ..styles.icons import get_svg_pixmap
+from ..styles.theme_manager import ThemeManager
 
 
 class StatusPanel(QFrame):
@@ -59,14 +60,12 @@ class StatusPanel(QFrame):
         layout.addLayout(header_h)
 
         # Separator
-        sep = QFrame()
-        sep.setFrameShape(QFrame.Shape.HLine)
-        sep.setStyleSheet("background-color: #192233; max-height: 1px;")
-        layout.addWidget(sep)
+        self.sep = QFrame()
+        self.sep.setFrameShape(QFrame.Shape.HLine)
+        layout.addWidget(self.sep)
 
         # === Main message ===
         self.main_label = QLabel("Hệ thống sẵn sàng")
-        self.main_label.setStyleSheet("color: #f8fafc; font-size: 12px; font-weight: 650; padding: 2px 0;")
         self.main_label.setWordWrap(True)
         layout.addWidget(self.main_label)
 
@@ -134,17 +133,6 @@ class StatusPanel(QFrame):
         # === Activity log ===
         self.activity_log = QTextEdit()
         self.activity_log.setReadOnly(True)
-        self.activity_log.setStyleSheet("""
-            QTextEdit {
-                background-color: #0c0f17;
-                color: #cbd5e1;
-                border: 1px solid #1e293b;
-                border-radius: 8px;
-                padding: 6px;
-                font-size: 10px;
-                font-family: 'Consolas', 'Cascadia Code', monospace;
-            }
-        """)
         self.activity_log.setMinimumHeight(120)
         layout.addWidget(self.activity_log, 1)
 
@@ -162,6 +150,77 @@ class StatusPanel(QFrame):
         self.cooldown_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.cooldown_label.setVisible(False)
         layout.addWidget(self.cooldown_label)
+
+        # Apply initial theme styling
+        self._apply_theme()
+        ThemeManager.get_instance().themeChanged.connect(self._apply_theme)
+
+    def _apply_theme(self, theme_name: str = ""):
+        is_dark = ThemeManager.get_instance().is_dark()
+        if is_dark:
+            self.setStyleSheet("""
+                #statusPanel {
+                    background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #121826, stop:1 #0c101a);
+                    border: 1px solid #1f2b3f;
+                    border-radius: 12px;
+                }
+            """)
+            if hasattr(self, 'sep'):
+                self.sep.setStyleSheet("background-color: #192233; max-height: 1px;")
+            if hasattr(self, 'main_label'):
+                self.main_label.setStyleSheet("color: #f8fafc; font-size: 12px; font-weight: 650; padding: 2px 0;")
+            if hasattr(self, 'progress_bar'):
+                self.progress_bar.setStyleSheet("""
+                    QFrame {
+                        background-color: #0e131d;
+                        border-radius: 4px;
+                        border: 1px solid #1e293b;
+                    }
+                """)
+            if hasattr(self, 'activity_log'):
+                self.activity_log.setStyleSheet("""
+                    QTextEdit {
+                        background-color: #0c0f17;
+                        color: #cbd5e1;
+                        border: 1px solid #1e293b;
+                        border-radius: 8px;
+                        padding: 6px;
+                        font-size: 10px;
+                        font-family: 'Consolas', 'Cascadia Code', monospace;
+                    }
+                """)
+        else:
+            self.setStyleSheet("""
+                #statusPanel {
+                    background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #ffffff, stop:1 #f8fafc);
+                    border: 1px solid #e2e8f0;
+                    border-radius: 12px;
+                }
+            """)
+            if hasattr(self, 'sep'):
+                self.sep.setStyleSheet("background-color: #e2e8f0; max-height: 1px;")
+            if hasattr(self, 'main_label'):
+                self.main_label.setStyleSheet("color: #0f172a; font-size: 12px; font-weight: 650; padding: 2px 0;")
+            if hasattr(self, 'progress_bar'):
+                self.progress_bar.setStyleSheet("""
+                    QFrame {
+                        background-color: #f1f5f9;
+                        border-radius: 4px;
+                        border: 1px solid #cbd5e1;
+                    }
+                """)
+            if hasattr(self, 'activity_log'):
+                self.activity_log.setStyleSheet("""
+                    QTextEdit {
+                        background-color: #f8fafc;
+                        color: #1e293b;
+                        border: 1px solid #cbd5e1;
+                        border-radius: 8px;
+                        padding: 6px;
+                        font-size: 10px;
+                        font-family: 'Consolas', 'Cascadia Code', monospace;
+                    }
+                """)
 
     def _create_counter(self, label: str, value: str, color: str) -> dict:
         """Tạo 1 counter card nhỏ."""
@@ -198,14 +257,16 @@ class StatusPanel(QFrame):
     def add_log(self, message: str, level: str = "info"):
         """Append message vào activity log."""
         ts = datetime.now().strftime("%H:%M:%S")
+        is_dark = ThemeManager.get_instance().is_dark()
         color_map = {
-            "info": "#94a3b8",
-            "success": "#34d399",
-            "warning": "#fbbf24",
-            "error": "#f87171",
+            "info": "#94a3b8" if is_dark else "#475569",
+            "success": "#34d399" if is_dark else "#059669",
+            "warning": "#fbbf24" if is_dark else "#d97706",
+            "error": "#f87171" if is_dark else "#dc2626",
         }
-        color = color_map.get(level, "#94a3b8")
-        html = f'<span style="color: #475569">[{ts}]</span> <span style="color: {color}">{message}</span>'
+        color = color_map.get(level, "#94a3b8" if is_dark else "#475569")
+        ts_color = "#475569" if is_dark else "#94a3b8"
+        html = f'<span style="color: {ts_color}">[{ts}]</span> <span style="color: {color}">{message}</span>'
         self.activity_log.append(html)
 
         scrollbar = self.activity_log.verticalScrollBar()

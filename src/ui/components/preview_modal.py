@@ -16,6 +16,7 @@ from PyQt6.QtMultimediaWidgets import QVideoWidget
 from ...core.models.scene import format_duration
 from ...infrastructure.network.rate_limiter import get_random_ua
 from ..styles.icons import get_svg_icon, get_svg_pixmap
+from ..styles.theme_manager import ThemeManager
 from ..styles.tokens import load_stylesheet
 from .stat_box import Badge
 
@@ -40,15 +41,26 @@ class PreviewModal(QDialog):
         layout.setContentsMargins(18, 18, 18, 18)
         layout.setSpacing(12)
 
+        is_dark = ThemeManager.get_instance().is_dark()
+
         # Info bar top
         info_bar = QFrame()
-        info_bar.setStyleSheet("""
-            QFrame {
-                background: qlineargradient(x1:0, y1:0, x2:1, y2:1, stop:0 #131926, stop:1 #0c101a);
-                border: 1px solid #1f2b3f;
-                border-radius: 10px;
-            }
-        """)
+        if is_dark:
+            info_bar.setStyleSheet("""
+                QFrame {
+                    background: qlineargradient(x1:0, y1:0, x2:1, y2:1, stop:0 #131926, stop:1 #0c101a);
+                    border: 1px solid #1f2b3f;
+                    border-radius: 10px;
+                }
+            """)
+        else:
+            info_bar.setStyleSheet("""
+                QFrame {
+                    background: qlineargradient(x1:0, y1:0, x2:1, y2:1, stop:0 #ffffff, stop:1 #f8fafc);
+                    border: 1px solid #e2e8f0;
+                    border-radius: 10px;
+                }
+            """)
         info_bar.setFixedHeight(54)
         info_h = QHBoxLayout(info_bar)
         info_h.setContentsMargins(16, 6, 16, 6)
@@ -72,21 +84,23 @@ class PreviewModal(QDialog):
         if m_type == "video":
             size_text += f"   •   {format_duration(item.get('duration', 0))}"
         size_label = QLabel(size_text)
-        size_label.setStyleSheet("color: #f1f5f9; font-size: 12px; font-weight: 700; background: transparent;")
+        size_color = "#f1f5f9" if is_dark else "#0f172a"
+        size_label.setStyleSheet(f"color: {size_color}; font-size: 12px; font-weight: 700; background: transparent;")
         info_h.addWidget(size_label)
 
         info_h.addSpacing(12)
 
         # Author
         author_label = QLabel(f"Author: {item.get('author', 'Unknown')}")
-        author_label.setStyleSheet("color: #94a3b8; font-size: 12px; font-weight: 600; background: transparent;")
+        author_color = "#94a3b8" if is_dark else "#64748b"
+        author_label.setStyleSheet(f"color: {author_color}; font-size: 12px; font-weight: 600; background: transparent;")
         info_h.addWidget(author_label)
 
         info_h.addStretch()
 
         # Close button
         btn_close = QPushButton("Đóng (ESC)")
-        btn_close.setIcon(get_svg_icon("x", "#ffffff", 14))
+        btn_close.setIcon(get_svg_icon("x", "#ffffff" if is_dark else "#334155", 14))
         btn_close.setFixedWidth(120)
         btn_close.setFixedHeight(34)
         btn_close.clicked.connect(self.close)
@@ -134,15 +148,26 @@ class PreviewModal(QDialog):
 
             preview_url = item.get("preview_url") or item.get("download_url") or item.get("url")
 
+            is_dark = ThemeManager.get_instance().is_dark()
+
             # Controls
             controls = QFrame()
-            controls.setStyleSheet("""
-                QFrame {
-                    background: qlineargradient(x1:0, y1:0, x2:1, y2:1, stop:0 #131926, stop:1 #0c101a);
-                    border: 1px solid #1f2b3f;
-                    border-radius: 10px;
-                }
-            """)
+            if is_dark:
+                controls.setStyleSheet("""
+                    QFrame {
+                        background: qlineargradient(x1:0, y1:0, x2:1, y2:1, stop:0 #131926, stop:1 #0c101a);
+                        border: 1px solid #1f2b3f;
+                        border-radius: 10px;
+                    }
+                """)
+            else:
+                controls.setStyleSheet("""
+                    QFrame {
+                        background: qlineargradient(x1:0, y1:0, x2:1, y2:1, stop:0 #ffffff, stop:1 #f8fafc);
+                        border: 1px solid #e2e8f0;
+                        border-radius: 10px;
+                    }
+                """)
             controls.setFixedHeight(64)
             ch = QHBoxLayout(controls)
             ch.setContentsMargins(16, 8, 16, 8)
@@ -157,37 +182,41 @@ class PreviewModal(QDialog):
             ch.addWidget(self.play_btn)
 
             self.progress_slider = QSlider(Qt.Orientation.Horizontal)
-            self.progress_slider.setStyleSheet("""
-                QSlider::groove:horizontal {
-                    background: #1e293b;
+            slider_groove_bg = "#1e293b" if is_dark else "#e2e8f0"
+            self.progress_slider.setStyleSheet(f"""
+                QSlider::groove:horizontal {{
+                    background: {slider_groove_bg};
                     height: 6px;
                     border-radius: 3px;
-                }
-                QSlider::handle:horizontal {
+                }}
+                QSlider::handle:horizontal {{
                     background: #38bdf8;
                     border: 2px solid #0284c7;
                     width: 16px;
                     height: 16px;
                     margin: -5px 0;
                     border-radius: 8px;
-                }
-                QSlider::sub-page:horizontal {
+                }}
+                QSlider::sub-page:horizontal {{
                     background: qlineargradient(x1:0, y1:0, x2:1, y2:0,
                         stop:0 #6366f1, stop:1 #38bdf8);
                     border-radius: 3px;
-                }
+                }}
             """)
             self.progress_slider.sliderMoved.connect(self._seek)
             ch.addWidget(self.progress_slider, 1)
 
             self.time_label = QLabel("0:00 / 0:00")
-            self.time_label.setStyleSheet("""
-                color: #38bdf8;
+            time_bg = "#0c0f17" if is_dark else "#f1f5f9"
+            time_border = "#1e293b" if is_dark else "#cbd5e1"
+            time_color = "#38bdf8" if is_dark else "#0284c7"
+            self.time_label.setStyleSheet(f"""
+                color: {time_color};
                 font-size: 11px;
                 font-family: 'Consolas', monospace;
                 font-weight: 700;
-                background-color: #0c0f17;
-                border: 1px solid #1e293b;
+                background-color: {time_bg};
+                border: 1px solid {time_border};
                 border-radius: 6px;
                 padding: 4px 8px;
             """)
@@ -196,7 +225,8 @@ class PreviewModal(QDialog):
             ch.addWidget(self.time_label)
 
             vol_label = QLabel("Vol:")
-            vol_label.setStyleSheet("color: #94a3b8; font-size: 11px; font-weight: 700; background: transparent;")
+            vol_color = "#94a3b8" if is_dark else "#64748b"
+            vol_label.setStyleSheet(f"color: {vol_color}; font-size: 11px; font-weight: 700; background: transparent;")
             ch.addWidget(vol_label)
 
             self.volume_slider = QSlider(Qt.Orientation.Horizontal)

@@ -53,38 +53,65 @@ class SceneListItem(QFrame):
         self._update_style()
 
     def _update_style(self):
+        from ..styles.theme_manager import ThemeManager
+        is_dark = ThemeManager.get_instance().is_dark()
+
         if self.is_active:
-            self.setStyleSheet("""
-                SceneListItem {
+            grad_stop1 = "#4338ca" if is_dark else "#4f46e5"
+            grad_stop2 = "#6d28d9" if is_dark else "#6366f1"
+            border_color = "#818cf8" if is_dark else "#4338ca"
+            accent_left = "#06b6d4" if is_dark else "#0284c7"
+            self.setStyleSheet(f"""
+                SceneListItem {{
                     background: qlineargradient(x1:0, y1:0, x2:1, y2:0,
-                        stop:0 #4338ca, stop:1 #6d28d9);
+                        stop:0 {grad_stop1}, stop:1 {grad_stop2});
                     border-radius: 8px;
-                    border: 1px solid #818cf8;
-                    border-left: 4px solid #06b6d4;
-                }
+                    border: 1px solid {border_color};
+                    border-left: 4px solid {accent_left};
+                }}
             """)
             self.top_label.setStyleSheet("color: #ffffff; font-size: 12px; font-weight: 800; background: transparent;")
             self.bottom_label.setStyleSheet("color: rgba(255,255,255,0.95); font-size: 10px; font-weight: 700; background: transparent;")
             self.icon_lbl.setPixmap(get_svg_pixmap("film", "#ffffff", 12))
         else:
-            self.setStyleSheet("""
-                SceneListItem {
-                    background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
-                        stop:0 #111724, stop:1 #0b0f18);
-                    border: 1px solid #1f2b3f;
-                    border-radius: 8px;
-                }
-                SceneListItem:hover {
-                    background-color: #161e2e;
-                    border-color: #38bdf8;
-                }
-            """)
-            self.top_label.setStyleSheet("color: #f1f5f9; font-size: 12px; font-weight: 700; background: transparent;")
-            self.icon_lbl.setPixmap(get_svg_pixmap("film", "#818cf8", 12))
-            if self.selected_count > 0:
-                self.bottom_label.setStyleSheet("color: #34d399; font-size: 10px; font-weight: 750; background: transparent;")
+            if is_dark:
+                self.setStyleSheet("""
+                    SceneListItem {
+                        background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+                            stop:0 #111724, stop:1 #0b0f18);
+                        border: 1px solid #1f2b3f;
+                        border-radius: 8px;
+                    }
+                    SceneListItem:hover {
+                        background-color: #161e2e;
+                        border-color: #38bdf8;
+                    }
+                """)
+                self.top_label.setStyleSheet("color: #f1f5f9; font-size: 12px; font-weight: 700; background: transparent;")
+                self.icon_lbl.setPixmap(get_svg_pixmap("film", "#818cf8", 12))
+                if self.selected_count > 0:
+                    self.bottom_label.setStyleSheet("color: #34d399; font-size: 10px; font-weight: 750; background: transparent;")
+                else:
+                    self.bottom_label.setStyleSheet("color: #94a3b8; font-size: 10px; background: transparent;")
             else:
-                self.bottom_label.setStyleSheet("color: #94a3b8; font-size: 10px; background: transparent;")
+                self.setStyleSheet("""
+                    SceneListItem {
+                        background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+                            stop:0 #ffffff, stop:1 #f8fafc);
+                        border: 1px solid #e2e8f0;
+                        border-radius: 8px;
+                    }
+                    SceneListItem:hover {
+                        background-color: #f1f5f9;
+                        border-color: #6366f1;
+                    }
+                """)
+                self.top_label.setStyleSheet("color: #0f172a; font-size: 12px; font-weight: 700; background: transparent;")
+                self.icon_lbl.setPixmap(get_svg_pixmap("film", "#4f46e5", 12))
+                if self.selected_count > 0:
+                    self.bottom_label.setStyleSheet("color: #059669; font-size: 10px; font-weight: 750; background: transparent;")
+                else:
+                    self.bottom_label.setStyleSheet("color: #64748b; font-size: 10px; background: transparent;")
 
     def set_active(self, active: bool):
         self.is_active = active

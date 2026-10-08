@@ -11,6 +11,7 @@ from PyQt6.QtGui import QCursor, QPixmap
 from ...core.constants import CARD_WIDTH, CARD_HEIGHT, THUMB_WIDTH, THUMB_HEIGHT
 from ...core.i18n import t
 from ...infrastructure.media.thumbnail_cache import add_duration_to_pixmap
+from ..styles.theme_manager import ThemeManager
 from .stat_box import Badge
 
 
@@ -85,13 +86,6 @@ class ThumbnailCard(QFrame):
         # Thumbnail label
         self.thumb_label = QLabel()
         self.thumb_label.setFixedSize(THUMB_WIDTH, THUMB_HEIGHT)
-        self.thumb_label.setStyleSheet("""
-            background-color: #0c0f17;
-            border-radius: 8px;
-            color: #64748b;
-            font-size: 11px;
-            font-weight: 600;
-        """)
         self.thumb_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.thumb_label.setText("Loading...")
         self.thumb_label.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
@@ -127,34 +121,12 @@ class ThumbnailCard(QFrame):
         self.checkbox = QCheckBox(t("downloader.select_media"))
         self.checkbox.setChecked(is_selected)
         self.checkbox.toggled.connect(self._on_check_changed)
-        self.checkbox.setStyleSheet("""
-            QCheckBox {
-                color: #e2e8f0;
-                font-size: 11px;
-                font-weight: 700;
-                padding: 4px 8px;
-                background-color: #1a2233;
-                border-radius: 6px;
-                spacing: 6px;
-            }
-            QCheckBox:hover { background-color: #222d42; color: #ffffff; }
-            QCheckBox::indicator {
-                width: 16px;
-                height: 16px;
-                border-radius: 4px;
-                border: 1.5px solid #3b4d6e;
-                background-color: #0c0f17;
-            }
-            QCheckBox::indicator:checked {
-                background-color: #10b981;
-                border-color: #34d399;
-            }
-            QCheckBox::indicator:hover {
-                border-color: #818cf8;
-            }
-        """)
         self.checkbox.setFixedHeight(28)
         layout.addWidget(self.checkbox)
+
+        # Apply initial styling and listen to theme changes
+        self._update_style()
+        ThemeManager.get_instance().themeChanged.connect(self._update_style)
 
     def _on_thumb_clicked(self, event):
         if self.thumb_failed:
@@ -173,31 +145,132 @@ class ThumbnailCard(QFrame):
             self.checkbox.toggle()
         super().mousePressEvent(event)
 
-    def _update_style(self):
+    def _update_style(self, theme_name: str = ""):
+        is_dark = ThemeManager.get_instance().is_dark()
         if self.is_selected:
-            self.setStyleSheet("""
-                #card {
-                    background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #0f2c20, stop:1 #0a1c15);
-                    border: 2px solid #10b981;
-                    border-radius: 12px;
-                }
-                #card:hover {
-                    border-color: #34d399;
-                    background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #133829, stop:1 #0c231a);
-                }
-            """)
+            if is_dark:
+                self.setStyleSheet("""
+                    #card {
+                        background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #0f2c20, stop:1 #0a1c15);
+                        border: 2px solid #10b981;
+                        border-radius: 12px;
+                    }
+                    #card:hover {
+                        border-color: #34d399;
+                        background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #133829, stop:1 #0c231a);
+                    }
+                """)
+            else:
+                self.setStyleSheet("""
+                    #card {
+                        background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #ecfdf5, stop:1 #d1fae5);
+                        border: 2px solid #10b981;
+                        border-radius: 12px;
+                    }
+                    #card:hover {
+                        border-color: #059669;
+                        background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #d1fae5, stop:1 #a7f3d0);
+                    }
+                """)
         else:
-            self.setStyleSheet("""
-                #card {
-                    background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #121826, stop:1 #0c101a);
-                    border: 1px solid #1f2b3f;
-                    border-radius: 12px;
-                }
-                #card:hover {
-                    border-color: #6366f1;
-                    background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #151d2d, stop:1 #0e131d);
-                }
-            """)
+            if is_dark:
+                self.setStyleSheet("""
+                    #card {
+                        background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #121826, stop:1 #0c101a);
+                        border: 1px solid #1f2b3f;
+                        border-radius: 12px;
+                    }
+                    #card:hover {
+                        border-color: #6366f1;
+                        background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #151d2d, stop:1 #0e131d);
+                    }
+                """)
+            else:
+                self.setStyleSheet("""
+                    #card {
+                        background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #ffffff, stop:1 #f8fafc);
+                        border: 1px solid #e2e8f0;
+                        border-radius: 12px;
+                    }
+                    #card:hover {
+                        border-color: #6366f1;
+                        background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #f8fafc, stop:1 #f1f5f9);
+                    }
+                """)
+
+        if hasattr(self, 'thumb_label'):
+            if is_dark:
+                self.thumb_label.setStyleSheet("""
+                    background-color: #0c0f17;
+                    border-radius: 8px;
+                    color: #64748b;
+                    font-size: 11px;
+                    font-weight: 600;
+                """)
+            else:
+                self.thumb_label.setStyleSheet("""
+                    background-color: #e2e8f0;
+                    border-radius: 8px;
+                    color: #64748b;
+                    font-size: 11px;
+                    font-weight: 600;
+                """)
+
+        if hasattr(self, 'checkbox'):
+            if is_dark:
+                self.checkbox.setStyleSheet("""
+                    QCheckBox {
+                        color: #e2e8f0;
+                        font-size: 11px;
+                        font-weight: 700;
+                        padding: 4px 8px;
+                        background-color: #1a2233;
+                        border-radius: 6px;
+                        spacing: 6px;
+                    }
+                    QCheckBox:hover { background-color: #222d42; color: #ffffff; }
+                    QCheckBox::indicator {
+                        width: 16px;
+                        height: 16px;
+                        border-radius: 4px;
+                        border: 1.5px solid #3b4d6e;
+                        background-color: #0c0f17;
+                    }
+                    QCheckBox::indicator:checked {
+                        background-color: #10b981;
+                        border-color: #34d399;
+                    }
+                    QCheckBox::indicator:hover {
+                        border-color: #818cf8;
+                    }
+                """)
+            else:
+                self.checkbox.setStyleSheet("""
+                    QCheckBox {
+                        color: #1e293b;
+                        font-size: 11px;
+                        font-weight: 700;
+                        padding: 4px 8px;
+                        background-color: #f1f5f9;
+                        border-radius: 6px;
+                        spacing: 6px;
+                    }
+                    QCheckBox:hover { background-color: #e2e8f0; color: #0f172a; }
+                    QCheckBox::indicator {
+                        width: 16px;
+                        height: 16px;
+                        border-radius: 4px;
+                        border: 1.5px solid #cbd5e1;
+                        background-color: #ffffff;
+                    }
+                    QCheckBox::indicator:checked {
+                        background-color: #10b981;
+                        border-color: #059669;
+                    }
+                    QCheckBox::indicator:hover {
+                        border-color: #6366f1;
+                    }
+                """)
 
     def _on_check_changed(self, checked: bool):
         self.is_selected = checked

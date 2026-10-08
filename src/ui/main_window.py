@@ -22,6 +22,7 @@ from ..infrastructure.media.thumbnail_cache import ThumbnailCache
 from ..infrastructure.watcher.downloads_watcher import DownloadsWatcher
 from .components.thumbnail_card import ThumbnailLoader
 from .styles.tokens import load_stylesheet
+from .styles.theme_manager import ThemeManager
 from .styles.icons import get_svg_icon
 from .tabs import DownloaderTab, CutMixTab, VoiceTab, SceneVoiceTab, AutoTab, WorkflowTab
 from .dialogs import SettingsDialog, UpdateDialog
@@ -46,6 +47,12 @@ class AutoStockMainWindow(QMainWindow):
         self.i18n = I18nService.get_instance(default_locale=saved_locale)
         self.i18n.set_locale(saved_locale)
         self.i18n.languageChanged.connect(self._on_language_changed)
+
+        # Enterprise Theme Manager (Dark / Light Mode)
+        saved_theme = self.config.get("theme", "dark")
+        self.theme_manager = ThemeManager.get_instance(default_theme=saved_theme)
+        self.theme_manager.set_theme(saved_theme)
+        self.theme_manager.themeChanged.connect(self._on_theme_changed)
 
         self._update_window_title()
 
@@ -167,51 +174,19 @@ class AutoStockMainWindow(QMainWindow):
 
         stepper_layout.addStretch()
 
-        btn_quick_load = QPushButton("Nạp Kịch Bản")
-        btn_quick_load.setIcon(get_svg_icon("file-text", "#38bdf8", 12))
-        btn_quick_load.setToolTip("Nạp kịch bản Claude AI JSON (Ctrl+O)")
-        btn_quick_load.setFixedHeight(26)
-        btn_quick_load.setStyleSheet("""
-            QPushButton {
-                background: #121a29;
-                color: #38bdf8;
-                border: 1px solid #1f2b3f;
-                border-radius: 6px;
-                font-size: 10px;
-                font-weight: 700;
-                padding: 0 8px;
-            }
-            QPushButton:hover {
-                background: #1a2438;
-                border-color: #38bdf8;
-                color: #ffffff;
-            }
-        """)
-        btn_quick_load.clicked.connect(self._prompt_load_json)
-        stepper_layout.addWidget(btn_quick_load)
+        self.btn_quick_load = QPushButton("Nạp Kịch Bản")
+        self.btn_quick_load.setIcon(get_svg_icon("file-text", "#38bdf8", 12))
+        self.btn_quick_load.setToolTip("Nạp kịch bản Claude AI JSON (Ctrl+O)")
+        self.btn_quick_load.setFixedHeight(26)
+        self.btn_quick_load.clicked.connect(self._prompt_load_json)
+        stepper_layout.addWidget(self.btn_quick_load)
 
-        btn_quick_out = QPushButton("Thư Mục Xuất")
-        btn_quick_out.setIcon(get_svg_icon("folder", "#34d399", 12))
-        btn_quick_out.setToolTip("Mở thư mục xuất sản phẩm (Ctrl+Shift+O)")
-        btn_quick_out.setFixedHeight(26)
-        btn_quick_out.setStyleSheet("""
-            QPushButton {
-                background: #121a29;
-                color: #34d399;
-                border: 1px solid #1f2b3f;
-                border-radius: 6px;
-                font-size: 10px;
-                font-weight: 700;
-                padding: 0 8px;
-            }
-            QPushButton:hover {
-                background: #1a2438;
-                border-color: #34d399;
-                color: #ffffff;
-            }
-        """)
-        btn_quick_out.clicked.connect(self._open_output_folder)
-        stepper_layout.addWidget(btn_quick_out)
+        self.btn_quick_out = QPushButton("Thư Mục Xuất")
+        self.btn_quick_out.setIcon(get_svg_icon("folder", "#34d399", 12))
+        self.btn_quick_out.setToolTip("Mở thư mục xuất sản phẩm (Ctrl+Shift+O)")
+        self.btn_quick_out.setFixedHeight(26)
+        self.btn_quick_out.clicked.connect(self._open_output_folder)
+        stepper_layout.addWidget(self.btn_quick_out)
 
         root_layout.addWidget(self.workflow_stepper)
 
@@ -219,7 +194,7 @@ class AutoStockMainWindow(QMainWindow):
         self.main_tabs.currentChanged.connect(self._on_tab_changed)
         root_layout.addWidget(self.main_tabs, 1)
 
-        # Tab corner container: Update Status & Language toggle buttons
+        # Tab corner container: Update Status, Language toggle, and Theme toggle buttons
         corner_widget = QWidget()
         corner_layout = QHBoxLayout(corner_widget)
         corner_layout.setContentsMargins(0, 0, 8, 0)
@@ -231,24 +206,13 @@ class AutoStockMainWindow(QMainWindow):
         self.btn_update.setText(f" v{APP_VERSION}")
         self.btn_update.setToolTip(t("update.check_btn"))
         self.btn_update.setFixedHeight(30)
-        self.btn_update.setStyleSheet("""
-            QPushButton {
-                background: #111724;
-                color: #94a3b8;
-                border: 1px solid #1f2b3f;
-                border-radius: 8px;
-                padding: 0 10px;
-                font-size: 11px;
-                font-weight: 700;
-            }
-            QPushButton:hover {
-                background: #172133;
-                border-color: #38ef7d;
-                color: #38ef7d;
-            }
-        """)
         self.btn_update.clicked.connect(self._on_update_btn_clicked)
         corner_layout.addWidget(self.btn_update)
+
+        self.btn_theme = QPushButton()
+        self.btn_theme.setFixedHeight(30)
+        self.btn_theme.clicked.connect(self._toggle_theme)
+        corner_layout.addWidget(self.btn_theme)
 
         self.btn_lang = QPushButton()
         self.btn_lang.setIcon(get_svg_icon("globe", "#58a6ff", 14))
@@ -257,22 +221,6 @@ class AutoStockMainWindow(QMainWindow):
         self.btn_lang.setText(f" {curr_loc}")
         self.btn_lang.setToolTip(t("app.switch_lang"))
         self.btn_lang.setFixedHeight(30)
-        self.btn_lang.setStyleSheet("""
-            QPushButton {
-                background: #111724;
-                color: #58a6ff;
-                border: 1px solid #1f2b3f;
-                border-radius: 8px;
-                padding: 0 10px;
-                font-size: 11px;
-                font-weight: 800;
-            }
-            QPushButton:hover {
-                background: #172133;
-                border-color: #58a6ff;
-                color: #ffffff;
-            }
-        """)
         self.btn_lang.clicked.connect(self._toggle_language)
         corner_layout.addWidget(self.btn_lang)
 
@@ -330,6 +278,8 @@ class AutoStockMainWindow(QMainWindow):
 
         # Setup Global Productivity Shortcuts
         self._setup_shortcuts()
+        self._apply_stepper_theme()
+        self._update_theme_btn()
 
     def _setup_shortcuts(self):
         from PyQt6.QtGui import QKeySequence, QShortcut
@@ -420,6 +370,226 @@ class AutoStockMainWindow(QMainWindow):
             self.downloader_tab.start_search()
         elif current_idx == 5:
             self._run_workflow()
+
+    def _toggle_theme(self):
+        """Toggles between Dark and Light mode and persists to SQLite."""
+        new_theme = self.theme_manager.toggle_theme()
+        self.config["theme"] = new_theme
+        if self.config_repo:
+            try:
+                self.config_repo.save_config(self.config)
+            except Exception:
+                pass
+        mode_text = "Giao diện Sáng (Crystal Light)" if new_theme == "light" else "Giao diện Tối (Obsidian Dark)"
+        ToastNotification.show_toast(self, f"Đã chuyển sang {mode_text}", "info", 1800)
+
+    def _on_theme_changed(self, theme_name: str):
+        """Reactively updates application stylesheet and UI controls on theme change."""
+        self.setStyleSheet(self.theme_manager.get_stylesheet(theme_name))
+        self._update_theme_btn()
+        self._apply_stepper_theme()
+
+    def _update_theme_btn(self):
+        """Updates the theme toggle button appearance and icon."""
+        if not hasattr(self, "btn_theme"):
+            return
+        is_dark = self.theme_manager.is_dark()
+        icon_name = "moon" if is_dark else "sun"
+        icon_color = "#fbbf24" if is_dark else "#f59e0b"
+        self.btn_theme.setIcon(get_svg_icon(icon_name, icon_color, 14))
+        self.btn_theme.setIconSize(QSize(14, 14))
+        self.btn_theme.setText(" Tối" if is_dark else " Sáng")
+        self.btn_theme.setToolTip(
+            "Chuyển sang giao diện Sáng (Light Mode)" if is_dark else "Chuyển sang giao diện Tối (Dark Mode)"
+        )
+        if is_dark:
+            self.btn_theme.setStyleSheet("""
+                QPushButton {
+                    background: #111724;
+                    color: #fbbf24;
+                    border: 1px solid #1f2b3f;
+                    border-radius: 8px;
+                    padding: 0 10px;
+                    font-size: 11px;
+                    font-weight: 800;
+                }
+                QPushButton:hover {
+                    background: #172133;
+                    border-color: #fbbf24;
+                    color: #ffffff;
+                }
+            """)
+        else:
+            self.btn_theme.setStyleSheet("""
+                QPushButton {
+                    background: #ffffff;
+                    color: #d97706;
+                    border: 1px solid #cbd5e1;
+                    border-radius: 8px;
+                    padding: 0 10px;
+                    font-size: 11px;
+                    font-weight: 800;
+                }
+                QPushButton:hover {
+                    background: #fef3c7;
+                    border-color: #f59e0b;
+                    color: #b45309;
+                }
+            """)
+
+    def _apply_stepper_theme(self):
+        """Theme-aware styling for workflow stepper and top action buttons."""
+        if not hasattr(self, "workflow_stepper"):
+            return
+        is_dark = self.theme_manager.is_dark()
+        stepper_bg = "qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #0f1523, stop:0.5 #141c2e, stop:1 #0f1523)" if is_dark else "#ffffff"
+        stepper_border = "#1f2b3f" if is_dark else "#e2e8f0"
+        self.workflow_stepper.setStyleSheet(f"""
+            QFrame#workflowStepper {{
+                background: {stepper_bg};
+                border-bottom: 1px solid {stepper_border};
+            }}
+        """)
+
+        btn_hover_bg = "#172133" if is_dark else "#f1f5f9"
+        btn_hover_fg = "#ffffff" if is_dark else "#0f172a"
+        btn_checked_bg = "#1e293b" if is_dark else "#e0e7ff"
+        text_color = "#94a3b8" if is_dark else "#64748b"
+
+        steps_colors = ["#4ec9b0", "#58a6ff", "#bc8cff", "#f0883e", "#e3b341", "#58a6ff"]
+        if hasattr(self, "step_buttons"):
+            for idx, btn in enumerate(self.step_buttons):
+                color = steps_colors[idx]
+                btn.setStyleSheet(f"""
+                    QPushButton {{
+                        background: transparent;
+                        color: {text_color};
+                        border: 1px solid transparent;
+                        border-radius: 6px;
+                        font-size: 10px;
+                        font-weight: 700;
+                        padding: 0 8px;
+                    }}
+                    QPushButton:hover {{
+                        background: {btn_hover_bg};
+                        color: {btn_hover_fg};
+                    }}
+                    QPushButton:checked {{
+                        background: {btn_checked_bg};
+                        color: {color};
+                        border: 1px solid {color};
+                    }}
+                """)
+
+        quick_bg = "#121a29" if is_dark else "#ffffff"
+        quick_border = "#1f2b3f" if is_dark else "#cbd5e1"
+        quick_hover_bg = "#1a2438" if is_dark else "#f1f5f9"
+
+        if hasattr(self, "btn_quick_load"):
+            self.btn_quick_load.setStyleSheet(f"""
+                QPushButton {{
+                    background: {quick_bg};
+                    color: #0284c7;
+                    border: 1px solid {quick_border};
+                    border-radius: 6px;
+                    font-size: 10px;
+                    font-weight: 700;
+                    padding: 0 8px;
+                }}
+                QPushButton:hover {{
+                    background: {quick_hover_bg};
+                    border-color: #0284c7;
+                    color: #ffffff;
+                }}
+            """)
+
+        if hasattr(self, "btn_quick_out"):
+            self.btn_quick_out.setStyleSheet(f"""
+                QPushButton {{
+                    background: {quick_bg};
+                    color: #059669;
+                    border: 1px solid {quick_border};
+                    border-radius: 6px;
+                    font-size: 10px;
+                    font-weight: 700;
+                    padding: 0 8px;
+                }}
+                QPushButton:hover {{
+                    background: {quick_hover_bg};
+                    border-color: #059669;
+                    color: #ffffff;
+                }}
+            """)
+
+        if hasattr(self, "btn_update"):
+            if is_dark:
+                self.btn_update.setStyleSheet("""
+                    QPushButton {
+                        background: #111724;
+                        color: #94a3b8;
+                        border: 1px solid #1f2b3f;
+                        border-radius: 8px;
+                        padding: 0 10px;
+                        font-size: 11px;
+                        font-weight: 700;
+                    }
+                    QPushButton:hover {
+                        background: #172133;
+                        border-color: #38ef7d;
+                        color: #38ef7d;
+                    }
+                """)
+            else:
+                self.btn_update.setStyleSheet("""
+                    QPushButton {
+                        background: #ffffff;
+                        color: #059669;
+                        border: 1px solid #cbd5e1;
+                        border-radius: 8px;
+                        padding: 0 10px;
+                        font-size: 11px;
+                        font-weight: 700;
+                    }
+                    QPushButton:hover {
+                        background: #ecfdf5;
+                        border-color: #10b981;
+                    }
+                """)
+
+        if hasattr(self, "btn_lang"):
+            if is_dark:
+                self.btn_lang.setStyleSheet("""
+                    QPushButton {
+                        background: #111724;
+                        color: #58a6ff;
+                        border: 1px solid #1f2b3f;
+                        border-radius: 8px;
+                        padding: 0 10px;
+                        font-size: 11px;
+                        font-weight: 800;
+                    }
+                    QPushButton:hover {
+                        background: #172133;
+                        border-color: #58a6ff;
+                        color: #ffffff;
+                    }
+                """)
+            else:
+                self.btn_lang.setStyleSheet("""
+                    QPushButton {
+                        background: #ffffff;
+                        color: #4f46e5;
+                        border: 1px solid #cbd5e1;
+                        border-radius: 8px;
+                        padding: 0 10px;
+                        font-size: 11px;
+                        font-weight: 800;
+                    }
+                    QPushButton:hover {
+                        background: #eef2ff;
+                        border-color: #6366f1;
+                    }
+                """)
 
     def _toggle_language(self):
         """Switches between VI and EN, persisting to SQLite."""

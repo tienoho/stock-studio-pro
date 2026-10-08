@@ -5,6 +5,7 @@ Provides unified enterprise design system tokens for Obsidian Dark & Electric Ne
 
 import sys
 from pathlib import Path
+from typing import Optional
 
 # Core Surface & Background Tokens
 COLOR_BG_ROOT = "#080b11"         # Deep Obsidian window base
@@ -49,15 +50,33 @@ STAT_COLOR_RED = "qlineargradient(x1:0, y1:0, x2:1, y2:1, stop:0 #831843, stop:1
 STAT_COLOR_GREEN = "qlineargradient(x1:0, y1:0, x2:1, y2:1, stop:0 #064e3b, stop:1 #047857)"
 
 
-def load_stylesheet() -> str:
-    """Load QSS stylesheet from disk with PyInstaller bundle support."""
-    qss_path = Path(__file__).parent / "theme.qss"
-    if not qss_path.exists() and hasattr(sys, "_MEIPASS"):
-        qss_path = Path(sys._MEIPASS) / "src" / "ui" / "styles" / "theme.qss"
-    if qss_path.exists():
-        try:
-            return qss_path.read_text(encoding="utf-8")
-        except Exception:
-            pass
-    return ""
+# Light Surface & Background Tokens (Crystal Light & Indigo Slate)
+LIGHT_COLOR_BG_ROOT = "#f8fafc"
+LIGHT_COLOR_BG_SURFACE = "#ffffff"
+LIGHT_COLOR_BG_CARD = "#ffffff"
+LIGHT_COLOR_BG_CARD_SUBTLE = "#f1f5f9"
+LIGHT_COLOR_BG_INPUT = "#ffffff"
+LIGHT_COLOR_BG_HOVER = "#f1f5f9"
+
+# Light Border & Stroke Tokens
+LIGHT_COLOR_BORDER_SUBTLE = "#e2e8f0"
+LIGHT_COLOR_BORDER_CARD = "#e2e8f0"
+LIGHT_COLOR_BORDER_HOVER = "#cbd5e1"
+LIGHT_COLOR_BORDER_FOCUS = "#4f46e5"
+
+# Light Text & Typography Tokens
+LIGHT_COLOR_TEXT_PRIMARY = "#0f172a"
+LIGHT_COLOR_TEXT_SECONDARY = "#334155"
+LIGHT_COLOR_TEXT_MUTED = "#64748b"
+LIGHT_COLOR_TEXT_DIM = "#94a3b8"
+
+
+def load_stylesheet(theme: Optional[str] = None) -> str:
+    """Load QSS stylesheet from disk with PyInstaller and ThemeManager support."""
+    from .theme_manager import ThemeManager
+    mgr = ThemeManager.get_instance()
+    if isinstance(theme, str):
+        return mgr.get_stylesheet(theme)
+    return mgr.get_stylesheet()
+
 

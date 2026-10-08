@@ -27,6 +27,7 @@ from ...core.constants import (
 from ...core.i18n import t
 from ...core.models.scene import extract_scenes_from_json
 from ..styles.icons import get_svg_icon, get_svg_pixmap
+from ..styles.theme_manager import ThemeManager
 from ...application.services.key_manager import KeyManager
 from ..components.api_key_manager_widget import ApiKeyManagerWidget
 from ..components.stat_box import StatBox
@@ -103,6 +104,9 @@ class DownloaderTab(QWidget):
         # Connect downloads watcher if provided
         if self.downloads_watcher:
             self.downloads_watcher.signals.fileDetected.connect(self._on_download_detected)
+
+        # Connect theme changes to refresh dynamic styling
+        ThemeManager.get_instance().themeChanged.connect(self._on_theme_changed)
 
     # ═══════════════════════════════════════════════════════════════
     # UI CONSTRUCTION (4 COLUMNS)
@@ -1327,6 +1331,15 @@ class DownloaderTab(QWidget):
                 self.scenes_scroll.ensureWidgetVisible(item)
                 break
 
+    def _on_theme_changed(self, theme_name: str):
+        """Refreshes scene card styles and info panel when theme toggles."""
+        if self.current_scene_id is not None:
+            sc = next((s for s in self.scenes if str(s.get("id")) == str(self.current_scene_id)), None)
+            if sc:
+                self._update_scene_info_panel(sc)
+        for widget in self.scene_list_widgets:
+            widget._update_style()
+
     def _update_scene_info_panel(self, scene: dict):
         time_start = scene.get("time_start", "?")
         time_end = scene.get("time_end", "?")
@@ -1338,47 +1351,63 @@ class DownloaderTab(QWidget):
         mood = scene.get("mood", "")
         shot = scene.get("shot_type", "")
 
+        is_dark = ThemeManager.get_instance().is_dark()
+        text_primary = "#cbd5e1" if is_dark else "#1e293b"
+        text_muted = "#94a3b8" if is_dark else "#64748b"
+        quote_bg = "#111724" if is_dark else "#f8fafc"
+        quote_border = "#6366f1"
+        quote_title = "#f8fafc" if is_dark else "#334155"
+        quote_text = "#f1f5f9" if is_dark else "#0f172a"
+        time_color = "#38bdf8" if is_dark else "#0284c7"
+        badge_bg = "rgba(99, 102, 241, 0.25)" if is_dark else "rgba(99, 102, 241, 0.12)"
+        badge_border = "rgba(99, 102, 241, 0.4)" if is_dark else "rgba(99, 102, 241, 0.3)"
+        chip_bg = "#182234" if is_dark else "#f1f5f9"
+        chip_border = "#243048" if is_dark else "#cbd5e1"
+        chip_color = "#a78bfa" if is_dark else "#4f46e5"
+        mood_color = "#fbbf24" if is_dark else "#d97706"
+        shot_color = "#38bdf8" if is_dark else "#0284c7"
+
         html = f"""
-        <div style="font-family: 'Segoe UI', sans-serif; font-size: 11px; line-height: 1.5; color: #cbd5e1;">
+        <div style="font-family: 'Segoe UI', sans-serif; font-size: 11px; line-height: 1.5; color: {text_primary};">
             <div style="margin-bottom: 8px;">
-                <span style="background: rgba(99, 102, 241, 0.25); color: #818cf8; font-weight: 800; font-size: 10px; padding: 2px 6px; border-radius: 4px; border: 1px solid rgba(99, 102, 241, 0.4);">SCENE #{scene.get('id')}</span>
-                <span style="color: #38bdf8; font-weight: 700; margin-left: 6px;">⏱ {time_start} → {time_end} ({duration}s)</span>
+                <span style="background: {badge_bg}; color: #818cf8; font-weight: 800; font-size: 10px; padding: 2px 6px; border-radius: 4px; border: 1px solid {badge_border};">SCENE #{scene.get('id')}</span>
+                <span style="color: {time_color}; font-weight: 700; margin-left: 6px;">⏱ {time_start} → {time_end} ({duration}s)</span>
             </div>
         """
         if dialogue:
             html += f"""
-            <div style="background: #111724; border-left: 3px solid #6366f1; border-radius: 4px; padding: 6px 8px; margin: 6px 0;">
-                <b style="color: #f8fafc; font-size: 10px; text-transform: uppercase;">Lời thoại:</b><br/>
-                <span style="color: #f1f5f9; font-style: italic;">{dialogue}</span>
+            <div style="background: {quote_bg}; border-left: 3px solid {quote_border}; border-radius: 4px; padding: 6px 8px; margin: 6px 0; border-top: 1px solid {'#1e293b' if is_dark else '#e2e8f0'}; border-right: 1px solid {'#1e293b' if is_dark else '#e2e8f0'}; border-bottom: 1px solid {'#1e293b' if is_dark else '#e2e8f0'};">
+                <b style="color: {quote_title}; font-size: 10px; text-transform: uppercase;">Lời thoại:</b><br/>
+                <span style="color: {quote_text}; font-style: italic;">{dialogue}</span>
             </div>
             """
         if desc_vi:
             html += f"""
             <div style="margin: 6px 0;">
-                <b style="color: #94a3b8; font-size: 10px; text-transform: uppercase;">Mô tả cảnh:</b><br/>
-                <span style="color: #cbd5e1;">{desc_vi}</span>
+                <b style="color: {text_muted}; font-size: 10px; text-transform: uppercase;">Mô tả cảnh:</b><br/>
+                <span style="color: {text_primary};">{desc_vi}</span>
             </div>
             """
         if context:
             html += f"""
             <div style="margin: 6px 0;">
-                <b style="color: #94a3b8; font-size: 10px; text-transform: uppercase;">Bối cảnh:</b><br/>
-                <span style="color: #cbd5e1;">{context}</span>
+                <b style="color: {text_muted}; font-size: 10px; text-transform: uppercase;">Bối cảnh:</b><br/>
+                <span style="color: {text_primary};">{context}</span>
             </div>
             """
         if primary:
-            chips = "".join([f"<span style='background: #182234; color: #a78bfa; border: 1px solid #243048; border-radius: 4px; padding: 1px 5px; margin-right: 4px; font-weight: 600; font-size: 10px;'>{k}</span>" for k in primary[:5]])
+            chips = "".join([f"<span style='background: {chip_bg}; color: {chip_color}; border: 1px solid {chip_border}; border-radius: 4px; padding: 1px 5px; margin-right: 4px; font-weight: 600; font-size: 10px;'>{k}</span>" for k in primary[:5]])
             html += f"""
             <div style="margin-top: 8px;">
-                <b style="color: #818cf8; font-size: 10px; text-transform: uppercase;">Từ khóa chính:</b><br/>
+                <b style="color: {'#818cf8' if is_dark else '#4f46e5'}; font-size: 10px; text-transform: uppercase;">Từ khóa chính:</b><br/>
                 <div style="margin-top: 3px;">{chips}</div>
             </div>
             """
         extras = []
-        if mood: extras.append(f"Cảm xúc: <b style='color:#fbbf24;'>{mood}</b>")
-        if shot: extras.append(f"Góc quay: <b style='color:#38bdf8;'>{shot}</b>")
+        if mood: extras.append(f"Cảm xúc: <b style='color:{mood_color};'>{mood}</b>")
+        if shot: extras.append(f"Góc quay: <b style='color:{shot_color};'>{shot}</b>")
         if extras:
-            html += f"<div style='margin-top: 6px; font-size: 10px; color: #94a3b8;'>{' • '.join(extras)}</div>"
+            html += f"<div style='margin-top: 6px; font-size: 10px; color: {text_muted};'>{' • '.join(extras)}</div>"
 
         html += "</div>"
         self.scene_info_panel.setHtml(html)
