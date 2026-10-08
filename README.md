@@ -54,7 +54,7 @@ stock-studio-pro/
 ├── run_tests.py                     # 🧪 Trình chạy tự động toàn bộ Unit Tests
 ├── AutoStockStudio.spec             # ⚙️ Cấu hình đóng gói PyInstaller
 ├── requirements.txt                 # 📋 Danh sách thư viện Python
-├── tests/                           # 🧪 Bộ Unit Test tự động (63 tests)
+├── tests/                           # 🧪 Bộ Unit Test tự động (70 tests)
 │   ├── test_core_models.py
 │   ├── test_part_merger.py
 │   ├── test_rate_limiter.py

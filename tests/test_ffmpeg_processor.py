@@ -20,11 +20,21 @@ class TestFFmpegProcessor(unittest.TestCase):
         for p in invalid:
             self.assertNotIn(p.suffix.lower(), FFmpegProcessor.VIDEO_EXTENSIONS)
 
+    def test_concat_audio_empty(self):
+        ok, msg = self.processor.concat_audio([], Path("dummy.mp3"))
+        self.assertFalse(ok)
+        self.assertIn("rỗng", msg.lower())
+
+    def test_concat_clips_empty(self):
+        ok, msg = self.processor.concat_clips([], Path("dummy.mp4"))
+        self.assertFalse(ok)
+        self.assertIn("rỗng", msg.lower())
+
     def test_ffmpeg_exists_method(self):
-        # Result depends on whether ffmpeg is installed in system PATH
         res = self.processor.ffmpeg_exists()
         self.assertIsInstance(res, bool)
 
 
 if __name__ == "__main__":
     unittest.main()
+

@@ -17,9 +17,11 @@ from PyQt6.QtWidgets import (
     QPlainTextEdit, QTabWidget, QListWidget, QFileDialog, QMessageBox,
     QApplication, QProgressBar, QCheckBox
 )
-from PyQt6.QtCore import pyqtSignal, QThread
+from PyQt6.QtCore import pyqtSignal, QThread, QUrl
+from PyQt6.QtMultimedia import QMediaPlayer, QAudioOutput
 
-from ...core.models.scene import srt_time_to_seconds
+from ...core.models.scene import srt_time_to_seconds, extract_scenes_from_json
+from ...infrastructure.media.ffmpeg_processor import FFmpegProcessor
 from ...application.services.edge_tts_service import EdgeTTSService, AVAILABLE_VOICES
 from ..styles.icons import get_svg_icon, get_svg_pixmap
 
@@ -113,13 +115,17 @@ class VoiceTab(QWidget):
     """Voice TXT generation and SRT stitching studio."""
 
     log_message = pyqtSignal(str)
+    finished = pyqtSignal(bool, str)
 
     def __init__(self, tool_root_fn=None, config=None, save_config_fn=None, parent=None):
         super().__init__(parent)
+        self.tool_root_fn = tool_root_fn or self._default_tool_root
         self.config = config or {}
         self.save_config_fn = save_config_fn
-        self.tool_root_fn = tool_root_fn or self._default_tool_root
         self.worker: Optional[VoiceGenerationWorker] = None
+        self.audio_output = QAudioOutput()
+        self.player = QMediaPlayer()
+        self.player.setAudioOutput(self.audio_output)
 
         root = QHBoxLayout(self)
         root.setContentsMargins(20, 20, 20, 20)
@@ -221,7 +227,14 @@ class VoiceTab(QWidget):
 
         self.lbl_edge_voice = QLabel("Giọng đọc AI:")
         txt_grid.addWidget(self.lbl_edge_voice, 4, 0)
-        txt_grid.addWidget(self.edge_voice_combo, 4, 1, 1, 3)
+        edge_voice_box = QHBoxLayout()
+        edge_voice_box.addWidget(self.edge_voice_combo, 1)
+        self.btn_preview_voice = QPushButton("Nghe Thử")
+        self.btn_preview_voice.setIcon(get_svg_icon("play", "#4ec9b0", 14))
+        self.btn_preview_voice.setToolTip("Nghe thử một câu mẫu của giọng đọc đã chọn")
+        self.btn_preview_voice.clicked.connect(self._test_selected_voice)
+        edge_voice_box.addWidget(self.btn_preview_voice)
+        txt_grid.addLayout(edge_voice_box, 4, 1, 1, 3)
 
         self.lbl_custom_voice = QLabel("Mã giọng / API Key:")
         txt_grid.addWidget(self.lbl_custom_voice, 5, 0)
@@ -289,8 +302,13 @@ class VoiceTab(QWidget):
         merge = QPushButton("Ghép Phụ Đề")
         merge.setIcon(get_svg_icon("layers", "#ffffff", 14))
         merge.setObjectName("primaryBtn")
-        merge.clicked.connect(self.merge_srt_native)
+        merge.clicked.connect(lambda: self.merge_srt_native(False))
         row.addWidget(merge)
+
+        merge_audio_btn = QPushButton("Ghép Master Audio")
+        merge_audio_btn.setIcon(get_svg_icon("volume", "#ffffff", 14))
+        merge_audio_btn.clicked.connect(lambda: self.merge_audio_native(False))
+        row.addWidget(merge_audio_btn)
 
         clear = QPushButton("Xóa Danh Sách")
         clear.setIcon(get_svg_icon("trash", "#ffffff", 14))
@@ -410,8 +428,28 @@ class VoiceTab(QWidget):
         is_edge = "edge" in self.voice_provider_combo.currentText().lower()
         self.edge_voice_combo.setVisible(is_edge)
         self.lbl_edge_voice.setVisible(is_edge)
+        self.btn_preview_voice.setVisible(is_edge)
         self.provider_api_keys.setVisible(not is_edge)
         self.lbl_custom_voice.setVisible(not is_edge)
+
+    def _test_selected_voice(self):
+        """Generates a brief sample utterance and plays it immediately."""
+        voice_id = self.edge_voice_combo.currentData() or "vi-VN-HoaiMyNeural"
+        speed = self.voice_speed_spin.value()
+        speed_pct = f"{int((speed - 1.0) * 100):+d}%"
+        is_vi = "vi" in voice_id.lower()
+        test_text = "Xin chào! Đây là bản nghe thử giọng đọc AI thông minh từ AutoStock Studio." if is_vi else "Hello! This is a smart AI voice sample from AutoStock Studio."
+        self.voice_log.appendPlainText(f"Đang sinh giọng mẫu nghe thử ({voice_id})...")
+
+        sample_path = Path.home() / ".autostock_voice_sample.mp3"
+        service = EdgeTTSService(default_voice=voice_id)
+        ok, msg = service.synthesize(test_text, sample_path, voice=voice_id, rate=speed_pct)
+        if ok and sample_path.exists():
+            self.voice_log.appendPlainText("Đang phát âm thanh mẫu thử nghiệm...")
+            self.player.setSource(QUrl.fromLocalFile(str(sample_path)))
+            self.player.play()
+        else:
+            self.voice_log.appendPlainText(f"Lỗi nghe thử: {msg}")
 
     def _browse_line_path(self, line_edit: QLineEdit, is_dir: bool = False):
         if is_dir:
@@ -477,28 +515,47 @@ class VoiceTab(QWidget):
             self.voice_log.appendPlainText(f"Lỗi lưu cài đặt: {e}")
 
     def _start_json_parts_voice_native(self):
-        json_file = Path(self.json_parts_input.text().strip())
+        target_path_str = self.json_parts_input.text().strip() or self.json_script_input.text().strip()
+        json_file = Path(target_path_str)
         if not json_file.exists():
             QMessageBox.information(self, "Thiếu file", "Vui lòng chọn file kịch bản phân đoạn JSON.")
+            self.finished.emit(False, "Chưa chọn file kịch bản JSON.")
             return
-        out_dir = Path(self.json_output_dir.text().strip())
+
+        out_dir = Path(self.json_output_dir.text().strip() or str(Path(self.tool_root()) / "voices" / "json_parts"))
         txt_dir = out_dir / "parts_txt"
         txt_dir.mkdir(parents=True, exist_ok=True)
         try:
             data = json.loads(json_file.read_text(encoding="utf-8"))
         except Exception as e:
             QMessageBox.warning(self, "Lỗi đọc JSON", str(e))
+            self.finished.emit(False, f"Lỗi đọc JSON: {e}")
             return
 
         parts = data.get("parts") or data.get("scenes") or (data if isinstance(data, list) else [])
         if not parts:
+            parts = extract_scenes_from_json(data)
+
+        if not parts:
             QMessageBox.information(self, "Không có phân đoạn", "File JSON không chứa danh sách phân đoạn kịch bản.")
+            self.finished.emit(False, "File JSON không chứa phân đoạn.")
             return
 
         self.voice_files_list.clear()
         self.json_parts_list.clear()
         for i, part in enumerate(parts, 1):
-            text = str(part.get("dialogue") or part.get("text") or part.get("content") or part.get("voice") or "").strip()
+            if isinstance(part, dict):
+                text = str(
+                    part.get("dialogue") or part.get("dialogue_es") or
+                    part.get("text") or part.get("content") or
+                    part.get("voice") or part.get("description") or ""
+                ).strip()
+            else:
+                text = str(getattr(part, "dialogue", "") or getattr(part, "description", "")).strip()
+
+            if not text:
+                continue
+
             f = txt_dir / f"{i:02d}.txt"
             f.write_text(text, encoding="utf-8")
             self.voice_files_list.addItem(str(f))
@@ -516,10 +573,12 @@ class VoiceTab(QWidget):
         files = [Path(self.voice_files_list.item(i).text()) for i in range(self.voice_files_list.count())]
         if not files:
             QMessageBox.information(self, "Trống", "Không có file TXT nào để tạo giọng đọc.")
+            self.finished.emit(False, "Không có file TXT nào để tạo giọng đọc.")
             return
 
         if self.worker and self.worker.isRunning():
             QMessageBox.information(self, "Đang xử lý", "Tiến trình tạo giọng trước đó đang chạy.")
+            self.finished.emit(False, "Tiến trình tạo giọng trước đó đang chạy.")
             return
 
         out = Path(self.voice_output_dir.text().strip() or "voices")
@@ -557,20 +616,61 @@ class VoiceTab(QWidget):
 
     def _on_worker_finished(self, success: int, total: int):
         self.voice_progress.setValue(100)
-        self.voice_log.appendPlainText(f"\n[HOÀN TẤT] Đã tạo thành công {success}/{total} files giọng đọc.")
+        msg = f"Đã tạo thành công {success}/{total} files giọng đọc."
+        self.voice_log.appendPlainText(f"\n[HOÀN TẤT] {msg}")
 
-    def merge_srt_native(self):
+        # Automatically merge SRT subtitles and audio files if enabled
+        if success > 0:
+            if self.generate_srt_checkbox.isChecked():
+                self.merge_srt_native(silent=True)
+            self.merge_audio_native(silent=True)
+
+        self.finished.emit(success > 0 or total == 0, msg)
+
+    def merge_audio_native(self, silent: bool = False):
+        """Merges generated scene audio clips into a master audio file."""
+        folder = Path(self.voice_output_dir.text().strip() or "voices")
+        if not folder.exists():
+            if not silent:
+                QMessageBox.information(self, "Không tìm thấy thư mục", "Thư mục xuất âm thanh không tồn tại.")
+            return
+
+        files = sorted(
+            [f for f in folder.glob("*.mp3") if not f.name.startswith("master_") and not f.name.startswith("kich_ban_")],
+            key=lambda x: [int(c) if c.isdigit() else c for c in re.split(r"(\d+)", x.name)]
+        )
+
+        if not files:
+            if not silent:
+                QMessageBox.information(self, "Không có âm thanh", "Không tìm thấy file .mp3 nào để ghép trong thư mục xuất.")
+            return
+
+        out = folder / "master_voice.mp3"
+        proc = FFmpegProcessor()
+        ok, err = proc.concat_audio(files, out)
+        if ok and out.exists():
+            self.voice_log.appendPlainText(f"[MASTER AUDIO] Đã ghép {len(files)} file audio -> {out.name} ({out.stat().st_size // 1024} KB)")
+        else:
+            self.voice_log.appendPlainText(f"[LỖI GHÉP AUDIO] {err[:120] if err else 'Không xác định'}")
+
+    def merge_srt_native(self, silent: bool = False):
         if self.srt_files_list.count():
             files = [Path(self.srt_files_list.item(i).text()) for i in range(self.srt_files_list.count())]
         else:
             folder = Path(self.srt_dir_input.text().strip())
-            files = sorted(folder.glob("*.srt"), key=lambda x: [int(c) if c.isdigit() else c for c in re.split(r"(\d+)", x.name)]) if folder.exists() else []
+            if not folder.exists():
+                folder = Path(self.voice_output_dir.text().strip() or "voices")
+            files = sorted(
+                [f for f in folder.glob("*.srt") if not f.name.startswith("kich_ban_")],
+                key=lambda x: [int(c) if c.isdigit() else c for c in re.split(r"(\d+)", x.name)]
+            ) if folder.exists() else []
 
         if not files:
-            QMessageBox.information(self, "Không có phụ đề", "Vui lòng chọn hoặc quét thư mục chứa file .srt trước.")
+            if not silent:
+                QMessageBox.information(self, "Không có phụ đề", "Vui lòng chọn hoặc quét thư mục chứa file .srt trước.")
             return
 
-        out = Path(self.srt_output_input.text().strip() or str(Path(self.voice_output_dir.text().strip()) / "kich_ban_hoan_chinh.srt"))
+        out = Path(self.srt_output_input.text().strip() or str(Path(self.voice_output_dir.text().strip() or "voices") / "kich_ban_hoan_chinh.srt"))
         gap = self.srt_gap_spin.value()
         blocks = []
         offset_ms = 0

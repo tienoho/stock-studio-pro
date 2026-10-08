@@ -63,6 +63,32 @@ class TestSceneVoiceMatcher(unittest.TestCase):
         names = sorted([v.name.lower() for v in videos])
         self.assertEqual(names, ["vid1.mp4", "vid2.mov"])
 
+    def test_get_media_files_includes_images(self):
+        folder = self.test_dir / "media_test"
+        folder.mkdir()
+        (folder / "photo1.jpg").write_text("dummy")
+        (folder / "clip1.mp4").write_text("dummy")
+        (folder / "ignored.txt").write_text("dummy")
+
+        media = self.matcher.get_media_files(folder)
+        names = sorted([m.name.lower() for m in media])
+        self.assertEqual(names, ["clip1.mp4", "photo1.jpg"])
+
+    def test_parse_script_json(self):
+        json_file = self.test_dir / "script.json"
+        json_data = {
+            "scenes": [
+                {"id": 1, "title": "Bình minh", "dialogue": "Một ngày mới bắt đầu", "duration": 4.5},
+                {"id": 2, "title": "Hành động", "dialogue": "Tàu điện lướt qua", "duration": 5.0}
+            ]
+        }
+        import json
+        json_file.write_text(json.dumps(json_data, ensure_ascii=False), encoding="utf-8")
+        segments = self.matcher.parse_script_json(json_file)
+        self.assertEqual(len(segments), 2)
+        self.assertEqual(segments[0]["text"], "Một ngày mới bắt đầu")
+        self.assertEqual(segments[0]["duration"], 4.5)
+
 
 if __name__ == "__main__":
     unittest.main()

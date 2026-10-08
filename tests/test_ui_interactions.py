@@ -166,6 +166,33 @@ class TestUIInteractions(unittest.TestCase):
 
         tab.deleteLater()
 
+    def test_voice_tab_signals_and_preview(self):
+        """Test VoiceTab initializes with finished signal and audio preview player."""
+        from src.ui.tabs.voice_tab import VoiceTab
+        tab = VoiceTab(parent=self.parent)
+        self.assertIsNotNone(tab.player)
+        self.assertIsNotNone(tab.audio_output)
+        self.assertTrue(hasattr(tab, "finished"))
+        self.assertTrue(hasattr(tab, "merge_audio_native"))
+        self.assertTrue(hasattr(tab, "merge_srt_native"))
+        tab.deleteLater()
+
+    def test_scene_voice_tab_signals(self):
+        """Test SceneVoiceTab initializes with finished signal and required inputs."""
+        from src.ui.tabs.scene_voice_tab import SceneVoiceTab
+        tab = SceneVoiceTab(parent=self.parent)
+        self.assertTrue(hasattr(tab, "finished"))
+        self.assertIsNotNone(tab.svc_root)
+        self.assertIsNotNone(tab.svc_out)
+        tab.deleteLater()
+
+    def test_auto_tab_signals(self):
+        """Test AutoTab initializes with runAutoRequested signal."""
+        from src.ui.tabs.auto_tab import AutoTab
+        tab = AutoTab(parent=self.parent)
+        self.assertTrue(hasattr(tab, "runAutoRequested"))
+        tab.deleteLater()
+
 
 if __name__ == "__main__":
     unittest.main()

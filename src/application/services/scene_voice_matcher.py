@@ -1,17 +1,18 @@
 """
 Native Scene Voice Matching application service.
-Cuts and scales video footage to match voiceover audio or SRT subtitle timings using FFmpeg.
+Cuts and scales video footage or images to match voiceover audio or SRT subtitle timings using FFmpeg.
 Pure Python - does not rely on external scripts.
 """
 
 import os
 import re
+import json
 import random
 from pathlib import Path
 from typing import List, Dict, Any, Optional, Tuple, Callable
 
 from ...infrastructure.media.ffmpeg_processor import FFmpegProcessor
-from ...core.models.scene import srt_time_to_seconds
+from ...core.models.scene import srt_time_to_seconds, extract_scenes_from_json
 
 
 class SceneVoiceMatchItem:
@@ -57,20 +58,62 @@ class SceneVoiceMatcher:
         return blocks
 
     @staticmethod
+    def parse_script_json(json_path: Path) -> List[Dict[str, Any]]:
+        """Extracts scenes and dialogue text from JSON screenplay."""
+        if not json_path or not json_path.exists():
+            return []
+        try:
+            raw = json_path.read_text(encoding="utf-8", errors="ignore")
+            data = json.loads(raw)
+            scenes = extract_scenes_from_json(data)
+            segments = []
+            for s in scenes:
+                if isinstance(s, dict):
+                    text = s.get("dialogue") or s.get("dialogue_es") or s.get("description") or s.get("title") or s.get("text") or ""
+                    try:
+                        raw_dur = float(s.get("duration") or s.get("duration_seconds") or 0.0)
+                    except (ValueError, TypeError):
+                        raw_dur = 0.0
+                    sid = s.get("id") or s.get("scene_id") or ""
+                else:
+                    text = getattr(s, "dialogue", "") or getattr(s, "description", "") or getattr(s, "title", "")
+                    raw_dur = float(getattr(s, "duration_seconds", 0.0) or getattr(s, "duration", 0.0))
+                    sid = getattr(s, "id", "")
+
+                dur = raw_dur if raw_dur > 0.5 else 4.0
+                segments.append({
+                    "start": 0.0,
+                    "end": dur,
+                    "duration": dur,
+                    "text": text,
+                    "scene_id": sid
+                })
+            return segments
+        except Exception:
+            return []
+
+    @staticmethod
     def get_scene_folders(root_dir: Path) -> List[Path]:
         """Finds scene folders within root_dir, sorted naturally."""
         if not root_dir.exists():
             return []
-        # Look for subdirectories like Canh 1, Cảnh 01, Scene 1, or numeric folders
         dirs = [d for d in root_dir.iterdir() if d.is_dir()]
         def sort_key(d: Path):
             nums = re.findall(r"\d+", d.name)
             return int(nums[0]) if nums else 9999
         return sorted(dirs, key=sort_key)
 
-    @staticmethod
-    def get_video_files(folder: Path) -> List[Path]:
-        """Gets all valid video files in a folder."""
+    @classmethod
+    def get_media_files(cls, folder: Path) -> List[Path]:
+        """Gets all video and high-resolution image files in a folder."""
+        if not folder.exists():
+            return []
+        valid_exts = FFmpegProcessor.VIDEO_EXTENSIONS | FFmpegProcessor.IMAGE_EXTENSIONS
+        return [f for f in folder.glob("*") if f.is_file() and f.suffix.lower() in valid_exts]
+
+    @classmethod
+    def get_video_files(cls, folder: Path) -> List[Path]:
+        """Gets only video files in a folder."""
         if not folder.exists():
             return []
         exts = FFmpegProcessor.VIDEO_EXTENSIONS
@@ -82,6 +125,7 @@ class SceneVoiceMatcher:
         output_dir: Path,
         voice_srt_path: Optional[Path] = None,
         voice_audio_dir: Optional[Path] = None,
+        script_json: Optional[Path] = None,
         full_voice_audio: Optional[Path] = None,
         random_cuts: bool = False,
         concat_final: bool = True,
@@ -91,10 +135,10 @@ class SceneVoiceMatcher:
     ) -> Tuple[bool, str, List[Path]]:
         """
         Executes the matching pipeline:
-        1. Reads timing from SRT or audio clips
-        2. Assigns video footage from each scene folder
-        3. Cuts and scales each clip to 1920x1080 30fps
-        4. Concatenates into final video if requested
+        1. Reads timing from SRT, audio clips, or script JSON
+        2. Assigns video/image footage from each scene folder
+        3. Cuts and scales each clip to 1920x1080 30fps (looping if shorter)
+        4. Concatenates into final video and muxes audio if requested
         """
         def log(msg: str):
             if log_cb:
@@ -110,14 +154,13 @@ class SceneVoiceMatcher:
 
         scene_dirs = self.get_scene_folders(root_video_dir)
         if not scene_dirs:
-            # Fallback: check if root_video_dir itself contains videos directly
-            direct_videos = self.get_video_files(root_video_dir)
-            if direct_videos:
+            direct_media = self.get_media_files(root_video_dir)
+            if direct_media:
                 scene_dirs = [root_video_dir]
             else:
-                return False, f"Không tìm thấy thư mục cảnh hoặc video trong: {root_video_dir}", []
+                return False, f"Không tìm thấy thư mục cảnh hoặc media trong: {root_video_dir}", []
 
-        # Parse timings
+        # Parse timings: Priority 1 = SRT, Priority 2 = Voice audio files, Priority 3 = Script JSON
         segments: List[Dict[str, Any]] = []
         if voice_srt_path and voice_srt_path.exists():
             log(f"Đọc dữ liệu phụ đề từ: {voice_srt_path.name}")
@@ -131,7 +174,7 @@ class SceneVoiceMatcher:
             log(f"Quét được {len(audio_files)} file voice âm thanh")
             for i, af in enumerate(audio_files):
                 dur = self.ffmpeg.clip_duration(af)
-                dur = dur if dur > 0.5 else (chunk_seconds if chunk_seconds > 0 else 5.0)
+                dur = dur if dur > 0.5 else (chunk_seconds if chunk_seconds > 0 else 4.0)
                 segments.append({
                     "start": 0.0,
                     "end": dur,
@@ -140,9 +183,13 @@ class SceneVoiceMatcher:
                     "audio_file": af
                 })
 
-        # Fallback if no SRT and no audio: cut based on chunk_seconds
+        if not segments and script_json and script_json.exists():
+            log(f"Trích xuất phân đoạn từ kịch bản: {script_json.name}")
+            segments = self.parse_script_json(script_json)
+
+        # Fallback if nothing found: chunk_seconds
         if not segments:
-            default_dur = chunk_seconds if chunk_seconds > 0.5 else 5.0
+            default_dur = chunk_seconds if chunk_seconds > 0.5 else 4.0
             for i, sdir in enumerate(scene_dirs, 1):
                 segments.append({
                     "start": 0.0,
@@ -156,41 +203,54 @@ class SceneVoiceMatcher:
         total = len(segments)
 
         for idx, seg in enumerate(segments, 1):
-            dur = seg.get("duration", 5.0)
+            dur = seg.get("duration", 4.0)
             text_desc = seg.get("text", "")
-            # Determine which scene folder to pull video from
+            audio_clip = seg.get("audio_file")
+
             scene_idx = (idx - 1) % len(scene_dirs)
             target_scene_dir = scene_dirs[scene_idx]
-            videos = self.get_video_files(target_scene_dir)
+            media_list = self.get_media_files(target_scene_dir)
 
-            if not videos:
-                # Try sibling scene directories if current has no videos
-                all_vids = []
+            if not media_list:
+                all_media = []
                 for sd in scene_dirs:
-                    all_vids.extend(self.get_video_files(sd))
-                videos = all_vids
+                    all_media.extend(self.get_media_files(sd))
+                media_list = all_media
 
-            if not videos:
-                log(f"[Cảnh {idx:02d}] Bỏ qua: Không có video nguồn trong {target_scene_dir.name}")
+            if not media_list:
+                log(f"[Cảnh {idx:02d}] Bỏ qua: Không có media trong {target_scene_dir.name}")
                 continue
 
-            chosen_vid = random.choice(videos) if random_cuts else videos[0]
-            vid_dur = self.ffmpeg.clip_duration(chosen_vid)
-
-            # Determine start offset
-            start_at = 0.0
-            if random_cuts and vid_dur > dur + 1.0:
-                max_start = max(0.0, vid_dur - dur)
-                start_at = random.uniform(0.0, max_start)
+            # Prioritize video over image if available
+            videos = [m for m in media_list if m.suffix.lower() in FFmpegProcessor.VIDEO_EXTENSIONS]
+            chosen_media = (random.choice(videos) if random_cuts else videos[0]) if videos else (random.choice(media_list) if random_cuts else media_list[0])
 
             out_clip = clips_dir / f"clip_{idx:03d}_{target_scene_dir.name}.mp4"
-            log(f"[{idx:02d}/{total:02d}] Cắt {dur:.2f}s từ {chosen_vid.name} (bắt đầu: {start_at:.2f}s)")
+            is_image = chosen_media.suffix.lower() in FFmpegProcessor.IMAGE_EXTENSIONS
 
-            ok, err = self.ffmpeg.cut_clip(chosen_vid, start_at, dur, out_clip)
+            if is_image:
+                log(f"[{idx:02d}/{total:02d}] Tạo video từ ảnh {chosen_media.name} (thời lượng: {dur:.2f}s)")
+                ok, err = self.ffmpeg.image_to_clip(chosen_media, dur, out_clip)
+            else:
+                vid_dur = self.ffmpeg.clip_duration(chosen_media)
+                start_at = 0.0
+                if random_cuts and vid_dur > dur + 1.0:
+                    max_start = max(0.0, vid_dur - dur)
+                    start_at = random.uniform(0.0, max_start)
+                log(f"[{idx:02d}/{total:02d}] Cắt {dur:.2f}s từ {chosen_media.name} (bắt đầu: {start_at:.2f}s, tự lặp nếu thiếu)")
+                ok, err = self.ffmpeg.cut_clip(chosen_media, start_at, dur, out_clip, loop_if_short=True)
+
             if ok:
+                # If segment has individual audio file and we want audio attached
+                if audio_clip and Path(audio_clip).exists():
+                    clip_with_audio = clips_dir / f"clip_{idx:03d}_voiced.mp4"
+                    ok_a, _ = self._mux_audio_to_video(out_clip, Path(audio_clip), clip_with_audio)
+                    if ok_a:
+                        out_clip = clip_with_audio
+
                 generated_clips.append(out_clip)
             else:
-                log(f"[Lỗi cắt cảnh {idx:02d}]: {err[:120] if err else 'Không xác định'}")
+                log(f"[Lỗi xử lý cảnh {idx:02d}]: {err[:120] if err else 'Không xác định'}")
 
             if progress_cb:
                 progress_cb(idx, total, f"Đã cắt {idx}/{total} clip")
@@ -198,11 +258,11 @@ class SceneVoiceMatcher:
         if not generated_clips:
             return False, "Không tạo được clip video nào", []
 
-        log(f"Đã cắt thành công {len(generated_clips)} clip video chuẩn 1920x1080 30fps")
+        log(f"Đã tạo thành công {len(generated_clips)} clip video chuẩn 1920x1080 30fps")
 
         final_video_path = output_dir / "final_scene_voice_matched.mp4"
         if concat_final:
-            log(f"Đang tiến hành ghép toàn bộ {len(generated_clips)} clip thành video hoàn chỉnh...")
+            log(f"Đang ghép toàn bộ {len(generated_clips)} clip thành video master hoàn chỉnh...")
             ok_concat, concat_err = self.ffmpeg.concat_clips(generated_clips, final_video_path)
             if not ok_concat:
                 log(f"Lỗi ghép nối video: {concat_err}")
@@ -210,16 +270,40 @@ class SceneVoiceMatcher:
 
             log(f"Video ghép nối hoàn tất: {final_video_path.name} ({final_video_path.stat().st_size // 1024} KB)")
 
-            # If master full voice audio track is provided, mux it into final video
+            # Determine audio to mux over the master video
+            audio_to_mux: Optional[Path] = None
             if full_voice_audio and Path(full_voice_audio).exists():
+                audio_to_mux = Path(full_voice_audio)
+            else:
+                # If segment-level audio files exist, combine them into master audio
+                seg_audios = [Path(seg["audio_file"]) for seg in segments if seg.get("audio_file") and Path(seg["audio_file"]).exists()]
+                if seg_audios and len(seg_audios) == len(generated_clips):
+                    master_voice_path = output_dir / "master_voice_combined.mp3"
+                    log(f"Đang tự động ghép nối {len(seg_audios)} file âm thanh thành master voice...")
+                    ok_a_concat, _ = self.ffmpeg.concat_audio(seg_audios, master_voice_path)
+                    if ok_a_concat and master_voice_path.exists():
+                        audio_to_mux = master_voice_path
+                        log(f"Master voice hoàn tất: {master_voice_path.name}")
+
+            if audio_to_mux and audio_to_mux.exists():
                 muxed_path = output_dir / "final_scene_voice_with_master_audio.mp4"
-                log(f"Đang hòa âm file voice {Path(full_voice_audio).name} vào video...")
-                ok_mux, mux_err = self._mux_audio_to_video(final_video_path, Path(full_voice_audio), muxed_path)
+                log(f"Đang hòa âm giọng đọc {audio_to_mux.name} vào video...")
+                ok_mux, mux_err = self._mux_audio_to_video(final_video_path, audio_to_mux, muxed_path)
                 if ok_mux:
                     final_video_path = muxed_path
                     log(f"Hòa âm hoàn tất: {muxed_path.name}")
                 else:
                     log(f"Không thể hòa âm voice: {mux_err}")
+
+            # Export synchronized SRT subtitle if available
+            if voice_srt_path and Path(voice_srt_path).exists():
+                try:
+                    import shutil
+                    dest_srt = output_dir / "final_scene_voice_matched.srt"
+                    shutil.copy2(voice_srt_path, dest_srt)
+                    log(f"Đã xuất phụ đề SRT đồng bộ: {dest_srt.name}")
+                except Exception:
+                    pass
 
         return True, f"Thành công: Đã xử lý {len(generated_clips)} clips. File xuất: {final_video_path.name}", generated_clips
 

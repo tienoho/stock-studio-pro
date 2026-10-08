@@ -383,7 +383,29 @@ class WorkflowCanvas(QGraphicsView):
         self.clear()
         for item in payload:
             self.add_node(item.get("title", "Node"), item.get("x", 80), item.get("y", 120), item.get("config", {}))
-        self.rebuild_edges()
+    def remove_node(self, node: WorkflowNodeItem):
+        """Removes a specific node from the canvas and updates edges."""
+        if node in self.nodes:
+            self.nodes.remove(node)
+            self.scene_obj.removeItem(node)
+            self.rebuild_edges()
+
+    def keyPressEvent(self, event):
+        """Handles Delete / Backspace keys to remove selected workflow nodes."""
+        if event.key() in (Qt.Key.Key_Delete, Qt.Key.Key_Backspace):
+            selected = self.scene_obj.selectedItems()
+            removed = False
+            for item in selected:
+                target = item
+                while target and not isinstance(target, WorkflowNodeItem):
+                    target = target.parentItem()
+                if target and isinstance(target, WorkflowNodeItem):
+                    self.remove_node(target)
+                    removed = True
+            if removed:
+                event.accept()
+                return
+        super().keyPressEvent(event)
 
     def mouseDoubleClickEvent(self, event):
         item = self.itemAt(event.pos())

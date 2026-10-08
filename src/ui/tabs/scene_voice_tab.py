@@ -27,6 +27,7 @@ class SceneVoiceWorker(QThread):
         output_dir: Path,
         voice_srt_path: Optional[Path] = None,
         voice_audio_dir: Optional[Path] = None,
+        script_json: Optional[Path] = None,
         full_voice_audio: Optional[Path] = None,
         random_cuts: bool = False,
         concat_final: bool = True,
@@ -37,6 +38,7 @@ class SceneVoiceWorker(QThread):
         self.output_dir = output_dir
         self.voice_srt_path = voice_srt_path
         self.voice_audio_dir = voice_audio_dir
+        self.script_json = script_json
         self.full_voice_audio = full_voice_audio
         self.random_cuts = random_cuts
         self.concat_final = concat_final
@@ -57,6 +59,7 @@ class SceneVoiceWorker(QThread):
             output_dir=self.output_dir,
             voice_srt_path=self.voice_srt_path,
             voice_audio_dir=self.voice_audio_dir,
+            script_json=self.script_json,
             full_voice_audio=self.full_voice_audio,
             random_cuts=self.random_cuts,
             concat_final=self.concat_final,
@@ -236,6 +239,8 @@ class SceneVoiceTab(QWidget):
         voice_srt_path = Path(voice) if (voice and voice.lower().endswith(".srt")) else None
         voice_audio_dir = Path(voice) if (voice and Path(voice).is_dir()) else None
         full_voice_path = Path(full_voice) if full_voice else None
+        jsonp = self.svc_json.text().strip()
+        script_json_path = Path(jsonp) if (jsonp and Path(jsonp).exists()) else None
 
         self.svc_log.clear()
         self.svc_log.appendPlainText("Khởi động tiến trình Native Scene Voice Matcher (FFmpeg)...")
@@ -247,6 +252,7 @@ class SceneVoiceTab(QWidget):
             output_dir=Path(out),
             voice_srt_path=voice_srt_path,
             voice_audio_dir=voice_audio_dir,
+            script_json=script_json_path,
             full_voice_audio=full_voice_path,
             random_cuts=self.svc_random.isChecked(),
             concat_final=self.svc_concat.isChecked(),

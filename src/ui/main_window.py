@@ -151,6 +151,7 @@ class AutoStockMainWindow(QMainWindow):
 
         # 3. Voice TXT Studio Tab
         self.voice_tab = VoiceTab(config=self.config, save_config_fn=self.config_repo.save_config, parent=self)
+        self.voice_tab.finished.connect(self._on_voice_finished)
 
         # 4. Scene Voice Match Tab
         self.scene_voice_tab = SceneVoiceTab(parent=self)
@@ -229,10 +230,9 @@ class AutoStockMainWindow(QMainWindow):
         self.main_tabs.setTabText(5, t("tabs.workflow"))
 
         # Notify child tabs
-        if hasattr(self.downloader_tab, "retranslate_ui"):
-            self.downloader_tab.retranslate_ui()
-        if hasattr(self.workflow_tab, "retranslate_ui"):
-            self.workflow_tab.retranslate_ui()
+        for tab in [self.downloader_tab, self.cut_mix_tab, self.voice_tab, self.scene_voice_tab, self.auto_tab, self.workflow_tab]:
+            if hasattr(tab, "retranslate_ui"):
+                tab.retranslate_ui()
 
         self.status_bar.showMessage(t("app.status_ready"), 3000)
 
@@ -261,8 +261,12 @@ class AutoStockMainWindow(QMainWindow):
 
     def _on_json_loaded(self, json_data: dict, scenes: list, file_path: Optional[str] = None):
         self.downloader_tab.load_scenes(scenes, json_data)
-        if file_path and hasattr(self, "scene_voice_tab") and hasattr(self.scene_voice_tab, "svc_json"):
-            self.scene_voice_tab.svc_json.setText(file_path)
+        if file_path:
+            if hasattr(self, "scene_voice_tab") and hasattr(self.scene_voice_tab, "svc_json"):
+                self.scene_voice_tab.svc_json.setText(file_path)
+            if hasattr(self, "voice_tab") and hasattr(self.voice_tab, "json_script_input"):
+                self.voice_tab.json_script_input.setText(file_path)
+                self.voice_tab.json_parts_input.setText(file_path)
         self.status_bar.showMessage(t("downloader.loaded_json_status", count=len(scenes)), 4000)
 
     # ═══════════════════════════════════════════════════════════════
@@ -398,14 +402,14 @@ class AutoStockMainWindow(QMainWindow):
                 return
 
             if step == "Create voice":
+                self._workflow_waiting_for = "Create voice"
                 self.main_tabs.setCurrentIndex(2)
                 mode = str(config.get("mode") or "TXT folder/file")
                 if "JSON" in mode:
                     self.voice_tab._start_json_parts_voice_native()
                 else:
                     self.voice_tab.start_native_voice()
-                node.set_status("success")
-                continue
+                return
 
             if step == "Scene voice match":
                 self._workflow_waiting_for = "Scene voice match"
@@ -424,6 +428,24 @@ class AutoStockMainWindow(QMainWindow):
             if self._workflow_index > 0 and self._workflow_index <= len(self._workflow_running_nodes):
                 self._workflow_running_nodes[self._workflow_index - 1].set_status("success" if ok else "error")
             self.workflow_tab.workflow_log.appendPlainText(f"Cắt & Ghép video: {'thành công' if ok else 'lỗi'} -> {message}")
+            if ok:
+                self._workflow_continue()
+
+    def _on_voice_finished(self, ok: bool, message: str):
+        # Propagate generated voices to Scene Voice tab
+        if hasattr(self, "scene_voice_tab") and hasattr(self.voice_tab, "voice_output_dir"):
+            v_dir = Path(self.voice_tab.voice_output_dir.text().strip() or "voices")
+            if v_dir.exists():
+                self.scene_voice_tab.svc_voice.setText(str(v_dir))
+                master_audio = v_dir / "master_voice.mp3"
+                if master_audio.exists():
+                    self.scene_voice_tab.svc_full_voice.setText(str(master_audio))
+
+        if self._workflow_waiting_for == "Create voice":
+            self._workflow_waiting_for = None
+            if self._workflow_index > 0 and self._workflow_index <= len(self._workflow_running_nodes):
+                self._workflow_running_nodes[self._workflow_index - 1].set_status("success" if ok else "error")
+            self.workflow_tab.workflow_log.appendPlainText(f"Tạo giọng đọc: {'thành công' if ok else 'lỗi'} -> {message}")
             if ok:
                 self._workflow_continue()
 
