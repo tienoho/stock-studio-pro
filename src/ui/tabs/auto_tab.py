@@ -8,7 +8,9 @@ from PyQt6.QtWidgets import (
     QComboBox, QSpinBox, QCheckBox, QPushButton, QPlainTextEdit, QFrame
 )
 from PyQt6.QtCore import pyqtSignal
+from PyQt6.QtGui import QKeySequence, QShortcut
 from ..styles.icons import get_svg_icon, get_svg_pixmap
+from ..styles.ui_enhancer import enhance_widget_interactions, format_tooltip
 
 
 class AutoTab(QWidget):
@@ -81,7 +83,7 @@ class AutoTab(QWidget):
         row.setSpacing(14)
 
         lbl_format = QLabel("Định dạng media:")
-        lbl_format.setStyleSheet("font-weight: 600;")
+        lbl_format.setObjectName("fieldLabel")
         row.addWidget(lbl_format)
         self.auto_media_combo = QComboBox()
         self.auto_media_combo.setFixedHeight(34)
@@ -89,7 +91,7 @@ class AutoTab(QWidget):
         row.addWidget(self.auto_media_combo)
 
         lbl_qty = QLabel("Số lượng mỗi cảnh:")
-        lbl_qty.setStyleSheet("font-weight: 600;")
+        lbl_qty.setObjectName("fieldLabel")
         row.addWidget(lbl_qty)
         self.auto_pick_spin = QSpinBox()
         self.auto_pick_spin.setFixedHeight(34)
@@ -99,6 +101,7 @@ class AutoTab(QWidget):
 
         self.auto_voice_check = QCheckBox("Tự chuyển sang tạo giọng đọc AI sau khi tải xong")
         self.auto_voice_check.setChecked(True)
+        self.auto_voice_check.setToolTip(format_tooltip("Sau khi tải media xong sẽ tự động kích hoạt tạo giọng đọc thoại"))
         row.addWidget(self.auto_voice_check)
 
         row.addStretch()
@@ -110,12 +113,15 @@ class AutoTab(QWidget):
         self.btn_run.setObjectName("primaryBtn")
         self.btn_run.setIcon(get_svg_icon("play", "#ffffff", 14))
         self.btn_run.setFixedHeight(36)
+        self.btn_run.setToolTip(format_tooltip("Thực thi liên hoàn toàn bộ quy trình từ tải media đến ghép giọng", "Ctrl+Enter"))
         self.btn_run.clicked.connect(self._on_run_clicked)
         action_row.addWidget(self.btn_run)
 
         self.btn_clear_log = QPushButton("Xóa Nhật Ký")
+        self.btn_clear_log.setObjectName("secondaryBtn")
         self.btn_clear_log.setIcon(get_svg_icon("trash", "#8b949e", 14))
         self.btn_clear_log.setFixedHeight(36)
+        self.btn_clear_log.setToolTip(format_tooltip("Xóa sạch lịch sử nhật ký thực thi"))
         self.btn_clear_log.clicked.connect(lambda: self.auto_log.clear())
         action_row.addWidget(self.btn_clear_log)
 
@@ -123,6 +129,10 @@ class AutoTab(QWidget):
         cfg_layout.addLayout(action_row)
 
         layout.addWidget(cfg_card)
+
+        # Keyboard shortcuts
+        sh_run = QShortcut(QKeySequence("Ctrl+Return"), self)
+        sh_run.activated.connect(self.btn_run.click)
 
         # Log Panel
         log_header = QLabel("TIẾN ĐỘ & NHẬT KÝ THỰC THI (EXECUTION LOG)")
@@ -133,6 +143,9 @@ class AutoTab(QWidget):
         self.auto_log.setReadOnly(True)
         self.auto_log.setPlaceholderText("Nhật ký quy trình tự động sẽ xuất hiện tại đây...")
         layout.addWidget(self.auto_log, 1)
+
+        # Apply global interactive UX enhancements
+        enhance_widget_interactions(self)
 
     def _on_run_clicked(self):
         mode = self.auto_media_combo.currentText()

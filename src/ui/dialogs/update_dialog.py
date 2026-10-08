@@ -20,6 +20,7 @@ from ...core.constants import APP_NAME, APP_VERSION
 from ...core.i18n import t
 from ..styles.icons import get_svg_icon, get_svg_pixmap
 from ..styles.tokens import load_stylesheet
+from ..styles.ui_enhancer import enhance_widget_interactions, format_tooltip
 
 
 class UpdateDialog(QDialog):
@@ -201,47 +202,32 @@ class UpdateDialog(QDialog):
         bottom_row.addStretch()
 
         self.btn_later = QPushButton(t("update.remind_later", default="Để Sau"))
+        self.btn_later.setObjectName("secondaryBtn")
         self.btn_later.setFixedHeight(36)
-        self.btn_later.setStyleSheet("""
-            QPushButton {
-                background: #141b29; color: #cbd5e1; border: 1px solid #243048;
-                border-radius: 8px; padding: 0 16px; font-weight: 600;
-            }
-            QPushButton:hover { background: #1c263a; border-color: #3f5175; color: #ffffff; }
-        """)
+        self.btn_later.setToolTip(format_tooltip("Đóng thông báo và nhắc lại sau"))
         self.btn_later.clicked.connect(self._on_later_or_cancel_clicked)
         bottom_row.addWidget(self.btn_later)
 
         self.btn_github = QPushButton(t("update.view_on_github", default="Xem Trên GitHub"))
+        self.btn_github.setObjectName("secondaryBtn")
         self.btn_github.setIcon(get_svg_icon("globe", "#ffffff", 14))
         self.btn_github.setFixedHeight(36)
-        self.btn_github.setStyleSheet("""
-            QPushButton {
-                background: #141b29; color: #38bdf8; border: 1px solid #243048;
-                border-radius: 8px; padding: 0 16px; font-weight: 600;
-            }
-            QPushButton:hover { background: #1c263a; border-color: #38bdf8; }
-        """)
+        self.btn_github.setToolTip(format_tooltip("Mở trang phát hành trên GitHub trong trình duyệt"))
         self.btn_github.clicked.connect(self._open_github)
         bottom_row.addWidget(self.btn_github)
 
         self.btn_action = QPushButton(t("update.auto_download_install", default="⚡ Tự Động Cập Nhật Ngay"))
-        self.btn_action.setObjectName("primaryBtn")
+        self.btn_action.setObjectName("successBtn")
         self.btn_action.setIcon(get_svg_icon("arrow_down", "#ffffff", 14))
         self.btn_action.setFixedHeight(36)
-        self.btn_action.setStyleSheet("""
-            QPushButton {
-                background: qlineargradient(x1:0, y1:0, x2:1, y2:1, stop:0 #059669, stop:1 #10b981);
-                color: #ffffff; font-weight: 700; border: 1px solid rgba(255, 255, 255, 0.2); border-radius: 8px;
-                padding: 0 20px; font-size: 12px;
-            }
-            QPushButton:hover { background: qlineargradient(x1:0, y1:0, x2:1, y2:1, stop:0 #10b981, stop:1 #34d399); }
-            QPushButton:disabled { background: #1e293b; color: #64748b; border: 1px solid #334155; }
-        """)
+        self.btn_action.setToolTip(format_tooltip("Tự động tải về bản phát hành mới và cài đặt ngay", "Enter"))
         self.btn_action.clicked.connect(self._start_auto_download)
         bottom_row.addWidget(self.btn_action)
 
         layout.addLayout(bottom_row)
+
+        # Apply global interactive UX enhancements
+        enhance_widget_interactions(self)
 
     def _save_startup_pref(self, checked: bool):
         if self.config_repo:

@@ -24,6 +24,7 @@ from ...core.models.scene import srt_time_to_seconds, extract_scenes_from_json
 from ...infrastructure.media.ffmpeg_processor import FFmpegProcessor
 from ...application.services.edge_tts_service import EdgeTTSService, AVAILABLE_VOICES
 from ..styles.icons import get_svg_icon, get_svg_pixmap
+from ..styles.ui_enhancer import enhance_widget_interactions, format_tooltip
 from ..components.stat_box import StatBox
 
 
@@ -234,9 +235,10 @@ class VoiceTab(QWidget):
         edge_voice_box = QHBoxLayout()
         edge_voice_box.addWidget(self.edge_voice_combo, 1)
         self.btn_preview_voice = QPushButton("Nghe Thử")
-        self.btn_preview_voice.setIcon(get_svg_icon("play", "#4ec9b0", 14))
+        self.btn_preview_voice.setIcon(get_svg_icon("play", "#ffffff", 14))
+        self.btn_preview_voice.setObjectName("accentBtn")
         self.btn_preview_voice.setFixedHeight(34)
-        self.btn_preview_voice.setToolTip("Nghe thử một câu mẫu của giọng đọc đã chọn")
+        self.btn_preview_voice.setToolTip(format_tooltip("Nghe thử một câu mẫu của giọng đọc đã chọn", "Space"))
         self.btn_preview_voice.clicked.connect(self._test_selected_voice)
         edge_voice_box.addWidget(self.btn_preview_voice)
         txt_grid.addLayout(edge_voice_box, 4, 1, 1, 3)
@@ -249,17 +251,17 @@ class VoiceTab(QWidget):
         txt_l.addWidget(self.generate_srt_checkbox)
 
         row = QHBoxLayout()
-        for text, fn, icon_name in [
-            ("Quét Thư Mục", self._voice_scan_txt, "refresh"),
-            ("Tạo Giọng Đọc", self.start_native_voice, "play"),
-            ("Xóa Danh Sách", self._voice_clear_files, "trash"),
-            ("Lưu Cài Đặt", self._voice_save_provider_config, "save"),
+        for text, fn, icon_name, btn_type, sc_hint in [
+            ("Quét Thư Mục", self._voice_scan_txt, "refresh", "secondaryBtn", "F5"),
+            ("Tạo Giọng Đọc", self.start_native_voice, "play", "successBtn", "Ctrl+Enter"),
+            ("Xóa Danh Sách", self._voice_clear_files, "trash", "dangerBtn", "Delete"),
+            ("Lưu Cài Đặt", self._voice_save_provider_config, "save", "primaryBtn", "Ctrl+S"),
         ]:
             btn = QPushButton(text)
             btn.setIcon(get_svg_icon(icon_name, "#ffffff", 14))
             btn.setFixedHeight(36)
-            if text == "Tạo Giọng Đọc":
-                btn.setObjectName("primaryBtn")
+            btn.setObjectName(btn_type)
+            btn.setToolTip(format_tooltip(text, sc_hint))
             btn.clicked.connect(fn)
             row.addWidget(btn)
         row.addStretch()
@@ -304,7 +306,9 @@ class VoiceTab(QWidget):
         row = QHBoxLayout()
         scan = QPushButton("Quét Thư Mục")
         scan.setIcon(get_svg_icon("refresh", "#ffffff", 14))
+        scan.setObjectName("secondaryBtn")
         scan.setFixedHeight(36)
+        scan.setToolTip(format_tooltip("Quét lại danh sách file SRT", "F5"))
         scan.clicked.connect(self._voice_scan_srt)
         row.addWidget(scan)
 
@@ -312,18 +316,23 @@ class VoiceTab(QWidget):
         merge.setIcon(get_svg_icon("layers", "#ffffff", 14))
         merge.setObjectName("primaryBtn")
         merge.setFixedHeight(36)
+        merge.setToolTip(format_tooltip("Ghép toàn bộ file phụ đề thành 1 kịch bản hoàn chỉnh", "Enter"))
         merge.clicked.connect(lambda: self.merge_srt_native(False))
         row.addWidget(merge)
 
         merge_audio_btn = QPushButton("Ghép Master Audio")
         merge_audio_btn.setIcon(get_svg_icon("volume", "#ffffff", 14))
+        merge_audio_btn.setObjectName("accentBtn")
         merge_audio_btn.setFixedHeight(36)
+        merge_audio_btn.setToolTip(format_tooltip("Nối các đoạn âm thanh thành file Master", "Space"))
         merge_audio_btn.clicked.connect(lambda: self.merge_audio_native(False))
         row.addWidget(merge_audio_btn)
 
         clear = QPushButton("Xóa Danh Sách")
         clear.setIcon(get_svg_icon("trash", "#ffffff", 14))
+        clear.setObjectName("dangerBtn")
         clear.setFixedHeight(36)
+        clear.setToolTip(format_tooltip("Xóa danh sách file SRT", "Delete"))
         clear.clicked.connect(lambda: self.srt_files_list.clear())
         row.addWidget(clear)
         row.addStretch()
@@ -431,6 +440,7 @@ class VoiceTab(QWidget):
         root.addWidget(right, 2)
 
         self._on_provider_changed()
+        enhance_widget_interactions(self)
 
     def _default_tool_root(self) -> Path:
         here = Path(__file__).resolve()

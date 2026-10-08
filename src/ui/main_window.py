@@ -12,6 +12,7 @@ from PyQt6.QtWidgets import (
     QMessageBox, QApplication, QDialog, QPushButton, QFrame, QLabel
 )
 from PyQt6.QtCore import Qt, QSize, QTimer
+from PyQt6.QtGui import QCursor
 
 from ..core.constants import APP_NAME, APP_VERSION, CONFIG_FILE, STATE_FILE, CACHE_DIR
 from ..core.i18n import I18nService, t
@@ -29,6 +30,7 @@ from .dialogs import SettingsDialog, UpdateDialog
 from .workers import UpdateCheckWorker
 from ..application.services.update_checker import ReleaseInfo
 from .components.toast_notification import ToastNotification
+from .styles.ui_enhancer import enhance_widget_interactions, format_tooltip, set_hand_cursor
 
 
 class AutoStockMainWindow(QMainWindow):
@@ -143,6 +145,8 @@ class AutoStockMainWindow(QMainWindow):
             btn.setCheckable(True)
             btn.setChecked(idx == 0)
             btn.setFixedHeight(28)
+            btn.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
+            btn.setToolTip(format_tooltip(f"Chuyển sang bước {name}", f"Ctrl+{idx+1}"))
             btn.setStyleSheet(f"""
                 QPushButton {{
                     background: transparent;
@@ -176,15 +180,17 @@ class AutoStockMainWindow(QMainWindow):
 
         self.btn_quick_load = QPushButton("Nạp Kịch Bản")
         self.btn_quick_load.setIcon(get_svg_icon("file-text", "#38bdf8", 12))
-        self.btn_quick_load.setToolTip("Nạp kịch bản Claude AI JSON (Ctrl+O)")
+        self.btn_quick_load.setToolTip(format_tooltip("Nạp kịch bản Claude AI JSON", "Ctrl+O"))
         self.btn_quick_load.setFixedHeight(26)
+        self.btn_quick_load.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
         self.btn_quick_load.clicked.connect(self._prompt_load_json)
         stepper_layout.addWidget(self.btn_quick_load)
 
         self.btn_quick_out = QPushButton("Thư Mục Xuất")
         self.btn_quick_out.setIcon(get_svg_icon("folder", "#34d399", 12))
-        self.btn_quick_out.setToolTip("Mở thư mục xuất sản phẩm (Ctrl+Shift+O)")
+        self.btn_quick_out.setToolTip(format_tooltip("Mở thư mục xuất sản phẩm", "Ctrl+Shift+O"))
         self.btn_quick_out.setFixedHeight(26)
+        self.btn_quick_out.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
         self.btn_quick_out.clicked.connect(self._open_output_folder)
         stepper_layout.addWidget(self.btn_quick_out)
 
@@ -204,13 +210,15 @@ class AutoStockMainWindow(QMainWindow):
         self.btn_update.setIcon(get_svg_icon("arrow_down", "#38ef7d", 13))
         self.btn_update.setIconSize(QSize(13, 13))
         self.btn_update.setText(f" v{APP_VERSION}")
-        self.btn_update.setToolTip(t("update.check_btn"))
+        self.btn_update.setToolTip(format_tooltip(t("update.check_btn"), "F12"))
         self.btn_update.setFixedHeight(30)
+        self.btn_update.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
         self.btn_update.clicked.connect(self._on_update_btn_clicked)
         corner_layout.addWidget(self.btn_update)
 
         self.btn_theme = QPushButton()
         self.btn_theme.setFixedHeight(30)
+        self.btn_theme.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
         self.btn_theme.clicked.connect(self._toggle_theme)
         corner_layout.addWidget(self.btn_theme)
 
@@ -219,8 +227,9 @@ class AutoStockMainWindow(QMainWindow):
         self.btn_lang.setIconSize(QSize(14, 14))
         curr_loc = self.i18n.get_locale().upper()
         self.btn_lang.setText(f" {curr_loc}")
-        self.btn_lang.setToolTip(t("app.switch_lang"))
+        self.btn_lang.setToolTip(format_tooltip(t("app.switch_lang"), "Ctrl+L"))
         self.btn_lang.setFixedHeight(30)
+        self.btn_lang.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
         self.btn_lang.clicked.connect(self._toggle_language)
         corner_layout.addWidget(self.btn_lang)
 
@@ -281,6 +290,9 @@ class AutoStockMainWindow(QMainWindow):
         self._apply_stepper_theme()
         self._update_theme_btn()
 
+        # Enhance hand cursor on all interactive elements
+        enhance_widget_interactions(self)
+
     def _setup_shortcuts(self):
         from PyQt6.QtGui import QKeySequence, QShortcut
         for i in range(6):
@@ -298,6 +310,15 @@ class AutoStockMainWindow(QMainWindow):
 
         sc_f5 = QShortcut(QKeySequence("F5"), self)
         sc_f5.activated.connect(self._on_f5_pressed)
+
+        sc_theme = QShortcut(QKeySequence("Ctrl+T"), self)
+        sc_theme.activated.connect(self._toggle_theme)
+
+        sc_lang = QShortcut(QKeySequence("Ctrl+L"), self)
+        sc_lang.activated.connect(self._toggle_language)
+
+        sc_update = QShortcut(QKeySequence("F12"), self)
+        sc_update.activated.connect(self._on_update_btn_clicked)
 
     def _on_tab_changed(self, index: int):
         if hasattr(self, "step_buttons"):
@@ -399,9 +420,8 @@ class AutoStockMainWindow(QMainWindow):
         self.btn_theme.setIcon(get_svg_icon(icon_name, icon_color, 14))
         self.btn_theme.setIconSize(QSize(14, 14))
         self.btn_theme.setText(" Tối" if is_dark else " Sáng")
-        self.btn_theme.setToolTip(
-            "Chuyển sang giao diện Sáng (Light Mode)" if is_dark else "Chuyển sang giao diện Tối (Dark Mode)"
-        )
+        tt_desc = "Chuyển sang giao diện Sáng (Light Mode)" if is_dark else "Chuyển sang giao diện Tối (Dark Mode)"
+        self.btn_theme.setToolTip(format_tooltip(tt_desc, "Ctrl+T"))
         if is_dark:
             self.btn_theme.setStyleSheet("""
                 QPushButton {

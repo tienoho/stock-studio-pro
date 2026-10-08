@@ -13,6 +13,7 @@ from ...core.i18n import t
 from ...core.models.scene import extract_scenes_from_json
 from ..styles.tokens import load_stylesheet
 from ..styles.icons import get_svg_icon, get_svg_pixmap
+from ..styles.ui_enhancer import enhance_widget_interactions, format_tooltip
 from .key_management_dialog import KeyManagementDialog
 from .json_input_dialog import JsonInputDialog
 
@@ -53,8 +54,10 @@ class SettingsDialog(QDialog):
         folder_row.addWidget(self.output_input, 1)
 
         btn_browse = QPushButton(t("settings.browse_btn"))
+        btn_browse.setObjectName("secondaryBtn")
         btn_browse.setIcon(get_svg_icon("folder", "#ffffff", 14))
         btn_browse.setFixedHeight(34)
+        btn_browse.setToolTip(format_tooltip("Chọn thư mục lưu trữ media trên máy tính"))
         btn_browse.clicked.connect(self._browse_output)
         folder_row.addWidget(btn_browse)
         sec1_l.addLayout(folder_row)
@@ -79,20 +82,26 @@ class SettingsDialog(QDialog):
         key_btn_row = QHBoxLayout()
         key_btn_row.setSpacing(8)
         btn_manage_pexels = QPushButton("Quản lý Pexels")
+        btn_manage_pexels.setObjectName("secondaryBtn")
         btn_manage_pexels.setIcon(get_svg_icon("key", "#34d399", 14))
         btn_manage_pexels.setFixedHeight(34)
+        btn_manage_pexels.setToolTip(format_tooltip("Thêm, sửa, xóa và kiểm tra API key Pexels"))
         btn_manage_pexels.clicked.connect(lambda: self._manage_keys("pexels"))
         key_btn_row.addWidget(btn_manage_pexels)
 
         btn_manage_pixabay = QPushButton("Quản lý Pixabay")
+        btn_manage_pixabay.setObjectName("secondaryBtn")
         btn_manage_pixabay.setIcon(get_svg_icon("key", "#38bdf8", 14))
         btn_manage_pixabay.setFixedHeight(34)
+        btn_manage_pixabay.setToolTip(format_tooltip("Thêm, sửa, xóa và kiểm tra API key Pixabay"))
         btn_manage_pixabay.clicked.connect(lambda: self._manage_keys("pixabay"))
         key_btn_row.addWidget(btn_manage_pixabay)
 
         btn_manage_vecteezy = QPushButton("Quản lý Vecteezy")
+        btn_manage_vecteezy.setObjectName("secondaryBtn")
         btn_manage_vecteezy.setIcon(get_svg_icon("key", "#a78bfa", 14))
         btn_manage_vecteezy.setFixedHeight(34)
+        btn_manage_vecteezy.setToolTip(format_tooltip("Thêm, sửa, xóa và kiểm tra API key Vecteezy"))
         btn_manage_vecteezy.clicked.connect(lambda: self._manage_keys("vecteezy"))
         key_btn_row.addWidget(btn_manage_vecteezy)
         sec2_l.addLayout(key_btn_row)
@@ -122,6 +131,7 @@ class SettingsDialog(QDialog):
         btn_json.setIcon(get_svg_icon("file-text", "#ffffff", 14))
         btn_json.setObjectName("primaryBtn")
         btn_json.setFixedHeight(36)
+        btn_json.setToolTip(format_tooltip("Dán kịch bản AI hoặc mở file JSON kịch bản cảnh"))
         btn_json.clicked.connect(self._show_json_dialog)
         sec3_l.addWidget(btn_json)
         layout.addWidget(sec3)
@@ -142,8 +152,10 @@ class SettingsDialog(QDialog):
         upd_row.addWidget(upd_lbl)
 
         btn_check_upd = QPushButton(t("update.check_btn"))
+        btn_check_upd.setObjectName("secondaryBtn")
         btn_check_upd.setIcon(get_svg_icon("arrow_down", "#ffffff", 14))
         btn_check_upd.setFixedHeight(34)
+        btn_check_upd.setToolTip(format_tooltip("Kiểm tra bản cập nhật mới nhất từ GitHub", "F12"))
         btn_check_upd.clicked.connect(self._check_for_updates)
         upd_row.addWidget(btn_check_upd)
         upd_row.addStretch()
@@ -181,11 +193,15 @@ class SettingsDialog(QDialog):
         btn_row = QHBoxLayout()
         btn_row.addStretch()
         btn_close = QPushButton(t("common.close"))
+        btn_close.setObjectName("primaryBtn")
         btn_close.setFixedWidth(120)
         btn_close.setFixedHeight(36)
         btn_close.clicked.connect(self.accept)
         btn_row.addWidget(btn_close)
         layout.addLayout(btn_row)
+
+        # Apply global interactive UX enhancements
+        enhance_widget_interactions(self)
 
     def _on_theme_combo_changed(self, idx: int):
         new_theme = self.theme_combo.currentData()

@@ -12,6 +12,7 @@ from PyQt6.QtWidgets import (
 from PyQt6.QtCore import pyqtSignal
 from ..workers.video_cut_worker import VideoCutMergeWorker
 from ..styles.icons import get_svg_icon, get_svg_pixmap
+from ..styles.ui_enhancer import enhance_widget_interactions, format_tooltip
 from ..components.toast_notification import ToastNotification
 from ...core.i18n import t
 
@@ -71,14 +72,17 @@ class CutMixTab(QWidget):
 
         self.btn_browse = QPushButton(t("cut_mix.select_folder"))
         self.btn_browse.setIcon(get_svg_icon("folder", "#ffffff", 14))
+        self.btn_browse.setObjectName("secondaryBtn")
         self.btn_browse.setFixedHeight(34)
+        self.btn_browse.setToolTip(format_tooltip(t("cut_mix.select_folder"), "Ctrl+O"))
         self.btn_browse.clicked.connect(self._browse_folder)
         folder_h.addWidget(self.btn_browse)
 
         self.btn_open_folder = QPushButton("Mở Folder")
         self.btn_open_folder.setIcon(get_svg_icon("folder", "#38bdf8", 14))
+        self.btn_open_folder.setObjectName("secondaryBtn")
         self.btn_open_folder.setFixedHeight(34)
-        self.btn_open_folder.setToolTip("Mở thư mục nguồn trong Explorer")
+        self.btn_open_folder.setToolTip(format_tooltip("Mở thư mục nguồn trong Explorer", "Ctrl+Shift+O"))
         self.btn_open_folder.clicked.connect(self._open_current_folder)
         folder_h.addWidget(self.btn_open_folder)
 
@@ -137,6 +141,7 @@ class CutMixTab(QWidget):
         self.btn_start.setIcon(get_svg_icon("scissors", "#ffffff", 14))
         self.btn_start.setObjectName("primaryBtn")
         self.btn_start.setFixedHeight(36)
+        self.btn_start.setToolTip(format_tooltip(t("cut_mix.start_btn"), "Ctrl+Enter"))
         self.btn_start.clicked.connect(self.start_cut_merge)
         btn_h.addWidget(self.btn_start)
 
@@ -144,14 +149,16 @@ class CutMixTab(QWidget):
         self.btn_stop.setIcon(get_svg_icon("stop", "#ffffff", 14))
         self.btn_stop.setObjectName("dangerBtn")
         self.btn_stop.setFixedHeight(36)
+        self.btn_stop.setToolTip(format_tooltip(t("common.stop"), "Esc"))
         self.btn_stop.setEnabled(False)
         self.btn_stop.clicked.connect(self.stop_cut_merge)
         btn_h.addWidget(self.btn_stop)
 
         self.btn_open_out = QPushButton("Mở Folder Xuất")
-        self.btn_open_out.setIcon(get_svg_icon("folder", "#34d399", 14))
+        self.btn_open_out.setIcon(get_svg_icon("folder", "#ffffff", 14))
+        self.btn_open_out.setObjectName("successBtn")
         self.btn_open_out.setFixedHeight(36)
-        self.btn_open_out.setToolTip("Mở thư mục chứa các video vừa cắt ghép")
+        self.btn_open_out.setToolTip(format_tooltip("Mở thư mục chứa các video vừa cắt ghép", "Ctrl+Shift+D"))
         self.btn_open_out.clicked.connect(self._open_current_folder)
         btn_h.addWidget(self.btn_open_out)
 
@@ -169,6 +176,8 @@ class CutMixTab(QWidget):
         self.cut_log.setReadOnly(True)
         self.cut_log.setPlaceholderText("Nhật ký xử lý hiển thị tại đây...")
         layout.addWidget(self.cut_log, 1)
+
+        enhance_widget_interactions(self)
 
     def _open_current_folder(self):
         f = self.cut_folder_input.text().strip()

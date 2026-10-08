@@ -28,6 +28,7 @@ from ...core.i18n import t
 from ...core.models.scene import extract_scenes_from_json
 from ..styles.icons import get_svg_icon, get_svg_pixmap
 from ..styles.theme_manager import ThemeManager
+from ..styles.ui_enhancer import enhance_widget_interactions, format_tooltip
 from ...application.services.key_manager import KeyManager
 from ..components.api_key_manager_widget import ApiKeyManagerWidget
 from ..components.stat_box import StatBox
@@ -158,6 +159,9 @@ class DownloaderTab(QWidget):
         # Setup keyboard navigation shortcuts
         self._setup_shortcuts()
 
+        # Enhance hand cursor on all buttons and controls
+        enhance_widget_interactions(self)
+
     def _setup_shortcuts(self):
         # Quick scene navigation (Alt+Left/Right, PgUp/PgDown)
         QShortcut(QKeySequence("Alt+Left"), self, self.select_prev_scene)
@@ -181,6 +185,13 @@ class DownloaderTab(QWidget):
         # Batch actions (Ctrl+A: Select All in Scene, Ctrl+D: Clear Scene)
         QShortcut(QKeySequence("Ctrl+A"), self, self._select_all_scene)
         QShortcut(QKeySequence("Ctrl+D"), self, self._clear_scene_selection)
+
+        # Quick Random pick & Retry thumbnails
+        QShortcut(QKeySequence("Ctrl+R"), self, self._select_random_scene)
+        QShortcut(QKeySequence("Ctrl+Shift+R"), self, self._retry_failed_thumbnails)
+
+        # Download shortcut (Ctrl+Return)
+        QShortcut(QKeySequence("Ctrl+Return"), self, self.start_download)
 
         # Open output directory shortcut (Ctrl+Shift+O)
         QShortcut(QKeySequence("Ctrl+Shift+O"), self, self._open_output_folder_in_explorer)
@@ -708,18 +719,19 @@ class DownloaderTab(QWidget):
 
         self.filter_buttons = {}
         filter_meta = [
-            ("all", t("downloader.filter_all"), None),
-            ("photos", t("downloader.filter_photos"), "image"),
-            ("videos", t("downloader.filter_videos"), "video"),
-            ("selected", t("downloader.filter_selected"), "check")
+            ("all", t("downloader.filter_all"), None, "1"),
+            ("photos", t("downloader.filter_photos"), "image", "2"),
+            ("videos", t("downloader.filter_videos"), "video", "3"),
+            ("selected", t("downloader.filter_selected"), "check", "4")
         ]
-        for fkey, label, icon_name in filter_meta:
+        for fkey, label, icon_name, sc_key in filter_meta:
             btn = QPushButton(label)
             if icon_name:
                 btn.setIcon(get_svg_icon(icon_name, "#ffffff", 13))
             btn.setFixedHeight(34)
             btn.setMinimumWidth(85)
             btn.setObjectName("filterActive" if fkey == "all" else "filterInactive")
+            btn.setToolTip(format_tooltip(f"Lọc {label.lower()}", sc_key))
             btn.clicked.connect(lambda checked, k=fkey: self._set_filter(k))
             action_h.addWidget(btn)
             self.filter_buttons[fkey] = btn
@@ -731,43 +743,33 @@ class DownloaderTab(QWidget):
         self.random_count_spin.setValue(1)
         self.random_count_spin.setFixedHeight(34)
         self.random_count_spin.setMinimumWidth(65)
-        self.random_count_spin.setToolTip("Số media muốn chọn ngẫu nhiên trong cảnh")
-        action_h.addWidget(QLabel("Số lượng:"))
+        self.random_count_spin.setToolTip(format_tooltip("Số media muốn chọn ngẫu nhiên", "1-999"))
+        lbl_qty = QLabel("Số lượng:")
+        lbl_qty.setStyleSheet("font-weight: 700; font-size: 11px;")
+        action_h.addWidget(lbl_qty)
         action_h.addWidget(self.random_count_spin)
 
         self.btn_random_select = QPushButton(t("downloader.random_all"))
         self.btn_random_select.setIcon(get_svg_icon("shuffle", "#ffffff", 13))
         self.btn_random_select.setObjectName("purpleBtn")
         self.btn_random_select.setFixedHeight(34)
-        self.btn_random_select.setToolTip("Chọn ngẫu nhiên media trong cảnh hiện tại")
+        self.btn_random_select.setToolTip(format_tooltip("Chọn ngẫu nhiên media trong cảnh", "Ctrl+R"))
         self.btn_random_select.clicked.connect(self._select_random_scene)
         action_h.addWidget(self.btn_random_select)
 
         btn_retry = QPushButton(t("common.reset"))
         btn_retry.setIcon(get_svg_icon("refresh", "#fbbf24", 13))
+        btn_retry.setObjectName("warningBtn")
         btn_retry.setFixedHeight(34)
-        btn_retry.setToolTip("Tải lại ảnh thu nhỏ bị lỗi")
-        btn_retry.setStyleSheet("""
-            QPushButton {
-                background-color: #131926;
-                color: #fbbf24;
-                border: 1px solid #f59e0b;
-                border-radius: 8px;
-                padding: 0 12px;
-                font-weight: 700;
-            }
-            QPushButton:hover {
-                background-color: #f59e0b;
-                color: #ffffff;
-            }
-        """)
+        btn_retry.setToolTip(format_tooltip("Tải lại ảnh thu nhỏ bị lỗi", "Ctrl+Shift+R"))
         btn_retry.clicked.connect(self._retry_failed_thumbnails)
         action_h.addWidget(btn_retry)
 
         btn_select_all = QPushButton("Chọn Tất Cả")
         btn_select_all.setIcon(get_svg_icon("check", "#ffffff", 13))
-        btn_select_all.setObjectName("purpleBtn")
+        btn_select_all.setObjectName("secondaryBtn")
         btn_select_all.setFixedHeight(34)
+        btn_select_all.setToolTip(format_tooltip("Chọn tất cả media trong cảnh này", "Ctrl+A"))
         btn_select_all.clicked.connect(self._select_all_scene)
         action_h.addWidget(btn_select_all)
 
@@ -775,14 +777,16 @@ class DownloaderTab(QWidget):
         self.btn_clear.setIcon(get_svg_icon("x", "#ffffff", 13))
         self.btn_clear.setObjectName("dangerBtn")
         self.btn_clear.setFixedHeight(34)
+        self.btn_clear.setToolTip(format_tooltip("Bỏ chọn toàn bộ trong cảnh này", "Ctrl+D"))
         self.btn_clear.clicked.connect(self._clear_scene_selection)
         action_h.addWidget(self.btn_clear)
 
         self.btn_download = QPushButton(t("downloader.download_selected"))
-        self.btn_download.setIcon(get_svg_icon("download", "#ffffff", 13))
-        self.btn_download.setObjectName("primaryBtn")
+        self.btn_download.setIcon(get_svg_icon("download", "#ffffff", 14))
+        self.btn_download.setObjectName("successBtn")
         self.btn_download.setFixedHeight(34)
-        self.btn_download.setStyleSheet("QPushButton#primaryBtn { padding: 0 16px; font-size: 12px; font-weight: 800; }")
+        self.btn_download.setStyleSheet("QPushButton#successBtn { padding: 0 16px; font-size: 12px; font-weight: 800; letter-spacing: 0.3px; }")
+        self.btn_download.setToolTip(format_tooltip(t("downloader.download_selected"), "Ctrl+Enter"))
         self.btn_download.clicked.connect(self.start_download)
         action_h.addWidget(self.btn_download)
 
@@ -2064,6 +2068,13 @@ class DownloaderTab(QWidget):
             self.stat_selected_scene.set_value(len(self.selected_items.get(self.current_scene_id, {})))
         total_selected = sum(len(s) for s in self.selected_items.values())
         self.stat_selected_total.set_value(total_selected)
+
+        # Dynamic CTA visual count feedback
+        if hasattr(self, "btn_download"):
+            if total_selected > 0:
+                self.btn_download.setText(f"TẢI MEDIA ĐÃ CHỌN ({total_selected})")
+            else:
+                self.btn_download.setText(t("downloader.download_selected"))
 
     def _select_all_scene(self):
         if self.current_scene_id is None:

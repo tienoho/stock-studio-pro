@@ -13,9 +13,11 @@ from PyQt6.QtWidgets import (
     QFileDialog, QMessageBox, QFrame, QProgressBar
 )
 from PyQt6.QtCore import pyqtSignal, QThread
+from PyQt6.QtGui import QKeySequence, QShortcut
 from ...application.services.scene_voice_matcher import SceneVoiceMatcher
 from ..styles.icons import get_svg_icon, get_svg_pixmap
 from ..components.toast_notification import ToastNotification
+from ..styles.ui_enhancer import enhance_widget_interactions, format_tooltip
 
 
 class SceneVoiceWorker(QThread):
@@ -137,13 +139,15 @@ class SceneVoiceTab(QWidget):
         ]
         for r, (lab, edit, isdir) in enumerate(rows):
             lbl = QLabel(lab + ":")
-            lbl.setStyleSheet("color: #cbd5e1; font-size: 12px; font-weight: 600;")
+            lbl.setObjectName("fieldLabel")
             edit.setFixedHeight(32)
             grid.addWidget(lbl, r, 0)
             grid.addWidget(edit, r, 1)
             btn = QPushButton("Chọn...")
+            btn.setObjectName("secondaryBtn")
             btn.setIcon(get_svg_icon("folder" if isdir else "file", "#ffffff", 14))
             btn.setFixedHeight(32)
+            btn.setToolTip(format_tooltip(f"Chọn {lab}"))
             btn.clicked.connect(lambda _, e=edit, d=isdir: self._browse_line_path(e, d))
             grid.addWidget(btn, r, 2)
 
@@ -164,7 +168,7 @@ class SceneVoiceTab(QWidget):
         row = QHBoxLayout()
         row.setSpacing(14)
         lbl_sec = QLabel("Thời lượng cắt cố định (giây):")
-        lbl_sec.setStyleSheet("font-weight: 600;")
+        lbl_sec.setObjectName("fieldLabel")
         row.addWidget(lbl_sec)
         self.svc_chunk_seconds = QDoubleSpinBox()
         self.svc_chunk_seconds.setFixedHeight(32)
@@ -175,10 +179,12 @@ class SceneVoiceTab(QWidget):
 
         self.svc_random = QCheckBox("Cắt ngẫu nhiên trong video (Random offset)")
         self.svc_random.setChecked(True)
+        self.svc_random.setToolTip(format_tooltip("Cắt trích xuất ngẫu nhiên đoạn giữa của clip thay vì luôn cắt từ giây 0"))
         row.addWidget(self.svc_random)
 
         self.svc_concat = QCheckBox("Tự động ghép thành 1 video hoàn chỉnh")
         self.svc_concat.setChecked(True)
+        self.svc_concat.setToolTip(format_tooltip("Ghép tất cả các clip con đã cắt thành một video master hoàn thiện"))
         row.addWidget(self.svc_concat)
 
         self.setAcceptDrops(True)
@@ -186,9 +192,10 @@ class SceneVoiceTab(QWidget):
         row.addStretch()
 
         self.btn_open_out = QPushButton("Mở Folder Xuất")
+        self.btn_open_out.setObjectName("secondaryBtn")
         self.btn_open_out.setIcon(get_svg_icon("folder", "#34d399", 14))
         self.btn_open_out.setFixedHeight(36)
-        self.btn_open_out.setToolTip("Mở thư mục video thành phẩm")
+        self.btn_open_out.setToolTip(format_tooltip("Mở thư mục video thành phẩm", "Ctrl+O"))
         self.btn_open_out.clicked.connect(self._open_out_folder)
         row.addWidget(self.btn_open_out)
 
@@ -196,11 +203,18 @@ class SceneVoiceTab(QWidget):
         self.btn_run.setObjectName("primaryBtn")
         self.btn_run.setIcon(get_svg_icon("play", "#ffffff", 14))
         self.btn_run.setFixedHeight(36)
+        self.btn_run.setToolTip(format_tooltip("Khởi chạy tiến trình FFmpeg cắt ghép video theo giọng đọc", "Ctrl+Enter"))
         self.btn_run.clicked.connect(self.start_scene_voice)
         row.addWidget(self.btn_run)
 
         opts_layout.addLayout(row)
         layout.addWidget(opts_frame)
+
+        # Keyboard shortcuts
+        sh_run = QShortcut(QKeySequence("Ctrl+Return"), self)
+        sh_run.activated.connect(self.btn_run.click)
+        sh_open = QShortcut(QKeySequence("Ctrl+O"), self)
+        sh_open.activated.connect(self._open_out_folder)
 
         # Progress bar
         self.progress_bar = QProgressBar()
@@ -218,6 +232,9 @@ class SceneVoiceTab(QWidget):
         self.svc_log.setReadOnly(True)
         self.svc_log.setPlaceholderText("Nhật ký xử lý khớp cảnh sẽ xuất hiện tại đây...")
         layout.addWidget(self.svc_log, 1)
+
+        # Apply global interactive UX enhancements
+        enhance_widget_interactions(self)
 
     def _open_out_folder(self):
         out_p = self.svc_out.text().strip() or (str(Path(self.svc_root.text().strip()) / "matched_output") if self.svc_root.text().strip() else "")

@@ -10,11 +10,13 @@ from PyQt6.QtWidgets import (
     QInputDialog, QMessageBox, QFrame
 )
 from PyQt6.QtCore import pyqtSignal
+from PyQt6.QtGui import QKeySequence, QShortcut
 from ...core.i18n import t
 from ..styles.icons import get_svg_icon, get_svg_pixmap
 from ..workflow.canvas import WorkflowCanvas
 from ...infrastructure.persistence.sqlite_workflow_repo import SqliteWorkflowRepository
 from ..components.toast_notification import ToastNotification
+from ..styles.ui_enhancer import enhance_widget_interactions, format_tooltip
 
 
 class WorkflowTab(QWidget):
@@ -60,15 +62,18 @@ class WorkflowTab(QWidget):
         top.addWidget(self.workflow_block_combo)
 
         self.btn_add_node = QPushButton(t("workflow.add_node"))
+        self.btn_add_node.setObjectName("secondaryBtn")
         self.btn_add_node.setIcon(get_svg_icon("plus", "#ffffff", 14))
         self.btn_add_node.setFixedHeight(34)
+        self.btn_add_node.setToolTip(format_tooltip("Thêm khối chức năng đã chọn vào bảng vẽ"))
         self.btn_add_node.clicked.connect(self._workflow_canvas_add)
         top.addWidget(self.btn_add_node)
 
         self.btn_auto_layout = QPushButton("Sắp Xếp")
+        self.btn_auto_layout.setObjectName("secondaryBtn")
         self.btn_auto_layout.setIcon(get_svg_icon("layout", "#4ec9b0", 14))
         self.btn_auto_layout.setFixedHeight(34)
-        self.btn_auto_layout.setToolTip("Tự động căn chỉnh các bước thẳng hàng từ trái sang phải")
+        self.btn_auto_layout.setToolTip(format_tooltip("Tự động căn chỉnh các bước thẳng hàng", "Ctrl+L"))
         self.btn_auto_layout.clicked.connect(lambda: self.workflow_canvas.auto_arrange())
         top.addWidget(self.btn_auto_layout)
 
@@ -76,12 +81,15 @@ class WorkflowTab(QWidget):
         self.btn_run.setIcon(get_svg_icon("play", "#ffffff", 14))
         self.btn_run.setObjectName("primaryBtn")
         self.btn_run.setFixedHeight(34)
+        self.btn_run.setToolTip(format_tooltip("Khởi chạy chuỗi hành động theo sơ đồ khối", "Ctrl+Enter"))
         self.btn_run.clicked.connect(self.runWorkflowRequested.emit)
         top.addWidget(self.btn_run)
 
         self.btn_clear = QPushButton(t("workflow.clear_canvas"))
         self.btn_clear.setIcon(get_svg_icon("trash", "#f87171", 14))
+        self.btn_clear.setObjectName("dangerBtn")
         self.btn_clear.setFixedHeight(34)
+        self.btn_clear.setToolTip(format_tooltip("Xóa sạch toàn bộ các khối trên bảng vẽ", "Ctrl+D"))
         self.btn_clear.clicked.connect(self._workflow_clear)
         top.addWidget(self.btn_clear)
 
@@ -106,34 +114,44 @@ class WorkflowTab(QWidget):
         preset_bar.addWidget(self.sqlite_preset_combo)
 
         self.btn_load_db = QPushButton(t("workflow.load_db"))
+        self.btn_load_db.setObjectName("secondaryBtn")
         self.btn_load_db.setIcon(get_svg_icon("refresh", "#58a6ff", 14))
         self.btn_load_db.setFixedHeight(32)
+        self.btn_load_db.setToolTip(format_tooltip("Tải cấu hình mẫu đã lưu từ database"))
         self.btn_load_db.clicked.connect(self._load_sqlite_preset)
         preset_bar.addWidget(self.btn_load_db)
 
         self.btn_save_db = QPushButton(t("workflow.save_db"))
+        self.btn_save_db.setObjectName("secondaryBtn")
         self.btn_save_db.setIcon(get_svg_icon("save", "#34d399", 14))
         self.btn_save_db.setFixedHeight(32)
+        self.btn_save_db.setToolTip(format_tooltip("Lưu sơ đồ quy trình hiện tại vào SQLite"))
         self.btn_save_db.clicked.connect(self._save_sqlite_preset)
         preset_bar.addWidget(self.btn_save_db)
 
         self.btn_del_db = QPushButton(t("workflow.delete_db"))
+        self.btn_del_db.setObjectName("secondaryBtn")
         self.btn_del_db.setIcon(get_svg_icon("trash", "#f87171", 14))
         self.btn_del_db.setFixedHeight(32)
+        self.btn_del_db.setToolTip(format_tooltip("Xóa mẫu đang chọn khỏi cơ sở dữ liệu"))
         self.btn_del_db.clicked.connect(self._delete_sqlite_preset)
         preset_bar.addWidget(self.btn_del_db)
 
         preset_bar.addSpacing(8)
 
         self.btn_save_file = QPushButton("Xuất JSON")
+        self.btn_save_file.setObjectName("secondaryBtn")
         self.btn_save_file.setIcon(get_svg_icon("file-text", "#94a3b8", 14))
         self.btn_save_file.setFixedHeight(32)
+        self.btn_save_file.setToolTip(format_tooltip("Lưu sơ đồ quy trình ra tệp tin JSON"))
         self.btn_save_file.clicked.connect(self._workflow_save)
         preset_bar.addWidget(self.btn_save_file)
 
         self.btn_load_file = QPushButton("Mở JSON")
+        self.btn_load_file.setObjectName("secondaryBtn")
         self.btn_load_file.setIcon(get_svg_icon("folder", "#94a3b8", 14))
         self.btn_load_file.setFixedHeight(32)
+        self.btn_load_file.setToolTip(format_tooltip("Nhập sơ đồ quy trình từ tệp tin JSON"))
         self.btn_load_file.clicked.connect(self._workflow_load)
         preset_bar.addWidget(self.btn_load_file)
 
@@ -162,6 +180,7 @@ class WorkflowTab(QWidget):
             }
             QPushButton:hover { background: rgba(99, 102, 241, 0.3); color: #ffffff; }
         """)
+        btn_tpl_full.setToolTip(format_tooltip("Nạp mẫu hoàn chỉnh từ nạp JSON đến cắt ghép"))
         btn_tpl_full.clicked.connect(lambda: self.load_quick_template("full"))
         quick_tpl_bar.addWidget(btn_tpl_full)
 
@@ -179,6 +198,7 @@ class WorkflowTab(QWidget):
             }
             QPushButton:hover { background: rgba(56, 189, 248, 0.3); color: #ffffff; }
         """)
+        btn_tpl_media.setToolTip(format_tooltip("Nạp mẫu tìm kiếm và tải media tự động"))
         btn_tpl_media.clicked.connect(lambda: self.load_quick_template("media"))
         quick_tpl_bar.addWidget(btn_tpl_media)
 
@@ -196,6 +216,7 @@ class WorkflowTab(QWidget):
             }
             QPushButton:hover { background: rgba(245, 158, 11, 0.3); color: #ffffff; }
         """)
+        btn_tpl_voice.setToolTip(format_tooltip("Nạp mẫu hậu kỳ khớp thoại và cắt ghép video"))
         btn_tpl_voice.clicked.connect(lambda: self.load_quick_template("voice_cut"))
         quick_tpl_bar.addWidget(btn_tpl_voice)
 
@@ -212,8 +233,19 @@ class WorkflowTab(QWidget):
         self.workflow_log.setMaximumHeight(110)
         layout.addWidget(self.workflow_log)
 
+        # Keyboard shortcuts
+        sh_run = QShortcut(QKeySequence("Ctrl+Return"), self)
+        sh_run.activated.connect(self.btn_run.click)
+        sh_layout = QShortcut(QKeySequence("Ctrl+L"), self)
+        sh_layout.activated.connect(self.btn_auto_layout.click)
+        sh_clear = QShortcut(QKeySequence("Ctrl+D"), self)
+        sh_clear.activated.connect(self.btn_clear.click)
+
         # Initial load of SQLite presets
         self._refresh_sqlite_presets()
+
+        # Apply global interactive UX enhancements
+        enhance_widget_interactions(self)
 
     def retranslate_ui(self):
         """Updates all text elements upon language switch."""

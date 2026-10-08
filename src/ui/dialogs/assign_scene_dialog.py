@@ -10,6 +10,7 @@ from PyQt6.QtCore import Qt
 from ...core.i18n import t
 from ..styles.icons import get_svg_icon, get_svg_pixmap
 from ..styles.tokens import load_stylesheet
+from ..styles.ui_enhancer import enhance_widget_interactions, format_tooltip
 
 
 class AssignSceneDialog(QDialog):
@@ -38,7 +39,7 @@ class AssignSceneDialog(QDialog):
         header_h.addWidget(header_icon)
 
         header = QLabel(t("assign_scene.header"))
-        header.setStyleSheet("color: #94a3b8; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.8px;")
+        header.setObjectName("sectionHeader")
         header_h.addWidget(header)
         header_h.addStretch()
         layout.addLayout(header_h)
@@ -74,6 +75,7 @@ class AssignSceneDialog(QDialog):
                         line-height: 1.3;
                     }
                 """)
+                suggest_btn.setToolTip(format_tooltip("Gán nhanh tệp tin vào cảnh đang tìm kiếm"))
                 suggest_btn.clicked.connect(lambda: self._select_and_close(suggested_scene_id))
                 layout.addWidget(suggest_btn)
 
@@ -117,12 +119,15 @@ class AssignSceneDialog(QDialog):
         btn_assign.setIcon(get_svg_icon("check", "#ffffff", 14))
         btn_assign.setObjectName("primaryBtn")
         btn_assign.setFixedHeight(36)
+        btn_assign.setToolTip(format_tooltip("Xác nhận gán vào cảnh đã chọn", "Enter"))
         btn_assign.clicked.connect(self._on_assign)
         btn_row.addWidget(btn_assign)
 
         btn_skip = QPushButton("Bỏ qua")
+        btn_skip.setObjectName("secondaryBtn")
         btn_skip.setIcon(get_svg_icon("chevron-right", "#ffffff", 14))
         btn_skip.setFixedHeight(36)
+        btn_skip.setToolTip(format_tooltip("Bỏ qua tệp tin này không gán"))
         btn_skip.clicked.connect(self._on_skip)
         btn_row.addWidget(btn_skip)
 
@@ -130,10 +135,14 @@ class AssignSceneDialog(QDialog):
         btn_delete.setIcon(get_svg_icon("trash", "#ffffff", 14))
         btn_delete.setObjectName("dangerBtn")
         btn_delete.setFixedHeight(36)
+        btn_delete.setToolTip(format_tooltip("Xóa tệp tin đã tải về"))
         btn_delete.clicked.connect(self._on_delete)
         btn_row.addWidget(btn_delete)
 
         layout.addLayout(btn_row)
+
+        # Apply global interactive UX enhancements
+        enhance_widget_interactions(self)
 
     def _populate_scene_list(self, filter_text: str):
         self.scene_list.clear()

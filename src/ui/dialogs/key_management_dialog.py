@@ -13,6 +13,7 @@ from PyQt6.QtCore import Qt, pyqtSignal
 from ...core.i18n import t
 from ..styles.icons import get_svg_icon, get_svg_pixmap
 from ..styles.tokens import load_stylesheet
+from ..styles.ui_enhancer import enhance_widget_interactions, format_tooltip
 from ...infrastructure.providers.pexels_provider import PexelsProvider
 from ...infrastructure.providers.pixabay_provider import PixabayProvider
 from ...infrastructure.providers.vecteezy_provider import VecteezyProvider
@@ -48,14 +49,18 @@ class KeyDialog(QDialog):
         title_h.addStretch()
         layout.addLayout(title_h)
 
-        layout.addWidget(QLabel("Tên gợi nhớ (ví dụ: Key 1):"))
+        lbl_name = QLabel("Tên gợi nhớ (ví dụ: Key 1):")
+        lbl_name.setObjectName("fieldLabel")
+        layout.addWidget(lbl_name)
         self.name_input = QLineEdit()
         self.name_input.setFixedHeight(34)
         if existing:
             self.name_input.setText(existing.get("name", ""))
         layout.addWidget(self.name_input)
 
-        layout.addWidget(QLabel(f"Mã API Key {platform.title()}:"))
+        lbl_code = QLabel(f"Mã API Key {platform.title()}:")
+        lbl_code.setObjectName("fieldLabel")
+        layout.addWidget(lbl_code)
         self.key_input = QLineEdit()
         self.key_input.setFixedHeight(34)
         self.key_input.setStyleSheet("font-family: 'Consolas', 'Cascadia Code', monospace;")
@@ -73,14 +78,17 @@ class KeyDialog(QDialog):
         btn_h.setSpacing(10)
 
         btn_test = QPushButton(t("api_keys.test_key_btn"))
+        btn_test.setObjectName("secondaryBtn")
         btn_test.setIcon(get_svg_icon("zap", "#ffffff", 14))
         btn_test.setFixedHeight(34)
+        btn_test.setToolTip(format_tooltip("Kiểm tra kết nối và tính hợp lệ của mã API key"))
         btn_test.clicked.connect(self._test_key)
         btn_h.addWidget(btn_test)
 
         btn_h.addStretch()
 
         btn_cancel = QPushButton(t("common.cancel"))
+        btn_cancel.setObjectName("secondaryBtn")
         btn_cancel.setFixedHeight(34)
         btn_cancel.clicked.connect(self.reject)
         btn_h.addWidget(btn_cancel)
@@ -89,11 +97,15 @@ class KeyDialog(QDialog):
         btn_save.setIcon(get_svg_icon("save", "#ffffff", 14))
         btn_save.setObjectName("primaryBtn")
         btn_save.setFixedHeight(34)
+        btn_save.setToolTip(format_tooltip("Lưu API key vào hệ thống", "Enter"))
         btn_save.clicked.connect(self._save)
         btn_h.addWidget(btn_save)
 
         layout.addLayout(btn_h)
         self.name_input.setFocus()
+
+        # Apply global interactive UX enhancements
+        enhance_widget_interactions(self)
 
     def _test_key(self):
         key = self.key_input.text().strip()
@@ -191,18 +203,22 @@ class KeyManagementDialog(QDialog):
         btn_add.setIcon(get_svg_icon("plus", "#ffffff", 14))
         btn_add.setObjectName("primaryBtn")
         btn_add.setFixedHeight(36)
+        btn_add.setToolTip(format_tooltip("Thêm API key mới cho dịch vụ này"))
         btn_add.clicked.connect(self._add_key)
         btn_h.addWidget(btn_add)
 
         btn_register = QPushButton(t("api_keys.get_free_key"))
+        btn_register.setObjectName("secondaryBtn")
         btn_register.setIcon(get_svg_icon("globe", "#ffffff", 14))
         btn_register.setFixedHeight(36)
+        btn_register.setToolTip(format_tooltip("Mở trang web đăng ký tài khoản lấy key"))
         btn_register.clicked.connect(self._open_register)
         btn_h.addWidget(btn_register)
 
         btn_h.addStretch()
 
         btn_close = QPushButton(t("common.close"))
+        btn_close.setObjectName("secondaryBtn")
         btn_close.setFixedWidth(110)
         btn_close.setFixedHeight(36)
         btn_close.clicked.connect(self.accept)
@@ -210,6 +226,9 @@ class KeyManagementDialog(QDialog):
 
         layout.addLayout(btn_h)
         self._refresh_list()
+
+        # Apply global interactive UX enhancements
+        enhance_widget_interactions(self)
 
     def _save_changes(self):
         if callable(self.save_config_fn):
@@ -271,7 +290,9 @@ class KeyManagementDialog(QDialog):
             h.addLayout(v, 1)
 
             btn_edit = QPushButton(t("common.edit"))
+            btn_edit.setObjectName("secondaryBtn")
             btn_edit.setFixedSize(64, 30)
+            btn_edit.setToolTip(format_tooltip("Chỉnh sửa tên gợi nhớ và mã API key"))
             btn_edit.clicked.connect(lambda checked, i=idx: self._edit_key(i))
             h.addWidget(btn_edit)
 
@@ -279,10 +300,13 @@ class KeyManagementDialog(QDialog):
             btn_del.setIcon(get_svg_icon("trash", "#ffffff", 12))
             btn_del.setObjectName("dangerBtn")
             btn_del.setFixedSize(64, 30)
+            btn_del.setToolTip(format_tooltip("Xóa vĩnh viễn API key này"))
             btn_del.clicked.connect(lambda checked, i=idx: self._delete_key(i))
             h.addWidget(btn_del)
 
             self.list_layout.insertWidget(self.list_layout.count() - 1, row)
+
+        enhance_widget_interactions(self.list_container)
 
     def _add_key(self):
         dialog = KeyDialog(self.platform, parent=self)
