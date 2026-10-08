@@ -623,14 +623,15 @@ class VoiceTab(QWidget):
                 QMessageBox.information(self, "Không tìm thấy thư mục", "Thư mục xuất âm thanh không tồn tại.")
             return
 
+        audio_exts = {".mp3", ".wav", ".aac", ".m4a"}
         files = sorted(
-            [f for f in folder.glob("*.mp3") if not f.name.startswith("master_") and not f.name.startswith("kich_ban_")],
+            [f for f in folder.iterdir() if f.is_file() and f.suffix.lower() in audio_exts and not f.name.startswith("master_") and not f.name.startswith("kich_ban_")],
             key=lambda x: [int(c) if c.isdigit() else c for c in re.split(r"(\d+)", x.name)]
         )
 
         if not files:
             if not silent:
-                QMessageBox.information(self, "Không có âm thanh", "Không tìm thấy file .mp3 nào để ghép trong thư mục xuất.")
+                QMessageBox.information(self, "Không có âm thanh", "Không tìm thấy file âm thanh (.mp3, .wav, .aac, .m4a) nào để ghép trong thư mục xuất.")
             return
 
         out = folder / "master_voice.mp3"

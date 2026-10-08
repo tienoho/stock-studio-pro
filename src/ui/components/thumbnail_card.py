@@ -148,7 +148,10 @@ class ThumbnailCard(QFrame):
         super().mousePressEvent(event)
 
     def _update_style(self, theme_name: str = ""):
-        is_dark = ThemeManager.get_instance().is_dark()
+        try:
+            is_dark = ThemeManager.get_instance().is_dark()
+        except (RuntimeError, Exception):
+            return
         if self.is_selected:
             if is_dark:
                 self.setStyleSheet("""

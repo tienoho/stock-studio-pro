@@ -340,27 +340,39 @@ class PreviewModal(QDialog):
             # Fallback sang thumbnail cache
             if self.thumbnail_cache:
                 thumb_key = item.get("thumb_url") or item.get("thumbnail_url", "")
-                thumb_pix = self.thumbnail_cache.get(thumb_key)
+                get_fn = getattr(self.thumbnail_cache, "get_pixmap", getattr(self.thumbnail_cache, "get", None))
+                thumb_pix = get_fn(thumb_key) if callable(get_fn) else None
                 if thumb_pix and not thumb_pix.isNull():
                     def set_thumb():
-                        scaled = thumb_pix.scaled(
-                            self.image_label.size(),
-                            Qt.AspectRatioMode.KeepAspectRatio,
-                            Qt.TransformationMode.SmoothTransformation
-                        )
-                        self.image_label.setPixmap(scaled)
+                        try:
+                            scaled = thumb_pix.scaled(
+                                self.image_label.size(),
+                                Qt.AspectRatioMode.KeepAspectRatio,
+                                Qt.TransformationMode.SmoothTransformation
+                            )
+                            self.image_label.setPixmap(scaled)
+                        except Exception:
+                            pass
                     QTimer.singleShot(0, set_thumb)
                     return
 
             def set_fail():
-                self.image_label.setText(f"Không tải được ảnh preview ({last_err})\n(Có thể CDN throttle, vui lòng thử lại sau)")
-                self.image_label.setStyleSheet("color: #f87171; font-size: 12px; font-weight: 600;")
+                try:
+                    self.image_label.setText(f"Không tải được ảnh preview ({last_err})\n(Có thể CDN throttle, vui lòng thử lại sau)")
+                    self.image_label.setStyleSheet("color: #f87171; font-size: 12px; font-weight: 600;")
+                except Exception:
+                    pass
             QTimer.singleShot(0, set_fail)
 
         except Exception as e:
+            err_msg = str(e)
+
             def set_err():
-                self.image_label.setText(f"Lỗi tải ảnh: {e}")
-                self.image_label.setStyleSheet("color: #f87171; font-size: 12px;")
+                try:
+                    self.image_label.setText(f"Lỗi tải ảnh: {err_msg}")
+                    self.image_label.setStyleSheet("color: #f87171; font-size: 12px;")
+                except Exception:
+                    pass
             QTimer.singleShot(0, set_err)
 
     def _toggle_play(self):

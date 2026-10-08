@@ -4,6 +4,7 @@ Setup Sidebar | Scenes Timeline | Media Grid & Controls | MotionArray & Monitor.
 """
 
 import os
+import sys
 import re
 import json
 import time
@@ -2244,18 +2245,22 @@ class DownloaderTab(QWidget):
             return
 
         source_mode = self.search_source_combo.currentText()
-        source_lower = source_mode.lower()
-        needs_pexels = "pexels" in source_lower or "+" in source_lower
-        needs_pixabay = "pixabay" in source_lower or "+" in source_lower
-        needs_vecteezy = "vecteezy" in source_lower or "+" in source_lower
-
-        has_source_key = (
-            (needs_pexels and self.config.get("pexels_keys")) or
-            (needs_pixabay and self.config.get("pixabay_keys")) or
-            (needs_vecteezy and self.config.get("vecteezy_keys"))
+        km = KeyManager(
+            self.config.get("pexels_keys", []),
+            self.config.get("pixabay_keys", []),
+            self.config.get("coverr_keys", []),
+            self.config.get("vecteezy_keys", []),
+            config_repo=self.config_repo
         )
-        if not has_source_key:
-            QMessageBox.warning(self, "Thiếu API Key", f"Thêm API key cho nguồn: {source_mode}")
+
+        resolved_providers = self.provider_registry.resolve_providers_for_mode(source_mode, km)
+        if not resolved_providers:
+            QMessageBox.warning(
+                self,
+                "Thiếu API Key",
+                f"Chưa cấu hình API key hợp lệ cho nguồn: {source_mode}\n"
+                "Vui lòng thêm API key trong Cài đặt (F2) hoặc chuyển sang nguồn 100% miễn phí (Wikimedia Commons / Openverse)."
+            )
             return
 
         if not self.search_photos_check.isChecked() and not self.search_videos_check.isChecked():
@@ -2275,14 +2280,6 @@ class DownloaderTab(QWidget):
         self._render_grid()
         self._update_stats()
         self._populate_scene_list()
-
-        km = KeyManager(
-            self.config.get("pexels_keys", []),
-            self.config.get("pixabay_keys", []),
-            [],
-            self.config.get("vecteezy_keys", []),
-            config_repo=self.config_repo
-        )
 
         self.search_btn.setEnabled(False)
         self.stop_btn.setEnabled(True)
@@ -2384,7 +2381,7 @@ class DownloaderTab(QWidget):
         km = KeyManager(
             self.config.get("pexels_keys", []),
             self.config.get("pixabay_keys", []),
-            [],
+            self.config.get("coverr_keys", []),
             self.config.get("vecteezy_keys", []),
             config_repo=self.config_repo
         )

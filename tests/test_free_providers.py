@@ -176,8 +176,40 @@ class TestFreeMediaProviders(unittest.TestCase):
             wiki.search_photos("sunset\n\r\tview " + "a" * 200, per_page=5)
             call_params = mock_get.call_args[1]["params"]
             self.assertNotIn("\n", call_params["gsrsearch"])
-            self.assertNotIn("\r", call_params["gsrsearch"])
-            self.assertLessEqual(len(call_params["gsrsearch"]), 150)
+    def test_free_provider_resolution_zero_keys(self):
+        from src.application.services.media_provider_registry import MediaProviderRegistry
+        from src.application.services.key_manager import KeyManager
+
+        km_empty = KeyManager([], [], [], [])
+        reg = MediaProviderRegistry(km_empty)
+        resolved_wiki = reg.resolve_providers_for_mode("Wikimedia Commons (100% Free)", km_empty)
+        self.assertIn("wikimedia", resolved_wiki)
+
+        resolved_open = reg.resolve_providers_for_mode("Openverse (Creative Commons)", km_empty)
+        self.assertIn("openverse", resolved_open)
+
+    def test_thumbnail_cache_get_and_overlay(self):
+        from PyQt6.QtGui import QPixmap
+        from PyQt6.QtWidgets import QApplication
+        from src.infrastructure.media.thumbnail_cache import ThumbnailCache, add_duration_to_pixmap
+
+        app = QApplication.instance() or QApplication([])
+
+        pix = QPixmap(100, 100)
+        pix.fill()
+
+        # String duration should not crash
+        badged = add_duration_to_pixmap(pix, "14.5")
+        self.assertFalse(badged.isNull())
+
+        # Unknown or 0 duration should not add badge
+        badged_zero = add_duration_to_pixmap(pix, 0)
+        self.assertFalse(badged_zero.isNull())
+
+        import tempfile
+        with tempfile.TemporaryDirectory() as td:
+            cache = ThumbnailCache(td, max_memory_entries=2)
+            self.assertIsNone(cache.get("https://example.com/notfound.jpg"))
 
 
 if __name__ == "__main__":

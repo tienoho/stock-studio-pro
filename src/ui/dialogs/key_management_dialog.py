@@ -124,6 +124,9 @@ class KeyDialog(QDialog):
                     provider = PixabayProvider(None)
                 elif self.platform == "vecteezy":
                     provider = VecteezyProvider(None)
+                elif self.platform == "coverr":
+                    from ...infrastructure.providers.coverr_provider import CoverrProvider
+                    provider = CoverrProvider(None)
                 else:
                     provider = PexelsProvider(None)
 

@@ -110,6 +110,30 @@ class TestSceneVoiceMatcher(unittest.TestCase):
         self.assertIn("0:v:0", cmd)
         self.assertIn("1:a:0", cmd)
 
+    def test_get_media_for_scene_patterns(self):
+        """Verifies 1.mp4, 01.mp4, 1_00.mp4 match scene 1, while 10.mp4 does not."""
+        (self.test_dir / "1.mp4").write_text("dummy")
+        (self.test_dir / "02.mp4").write_text("dummy")
+        (self.test_dir / "10.mp4").write_text("dummy")
+        (self.test_dir / "canh_1.mp4").write_text("dummy")
+
+        matched_scene_1 = self.matcher.get_media_for_scene(self.test_dir, 1)
+        names_1 = [m.name for m in matched_scene_1]
+        self.assertIn("1.mp4", names_1)
+        self.assertIn("canh_1.mp4", names_1)
+        self.assertNotIn("02.mp4", names_1)
+        self.assertNotIn("10.mp4", names_1)
+
+    def test_get_media_for_scene_single_subfolder(self):
+        """Verifies a single scene folder is searched properly."""
+        sub = self.test_dir / "Canh 1"
+        sub.mkdir()
+        (sub / "clip_a.mp4").write_text("dummy")
+
+        matched = self.matcher.get_media_for_scene(self.test_dir, 1, scene_dirs=[sub])
+        names = [m.name for m in matched]
+        self.assertEqual(names, ["clip_a.mp4"])
+
 
 if __name__ == "__main__":
     unittest.main()

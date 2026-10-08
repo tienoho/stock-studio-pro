@@ -50,6 +50,13 @@ class TestSceneModel(unittest.TestCase):
         self.assertEqual(format_duration(5), "0:05")
         self.assertEqual(format_duration(90), "1:30")
         self.assertEqual(format_duration(3605), "60:05")
+        self.assertEqual(format_duration("14.5"), "0:14")
+        self.assertEqual(format_duration("90"), "1:30")
+        self.assertEqual(format_duration(0), "?")
+        self.assertEqual(format_duration("0"), "?")
+        self.assertEqual(format_duration(None), "?")
+        self.assertEqual(format_duration("invalid"), "?")
+        self.assertEqual(format_duration(-10), "?")
 
     def test_extract_scenes_from_json(self):
         raw_data = {

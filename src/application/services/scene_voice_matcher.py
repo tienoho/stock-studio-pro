@@ -134,8 +134,10 @@ class SceneVoiceMatcher:
         3. From flat media files matching scene_id
         4. Fallback to all media files distributed by scene index
         """
-        if scene_dirs and len(scene_dirs) > 1:
+        if scene_dirs:
             for sd in scene_dirs:
+                if sd == root_dir:
+                    continue
                 nums = re.findall(r"\d+", sd.name)
                 if nums and int(nums[0]) == scene_idx:
                     media = cls.get_media_files(sd)
@@ -154,10 +156,12 @@ class SceneVoiceMatcher:
             return []
 
         patterns = [
-            re.compile(rf"^{scene_idx:02d}_", re.IGNORECASE),
-            re.compile(rf"^{scene_idx:03d}_", re.IGNORECASE),
-            re.compile(rf"^{scene_idx}_", re.IGNORECASE),
+            re.compile(rf"^{scene_idx:02d}(_|\.|\b)", re.IGNORECASE),
+            re.compile(rf"^{scene_idx:03d}(_|\.|\b)", re.IGNORECASE),
+            re.compile(rf"^{scene_idx}(_|\.|\b)", re.IGNORECASE),
             re.compile(rf"^scene_?0*{scene_idx}(_|\.|\b)", re.IGNORECASE),
+            re.compile(rf"^c[aàảãáạăằẳẵắặâầẩẫấậ]nh_?0*{scene_idx}(_|\.|\b)", re.IGNORECASE),
+            re.compile(rf"^c_?0*{scene_idx}(_|\.|\b)", re.IGNORECASE),
         ]
         if scene_id:
             patterns.append(re.compile(rf"^{re.escape(scene_id)}(_|\.|\b)", re.IGNORECASE))
@@ -261,6 +265,7 @@ class SceneVoiceMatcher:
             text_desc = seg.get("text", "")
             audio_clip = seg.get("audio_file")
             scene_id = str(seg.get("scene_id") or "")
+            desc_tag = f" - '{text_desc[:30]}...'" if text_desc else ""
 
             media_list = self.get_media_for_scene(root_video_dir, idx, scene_id, scene_dirs)
             if not media_list and scene_dirs:
@@ -270,7 +275,7 @@ class SceneVoiceMatcher:
             out_clip = clips_dir / f"clip_{idx:03d}.mp4"
 
             if not media_list:
-                log(f"[Cảnh {idx:02d}] Không có media: Tạo clip màu bảo toàn timeline ({dur:.2f}s)")
+                log(f"[Cảnh {idx:02d}{desc_tag}] Không có media: Tạo clip màu bảo toàn timeline ({dur:.2f}s)")
                 ok_fb, _ = self.ffmpeg.create_color_clip(dur, out_clip)
                 if ok_fb:
                     generated_clips.append(out_clip)
@@ -283,7 +288,7 @@ class SceneVoiceMatcher:
             is_image = chosen_media.suffix.lower() in FFmpegProcessor.IMAGE_EXTENSIONS
 
             if is_image:
-                log(f"[{idx:02d}/{total:02d}] Tạo video từ ảnh {chosen_media.name} (thời lượng: {dur:.2f}s)")
+                log(f"[{idx:02d}/{total:02d}{desc_tag}] Tạo video từ ảnh {chosen_media.name} (thời lượng: {dur:.2f}s)")
                 ok, err = self.ffmpeg.image_to_clip(chosen_media, dur, out_clip)
             else:
                 vid_dur = self.ffmpeg.clip_duration(chosen_media)
@@ -291,7 +296,7 @@ class SceneVoiceMatcher:
                 if random_cuts and vid_dur > dur + 1.0:
                     max_start = max(0.0, vid_dur - dur)
                     start_at = random.uniform(0.0, max_start)
-                log(f"[{idx:02d}/{total:02d}] Cắt {dur:.2f}s từ {chosen_media.name} (bắt đầu: {start_at:.2f}s, tự lặp nếu thiếu)")
+                log(f"[{idx:02d}/{total:02d}{desc_tag}] Cắt {dur:.2f}s từ {chosen_media.name} (bắt đầu: {start_at:.2f}s, tự lặp nếu thiếu)")
                 ok, err = self.ffmpeg.cut_clip(chosen_media, start_at, dur, out_clip, loop_if_short=True)
 
             if not ok:

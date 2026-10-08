@@ -117,8 +117,13 @@ class SearchWorker(QThread):
 
                     for results in sources_results:
                         for r in results:
+                            if not isinstance(r, dict):
+                                continue
                             r["_scene_id"] = scene_id
-                            key = f"{r['source']}_{r['type']}_{r['id']}"
+                            source = r.get("source", "unknown")
+                            m_type = r.get("type", "media")
+                            m_id = str(r.get("id", ""))
+                            key = f"{source}_{m_type}_{m_id}"
                             if key not in seen_keys:
                                 seen_keys.add(key)
                                 scene_results.append(r)

@@ -82,13 +82,20 @@ def srt_time_to_seconds(value: str) -> float:
 
 
 
-def format_duration(seconds: float) -> str:
-    """Format seconds into M:SS."""
-    if not seconds:
+def format_duration(seconds: Any) -> str:
+    """Format seconds into M:SS safely for any numeric or string input."""
+    if seconds is None:
         return "?"
-    m = int(seconds) // 60
-    s = int(seconds) % 60
-    return f"{m}:{s:02d}"
+    try:
+        val = float(seconds)
+        if val <= 0:
+            return "?"
+        total_sec = int(round(val))
+        m = total_sec // 60
+        s = total_sec % 60
+        return f"{m}:{s:02d}"
+    except (ValueError, TypeError, OverflowError):
+        return "?"
 
 
 def extract_scenes_from_json(data: Any) -> List[Dict[str, Any]]:

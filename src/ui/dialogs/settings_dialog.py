@@ -74,6 +74,7 @@ class SettingsDialog(QDialog):
         self.keys_info_label = QLabel(
             f"Pexels: <b style='color:#34d399;'>{len(self.config.get('pexels_keys', []))}</b> keys  |  "
             f"Pixabay: <b style='color:#38bdf8;'>{len(self.config.get('pixabay_keys', []))}</b> keys  |  "
+            f"Coverr: <b style='color:#f43f5e;'>{len(self.config.get('coverr_keys', []))}</b> keys  |  "
             f"Vecteezy: <b style='color:#a78bfa;'>{len(self.config.get('vecteezy_keys', []))}</b> keys"
         )
         self.keys_info_label.setStyleSheet("color: #cbd5e1; font-size: 12px; padding: 2px 0;")
@@ -96,6 +97,14 @@ class SettingsDialog(QDialog):
         btn_manage_pixabay.setToolTip(format_tooltip("Thêm, sửa, xóa và kiểm tra API key Pixabay"))
         btn_manage_pixabay.clicked.connect(lambda: self._manage_keys("pixabay"))
         key_btn_row.addWidget(btn_manage_pixabay)
+
+        btn_manage_coverr = QPushButton("Quản lý Coverr")
+        btn_manage_coverr.setObjectName("secondaryBtn")
+        btn_manage_coverr.setIcon(get_svg_icon("key", "#f43f5e", 14))
+        btn_manage_coverr.setFixedHeight(34)
+        btn_manage_coverr.setToolTip(format_tooltip("Thêm, sửa, xóa và kiểm tra API key Coverr"))
+        btn_manage_coverr.clicked.connect(lambda: self._manage_keys("coverr"))
+        key_btn_row.addWidget(btn_manage_coverr)
 
         btn_manage_vecteezy = QPushButton("Quản lý Vecteezy")
         btn_manage_vecteezy.setObjectName("secondaryBtn")
@@ -251,6 +260,7 @@ class SettingsDialog(QDialog):
         self.keys_info_label.setText(
             f"Pexels: <b style='color:#34d399;'>{len(self.config.get('pexels_keys', []))}</b> keys  |  "
             f"Pixabay: <b style='color:#38bdf8;'>{len(self.config.get('pixabay_keys', []))}</b> keys  |  "
+            f"Coverr: <b style='color:#f43f5e;'>{len(self.config.get('coverr_keys', []))}</b> keys  |  "
             f"Vecteezy: <b style='color:#a78bfa;'>{len(self.config.get('vecteezy_keys', []))}</b> keys"
         )
         self.configChanged.emit()
