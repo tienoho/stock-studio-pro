@@ -71,25 +71,39 @@ jobs:
         run: |
           python build_release.py --skip-tests
 
-      - name: Generate SHA-256 Checksum
+      - name: Install Inno Setup
         shell: pwsh
         run: |
-          $zip = "dist/AutoStockStudio-windows-x64.zip"
-          if (Test-Path $zip) {
-              $hash = (Get-FileHash -Path $zip -Algorithm SHA256).Hash
-              Set-Content -Path "dist/AutoStockStudio-windows-x64.zip.sha256" -Value "$hash  AutoStockStudio-windows-x64.zip"
-              Write-Host "SHA256 Checksum: $hash"
-          } else {
-              throw "Release ZIP not found at $zip"
+          choco install innosetup --no-progress -y
+          "C:\Program Files (x86)\Inno Setup 6" >> $env:GITHUB_PATH
+
+      - name: Build Windows Installer (.exe) with Inno Setup
+        shell: pwsh
+        run: |
+          $tag = "${{ env.RELEASE_TAG }}"
+          $cleanVer = $tag.TrimStart("v")
+          if (-not $cleanVer) { $cleanVer = "1.1.0" }
+          Write-Host "Compiling Inno Setup installer for version $cleanVer..."
+          & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" /DAppVersion=$cleanVer installer.iss
+
+      - name: Generate SHA-256 Checksums
+        shell: pwsh
+        run: |
+          $files = Get-ChildItem -Path "dist" -Include "*.zip", "*.exe" -File
+          foreach ($file in $files) {
+              $hash = (Get-FileHash -Path $file.FullName -Algorithm SHA256).Hash
+              Set-Content -Path "$($file.FullName).sha256" -Value "$hash  $($file.Name)"
+              Write-Host "SHA256 Checksum for $($file.Name): $hash"
           }
 
       - name: Upload Release Artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: AutoStockStudio-windows-x64
+          name: AutoStockStudio-Release-Files
           path: |
-            dist/AutoStockStudio-windows-x64.zip
-            dist/AutoStockStudio-windows-x64.zip.sha256
+            dist/*.exe
+            dist/*.zip
+            dist/*.sha256
           retention-days: 30
 
       - name: Publish Official GitHub Release
@@ -99,8 +113,9 @@ jobs:
           tag_name: ${{ env.RELEASE_TAG }}
           name: AutoStock Studio ${{ env.RELEASE_TAG }}
           files: |
-            dist/AutoStockStudio-windows-x64.zip
-            dist/AutoStockStudio-windows-x64.zip.sha256
+            dist/*.exe
+            dist/*.zip
+            dist/*.sha256
           draft: ${{ inputs.draft || false }}
           prerelease: ${{ inputs.prerelease || false }}
           generate_release_notes: true
