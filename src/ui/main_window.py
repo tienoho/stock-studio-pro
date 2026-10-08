@@ -181,7 +181,7 @@ class AutoStockMainWindow(QMainWindow):
         self.btn_quick_load = QPushButton("Nạp Kịch Bản")
         self.btn_quick_load.setIcon(get_svg_icon("file-text", "#38bdf8", 12))
         self.btn_quick_load.setToolTip(format_tooltip("Nạp kịch bản Claude AI JSON", "Ctrl+O"))
-        self.btn_quick_load.setFixedHeight(26)
+        self.btn_quick_load.setFixedHeight(28)
         self.btn_quick_load.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
         self.btn_quick_load.clicked.connect(self._prompt_load_json)
         stepper_layout.addWidget(self.btn_quick_load)
@@ -189,7 +189,7 @@ class AutoStockMainWindow(QMainWindow):
         self.btn_quick_out = QPushButton("Thư Mục Xuất")
         self.btn_quick_out.setIcon(get_svg_icon("folder", "#34d399", 12))
         self.btn_quick_out.setToolTip(format_tooltip("Mở thư mục xuất sản phẩm", "Ctrl+Shift+O"))
-        self.btn_quick_out.setFixedHeight(26)
+        self.btn_quick_out.setFixedHeight(28)
         self.btn_quick_out.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
         self.btn_quick_out.clicked.connect(self._open_output_folder)
         stepper_layout.addWidget(self.btn_quick_out)
@@ -203,13 +203,13 @@ class AutoStockMainWindow(QMainWindow):
         self.btn_update.setIconSize(QSize(12, 12))
         self.btn_update.setText(f" v{APP_VERSION}")
         self.btn_update.setToolTip(format_tooltip(t("update.check_btn"), "F12"))
-        self.btn_update.setFixedHeight(26)
+        self.btn_update.setFixedHeight(28)
         self.btn_update.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
         self.btn_update.clicked.connect(self._on_update_btn_clicked)
         stepper_layout.addWidget(self.btn_update)
 
         self.btn_theme = QPushButton()
-        self.btn_theme.setFixedHeight(26)
+        self.btn_theme.setFixedHeight(28)
         self.btn_theme.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
         self.btn_theme.clicked.connect(self._toggle_theme)
         stepper_layout.addWidget(self.btn_theme)
@@ -220,7 +220,7 @@ class AutoStockMainWindow(QMainWindow):
         curr_loc = self.i18n.get_locale().upper()
         self.btn_lang.setText(f" {curr_loc}")
         self.btn_lang.setToolTip(format_tooltip(t("app.switch_lang"), "Ctrl+L"))
-        self.btn_lang.setFixedHeight(26)
+        self.btn_lang.setFixedHeight(28)
         self.btn_lang.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
         self.btn_lang.clicked.connect(self._toggle_language)
         stepper_layout.addWidget(self.btn_lang)
@@ -285,17 +285,17 @@ class AutoStockMainWindow(QMainWindow):
 
         self.dash_action_btn = QPushButton("Nạp kịch bản mới ➔")
         self.dash_action_btn.setIcon(get_svg_icon("arrow_right", "#818cf8", 11))
-        self.dash_action_btn.setFixedHeight(22)
+        self.dash_action_btn.setFixedHeight(26)
         self.dash_action_btn.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
         self.dash_action_btn.setStyleSheet("""
             QPushButton {
                 background: transparent;
                 color: #818cf8;
-                font-size: 10px;
+                font-size: 11px;
                 font-weight: 700;
                 border: 1px solid #2d3748;
-                border-radius: 4px;
-                padding: 0 8px;
+                border-radius: 6px;
+                padding: 0 10px;
             }
             QPushButton:hover {
                 background: #1e293b;
@@ -511,7 +511,7 @@ class AutoStockMainWindow(QMainWindow):
                     background: #111724;
                     color: #fbbf24;
                     border: 1px solid #1f2b3f;
-                    border-radius: 8px;
+                    border-radius: 6px;
                     padding: 0 10px;
                     font-size: 11px;
                     font-weight: 800;
@@ -528,7 +528,7 @@ class AutoStockMainWindow(QMainWindow):
                     background: #ffffff;
                     color: #d97706;
                     border: 1px solid #cbd5e1;
-                    border-radius: 8px;
+                    border-radius: 6px;
                     padding: 0 10px;
                     font-size: 11px;
                     font-weight: 800;
@@ -642,7 +642,7 @@ class AutoStockMainWindow(QMainWindow):
                         background: #111724;
                         color: #94a3b8;
                         border: 1px solid #1f2b3f;
-                        border-radius: 8px;
+                        border-radius: 6px;
                         padding: 0 10px;
                         font-size: 11px;
                         font-weight: 700;
@@ -659,7 +659,7 @@ class AutoStockMainWindow(QMainWindow):
                         background: #ffffff;
                         color: #059669;
                         border: 1px solid #cbd5e1;
-                        border-radius: 8px;
+                        border-radius: 6px;
                         padding: 0 10px;
                         font-size: 11px;
                         font-weight: 700;
@@ -677,7 +677,7 @@ class AutoStockMainWindow(QMainWindow):
                         background: #111724;
                         color: #58a6ff;
                         border: 1px solid #1f2b3f;
-                        border-radius: 8px;
+                        border-radius: 6px;
                         padding: 0 10px;
                         font-size: 11px;
                         font-weight: 800;
@@ -694,7 +694,7 @@ class AutoStockMainWindow(QMainWindow):
                         background: #ffffff;
                         color: #4f46e5;
                         border: 1px solid #cbd5e1;
-                        border-radius: 8px;
+                        border-radius: 6px;
                         padding: 0 10px;
                         font-size: 11px;
                         font-weight: 800;

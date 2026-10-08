@@ -54,7 +54,7 @@ class WorkflowTab(QWidget):
         top.setSpacing(8)
 
         self.workflow_block_combo = QComboBox()
-        self.workflow_block_combo.setFixedHeight(34)
+        self.workflow_block_combo.setFixedHeight(32)
         self.workflow_block_combo.addItems([
             "Load JSON", "Search stock", "Random select", "Download selected",
             "Cut/Mix video", "Create voice", "Scene voice match"
@@ -64,7 +64,7 @@ class WorkflowTab(QWidget):
         self.btn_add_node = QPushButton(t("workflow.add_node"))
         self.btn_add_node.setObjectName("secondaryBtn")
         self.btn_add_node.setIcon(get_svg_icon("plus", "#ffffff", 14))
-        self.btn_add_node.setFixedHeight(34)
+        self.btn_add_node.setFixedHeight(32)
         self.btn_add_node.setToolTip(format_tooltip("Thêm khối chức năng đã chọn vào bảng vẽ"))
         self.btn_add_node.clicked.connect(self._workflow_canvas_add)
         top.addWidget(self.btn_add_node)
@@ -72,7 +72,7 @@ class WorkflowTab(QWidget):
         self.btn_auto_layout = QPushButton("Sắp Xếp")
         self.btn_auto_layout.setObjectName("secondaryBtn")
         self.btn_auto_layout.setIcon(get_svg_icon("layout", "#4ec9b0", 14))
-        self.btn_auto_layout.setFixedHeight(34)
+        self.btn_auto_layout.setFixedHeight(32)
         self.btn_auto_layout.setToolTip(format_tooltip("Tự động căn chỉnh các bước thẳng hàng", "Ctrl+L"))
         self.btn_auto_layout.clicked.connect(lambda: self.workflow_canvas.auto_arrange())
         top.addWidget(self.btn_auto_layout)
@@ -80,7 +80,7 @@ class WorkflowTab(QWidget):
         self.btn_run = QPushButton(t("workflow.run_workflow"))
         self.btn_run.setIcon(get_svg_icon("play", "#ffffff", 14))
         self.btn_run.setObjectName("primaryBtn")
-        self.btn_run.setFixedHeight(34)
+        self.btn_run.setFixedHeight(36)
         self.btn_run.setToolTip(format_tooltip("Khởi chạy chuỗi hành động theo sơ đồ khối", "Ctrl+Enter"))
         self.btn_run.clicked.connect(self.runWorkflowRequested.emit)
         top.addWidget(self.btn_run)
@@ -88,7 +88,7 @@ class WorkflowTab(QWidget):
         self.btn_clear = QPushButton(t("workflow.clear_canvas"))
         self.btn_clear.setIcon(get_svg_icon("trash", "#f87171", 14))
         self.btn_clear.setObjectName("dangerBtn")
-        self.btn_clear.setFixedHeight(34)
+        self.btn_clear.setFixedHeight(32)
         self.btn_clear.setToolTip(format_tooltip("Xóa sạch toàn bộ các khối trên bảng vẽ", "Ctrl+D"))
         self.btn_clear.clicked.connect(self._workflow_clear)
         top.addWidget(self.btn_clear)

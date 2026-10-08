@@ -201,11 +201,11 @@ QPushButton {
     color: #1e293b;
     border: 1px solid #cbd5e1;
     border-bottom: 1px solid #94a3b8;
-    border-radius: 8px;
-    padding: 6px 14px;
-    font-weight: 650;
-    min-height: 30px;
-    font-size: 12px;
+    border-radius: 6px;
+    padding: 0 10px;
+    font-weight: 700;
+    min-height: 24px;
+    font-size: 11.5px;
     outline: none;
 }
 
@@ -218,8 +218,7 @@ QPushButton:hover {
 QPushButton:pressed {
     background-color: #e2e8f0;
     border-color: #4f46e5;
-    padding-top: 8px;
-    padding-bottom: 4px;
+    padding-top: 2px;
 }
 
 QPushButton:focus {
@@ -237,10 +236,11 @@ QPushButton#secondaryBtn {
     background-color: #ffffff;
     color: #334155;
     border: 1px solid #cbd5e1;
-    border-radius: 8px;
-    font-weight: 650;
-    padding: 6px 14px;
-    min-height: 30px;
+    border-radius: 6px;
+    font-weight: 700;
+    padding: 0 10px;
+    min-height: 24px;
+    font-size: 11px;
 }
 
 QPushButton#secondaryBtn:hover {
@@ -252,8 +252,7 @@ QPushButton#secondaryBtn:hover {
 QPushButton#secondaryBtn:pressed {
     background-color: #e2e8f0;
     border-color: #0369a1;
-    padding-top: 8px;
-    padding-bottom: 4px;
+    padding-top: 2px;
 }
 
 /* Primary Studio CTA Button (Electric Indigo Gradient) */
@@ -263,11 +262,11 @@ QPushButton#primaryBtn {
     color: #ffffff;
     border: 1px solid #4338ca;
     border-top: 1px solid rgba(255, 255, 255, 0.45);
-    border-radius: 8px;
+    border-radius: 6px;
     font-weight: 800;
-    font-size: 12.5px;
-    padding: 7px 18px;
-    min-height: 32px;
+    font-size: 12px;
+    padding: 0 14px;
+    min-height: 28px;
 }
 
 QPushButton#primaryBtn:hover {
@@ -279,8 +278,7 @@ QPushButton#primaryBtn:hover {
 
 QPushButton#primaryBtn:pressed {
     background: #3730a3;
-    padding-top: 9px;
-    padding-bottom: 5px;
+    padding-top: 2px;
 }
 
 QPushButton#primaryBtn:disabled {
@@ -296,10 +294,11 @@ QPushButton#dangerBtn {
     color: #ffffff;
     border: 1px solid #b91c1c;
     border-top: 1px solid rgba(255, 255, 255, 0.4);
-    border-radius: 8px;
-    font-weight: 750;
-    padding: 6px 14px;
-    min-height: 30px;
+    border-radius: 6px;
+    font-weight: 700;
+    padding: 0 10px;
+    min-height: 24px;
+    font-size: 11px;
 }
 
 QPushButton#dangerBtn:hover {
@@ -310,8 +309,7 @@ QPushButton#dangerBtn:hover {
 
 QPushButton#dangerBtn:pressed {
     background: #991b1b;
-    padding-top: 8px;
-    padding-bottom: 4px;
+    padding-top: 2px;
 }
 
 QPushButton#dangerBtn:disabled {
@@ -327,10 +325,11 @@ QPushButton#successBtn {
     color: #ffffff;
     border: 1px solid #047857;
     border-top: 1px solid rgba(255, 255, 255, 0.45);
-    border-radius: 8px;
+    border-radius: 6px;
     font-weight: 800;
-    padding: 6px 16px;
-    min-height: 30px;
+    padding: 0 12px;
+    min-height: 28px;
+    font-size: 11.5px;
 }
 
 QPushButton#successBtn:hover {
@@ -341,8 +340,7 @@ QPushButton#successBtn:hover {
 
 QPushButton#successBtn:pressed {
     background: #065f46;
-    padding-top: 8px;
-    padding-bottom: 4px;
+    padding-top: 2px;
 }
 
 QPushButton#successBtn:disabled {
@@ -358,10 +356,11 @@ QPushButton#warningBtn {
     color: #ffffff;
     border: 1px solid #b45309;
     border-top: 1px solid rgba(255, 255, 255, 0.4);
-    border-radius: 8px;
-    font-weight: 750;
-    padding: 6px 14px;
-    min-height: 30px;
+    border-radius: 6px;
+    font-weight: 700;
+    padding: 0 10px;
+    min-height: 24px;
+    font-size: 11px;
 }
 
 QPushButton#warningBtn:hover {
@@ -372,8 +371,7 @@ QPushButton#warningBtn:hover {
 
 QPushButton#warningBtn:pressed {
     background: #92400e;
-    padding-top: 8px;
-    padding-bottom: 4px;
+    padding-top: 2px;
 }
 
 /* Accent Feature Button (Sky Cyan Gradient) */
@@ -383,10 +381,11 @@ QPushButton#accentBtn, QPushButton#purpleBtn {
     color: #ffffff;
     border: 1px solid #0369a1;
     border-top: 1px solid rgba(255, 255, 255, 0.4);
-    border-radius: 8px;
+    border-radius: 6px;
     font-weight: 750;
-    padding: 6px 14px;
-    min-height: 30px;
+    padding: 0 12px;
+    min-height: 28px;
+    font-size: 11.5px;
 }
 
 QPushButton#accentBtn:hover, QPushButton#purpleBtn:hover {
@@ -397,8 +396,7 @@ QPushButton#accentBtn:hover, QPushButton#purpleBtn:hover {
 
 QPushButton#accentBtn:pressed, QPushButton#purpleBtn:pressed {
     background: #075985;
-    padding-top: 8px;
-    padding-bottom: 4px;
+    padding-top: 2px;
 }
 
 /* Active Segmented Filter Button */
@@ -407,10 +405,11 @@ QPushButton#filterActive {
         stop:0 #4f46e5, stop:1 #6366f1);
     color: #ffffff;
     border: 1px solid #4338ca;
-    border-radius: 8px;
+    border-radius: 6px;
     font-weight: 800;
-    padding: 6px 14px;
-    min-height: 30px;
+    padding: 0 10px;
+    min-height: 24px;
+    font-size: 11px;
 }
 
 QPushButton#filterActive:hover {
@@ -423,10 +422,11 @@ QPushButton#filterInactive {
     background-color: #f1f5f9;
     color: #64748b;
     border: 1px solid #cbd5e1;
-    border-radius: 8px;
+    border-radius: 6px;
     font-weight: 650;
-    padding: 6px 12px;
-    min-height: 30px;
+    padding: 0 10px;
+    min-height: 24px;
+    font-size: 11px;
 }
 
 QPushButton#filterInactive:hover {

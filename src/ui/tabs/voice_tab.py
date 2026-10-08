@@ -214,7 +214,7 @@ class VoiceTab(QWidget):
         txt_grid.addWidget(self.voice_txt_dir, 0, 1)
         b = QPushButton("Chọn...")
         b.setIcon(get_svg_icon("folder", "#ffffff", 14))
-        b.setFixedHeight(34)
+        b.setFixedHeight(32)
         b.clicked.connect(lambda: self._browse_line_path(self.voice_txt_dir, True))
         txt_grid.addWidget(b, 0, 2)
 
@@ -222,7 +222,7 @@ class VoiceTab(QWidget):
         txt_grid.addWidget(self.voice_input_path, 1, 1)
         b = QPushButton("Chọn...")
         b.setIcon(get_svg_icon("file", "#ffffff", 14))
-        b.setFixedHeight(34)
+        b.setFixedHeight(32)
         b.clicked.connect(lambda: self._browse_line_path(self.voice_input_path))
         txt_grid.addWidget(b, 1, 2)
 
@@ -230,7 +230,7 @@ class VoiceTab(QWidget):
         txt_grid.addWidget(self.voice_output_dir, 2, 1)
         b = QPushButton("Chọn...")
         b.setIcon(get_svg_icon("folder", "#ffffff", 14))
-        b.setFixedHeight(34)
+        b.setFixedHeight(32)
         b.clicked.connect(lambda: self._browse_line_path(self.voice_output_dir, True))
         txt_grid.addWidget(b, 2, 2)
 
@@ -246,7 +246,7 @@ class VoiceTab(QWidget):
         self.btn_preview_voice = QPushButton("Nghe Thử")
         self.btn_preview_voice.setIcon(get_svg_icon("play", "#ffffff", 14))
         self.btn_preview_voice.setObjectName("accentBtn")
-        self.btn_preview_voice.setFixedHeight(34)
+        self.btn_preview_voice.setFixedHeight(32)
         self.btn_preview_voice.setToolTip(format_tooltip("Nghe thử một câu mẫu của giọng đọc đã chọn", "Space"))
         self.btn_preview_voice.clicked.connect(self._test_selected_voice)
         edge_voice_box.addWidget(self.btn_preview_voice)
@@ -296,7 +296,7 @@ class VoiceTab(QWidget):
         srt_grid.addWidget(self.srt_dir_input, 0, 1)
         b = QPushButton("Chọn Thư Mục")
         b.setIcon(get_svg_icon("folder", "#ffffff", 14))
-        b.setFixedHeight(34)
+        b.setFixedHeight(32)
         b.clicked.connect(lambda: self._browse_line_path(self.srt_dir_input, True))
         srt_grid.addWidget(b, 0, 2)
 
@@ -304,7 +304,7 @@ class VoiceTab(QWidget):
         srt_grid.addWidget(self.srt_output_input, 1, 1)
         b = QPushButton("Chọn File")
         b.setIcon(get_svg_icon("file", "#ffffff", 14))
-        b.setFixedHeight(34)
+        b.setFixedHeight(32)
         b.clicked.connect(lambda: self._browse_line_path(self.srt_output_input))
         srt_grid.addWidget(b, 1, 2)
 
@@ -364,7 +364,7 @@ class VoiceTab(QWidget):
         jgrid.addWidget(self.json_script_input, 0, 1)
         b = QPushButton("Chọn File")
         b.setIcon(get_svg_icon("file", "#ffffff", 14))
-        b.setFixedHeight(34)
+        b.setFixedHeight(32)
         b.clicked.connect(lambda: self._browse_line_path(self.json_script_input))
         jgrid.addWidget(b, 0, 2)
 
@@ -372,7 +372,7 @@ class VoiceTab(QWidget):
         jgrid.addWidget(self.json_parts_input, 1, 1)
         b = QPushButton("Chọn File")
         b.setIcon(get_svg_icon("file", "#ffffff", 14))
-        b.setFixedHeight(34)
+        b.setFixedHeight(32)
         b.clicked.connect(lambda: self._browse_line_path(self.json_parts_input))
         jgrid.addWidget(b, 1, 2)
 
@@ -380,7 +380,7 @@ class VoiceTab(QWidget):
         jgrid.addWidget(self.json_output_dir, 2, 1)
         b = QPushButton("Chọn Thư Mục")
         b.setIcon(get_svg_icon("folder", "#ffffff", 14))
-        b.setFixedHeight(34)
+        b.setFixedHeight(32)
         b.clicked.connect(lambda: self._browse_line_path(self.json_output_dir, True))
         jgrid.addWidget(b, 2, 2)
         json_l.addLayout(jgrid)
@@ -392,7 +392,7 @@ class VoiceTab(QWidget):
             self.srt_dir_input, self.srt_output_input, self.srt_gap_spin,
             self.json_script_input, self.json_parts_input, self.json_output_dir
         ]:
-            inp.setFixedHeight(34)
+            inp.setFixedHeight(32)
 
         info = QLabel("Đọc các phân đoạn trong file kịch bản, trích xuất lời thoại và tạo âm thanh theo thứ tự.")
         info.setObjectName("mutedText")

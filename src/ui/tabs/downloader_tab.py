@@ -371,7 +371,7 @@ class DownloaderTab(QWidget):
         self.btn_toggle_setup = QPushButton()
         self.btn_toggle_setup.setIcon(get_svg_icon("chevron-left", "#818cf8", 12))
         self.btn_toggle_setup.setToolTip("Thu gọn Sidebar (Alt+1)")
-        self.btn_toggle_setup.setFixedSize(24, 24)
+        self.btn_toggle_setup.setFixedSize(26, 26)
         self.btn_toggle_setup.setStyleSheet("background: rgba(255, 255, 255, 0.06); border: 1px solid #1e293b; border-radius: 6px;")
         self.btn_toggle_setup.clicked.connect(self._toggle_setup_sidebar)
         header_h.addWidget(self.btn_toggle_setup)
@@ -382,39 +382,46 @@ class DownloaderTab(QWidget):
         self.search_btn.setIcon(get_svg_icon("search", "#ffffff", 15))
         self.search_btn.setObjectName("primaryBtn")
         self.search_btn.setFixedHeight(36)
-        self.search_btn.setStyleSheet("QPushButton#primaryBtn { font-size: 12px; font-weight: 800; letter-spacing: 0.5px; }")
+        self.search_btn.setStyleSheet("QPushButton#primaryBtn { font-size: 11.5px; font-weight: 800; letter-spacing: 0.4px; padding: 0 12px; }")
         self.search_btn.clicked.connect(self.start_search)
         layout.addWidget(self.search_btn)
 
         quick_grid = QGridLayout()
         quick_grid.setContentsMargins(0, 0, 0, 0)
-        quick_grid.setSpacing(4)
+        quick_grid.setSpacing(5)
 
-        self.stop_btn = QPushButton(t("common.stop"))
+        self.stop_btn = QPushButton("Dừng")
         self.stop_btn.setIcon(get_svg_icon("stop", "#ffffff", 12))
         self.stop_btn.setObjectName("dangerBtn")
-        self.stop_btn.setFixedHeight(28)
+        self.stop_btn.setFixedHeight(32)
+        self.stop_btn.setStyleSheet("QPushButton#dangerBtn { font-size: 11px; font-weight: 700; padding: 0 6px; }")
         self.stop_btn.clicked.connect(self.stop_action)
         self.stop_btn.setEnabled(False)
         quick_grid.addWidget(self.stop_btn, 0, 0)
 
-        self.btn_reset = QPushButton(t("common.reset"))
+        self.btn_reset = QPushButton("Đặt Lại")
         self.btn_reset.setIcon(get_svg_icon("trash", "#cbd5e1", 12))
-        self.btn_reset.setFixedHeight(28)
+        self.btn_reset.setObjectName("secondaryBtn")
+        self.btn_reset.setFixedHeight(32)
+        self.btn_reset.setStyleSheet("QPushButton#secondaryBtn { font-size: 11px; font-weight: 700; padding: 0 6px; }")
         self.btn_reset.clicked.connect(self.reset_all)
         quick_grid.addWidget(self.btn_reset, 0, 1)
 
         self.btn_open_folder = QPushButton("Thư Mục")
         self.btn_open_folder.setIcon(get_svg_icon("folder", "#ffffff", 12))
+        self.btn_open_folder.setObjectName("secondaryBtn")
         self.btn_open_folder.setToolTip("Mở thư mục xuất (Ctrl+Shift+O)")
-        self.btn_open_folder.setFixedHeight(28)
+        self.btn_open_folder.setFixedHeight(32)
+        self.btn_open_folder.setStyleSheet("QPushButton#secondaryBtn { font-size: 11px; font-weight: 700; padding: 0 6px; }")
         self.btn_open_folder.clicked.connect(self._open_output_folder_in_explorer)
         quick_grid.addWidget(self.btn_open_folder, 1, 0)
 
-        self.btn_settings = QPushButton(t("downloader.settings_btn"))
+        self.btn_settings = QPushButton("Cài Đặt")
         self.btn_settings.setIcon(get_svg_icon("settings", "#e2e8f0", 12))
+        self.btn_settings.setObjectName("secondaryBtn")
         self.btn_settings.setToolTip("Cấu hình & Tùy chọn")
-        self.btn_settings.setFixedHeight(28)
+        self.btn_settings.setFixedHeight(32)
+        self.btn_settings.setStyleSheet("QPushButton#secondaryBtn { font-size: 11px; font-weight: 700; padding: 0 6px; }")
         self.btn_settings.clicked.connect(self.open_settings_requested.emit)
         quick_grid.addWidget(self.btn_settings, 1, 1)
 
@@ -439,13 +446,13 @@ class DownloaderTab(QWidget):
         tab_nav_row.setSpacing(4)
 
         self.btn_tab_scenes = QPushButton("🎬 DANH SÁCH CẢNH")
-        self.btn_tab_scenes.setFixedHeight(28)
+        self.btn_tab_scenes.setFixedHeight(32)
         self.btn_tab_scenes.setCheckable(True)
         self.btn_tab_scenes.setChecked(True)
         self.btn_tab_scenes.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
 
         self.btn_tab_setup = QPushButton("⚙️ API & BỘ LỌC")
-        self.btn_tab_setup.setFixedHeight(28)
+        self.btn_tab_setup.setFixedHeight(32)
         self.btn_tab_setup.setCheckable(True)
         self.btn_tab_setup.setChecked(False)
         self.btn_tab_setup.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
@@ -456,8 +463,9 @@ class DownloaderTab(QWidget):
                 color: #94a3b8;
                 border: 1px solid #1e293b;
                 border-radius: 6px;
-                font-size: 10px;
+                font-size: 11px;
                 font-weight: 700;
+                padding: 0 6px;
             }
             QPushButton:hover {
                 background: #172133;
@@ -500,7 +508,7 @@ class DownloaderTab(QWidget):
         self.btn_prev_scene = QPushButton()
         self.btn_prev_scene.setIcon(get_svg_icon("chevron-left", "#818cf8", 12))
         self.btn_prev_scene.setToolTip("Cảnh trước (Alt+Left)")
-        self.btn_prev_scene.setFixedSize(22, 22)
+        self.btn_prev_scene.setFixedSize(26, 26)
         self.btn_prev_scene.setStyleSheet("background: rgba(255, 255, 255, 0.05); border: 1px solid #1e293b; border-radius: 4px;")
         self.btn_prev_scene.clicked.connect(self.select_prev_scene)
         sub_h.addWidget(self.btn_prev_scene)
@@ -508,7 +516,7 @@ class DownloaderTab(QWidget):
         self.btn_next_scene = QPushButton()
         self.btn_next_scene.setIcon(get_svg_icon("chevron-right", "#818cf8", 12))
         self.btn_next_scene.setToolTip("Cảnh sau (Alt+Right)")
-        self.btn_next_scene.setFixedSize(22, 22)
+        self.btn_next_scene.setFixedSize(26, 26)
         self.btn_next_scene.setStyleSheet("background: rgba(255, 255, 255, 0.05); border: 1px solid #1e293b; border-radius: 4px;")
         self.btn_next_scene.clicked.connect(self.select_next_scene)
         sub_h.addWidget(self.btn_next_scene)
@@ -529,7 +537,7 @@ class DownloaderTab(QWidget):
         self.btn_tl_missing = QPushButton("Thiếu Media")
         self.btn_tl_picked = QPushButton("Đã Chọn")
         for f_btn, f_mode in [(self.btn_tl_all, "all"), (self.btn_tl_missing, "missing"), (self.btn_tl_picked, "picked")]:
-            f_btn.setFixedHeight(22)
+            f_btn.setFixedHeight(26)
             f_btn.setCheckable(True)
             f_btn.setChecked(f_mode == "all")
             f_btn.setStyleSheet("""
@@ -540,7 +548,7 @@ class DownloaderTab(QWidget):
                     border-radius: 4px;
                     font-size: 10px;
                     font-weight: 700;
-                    padding: 0 4px;
+                    padding: 0 6px;
                 }
                 QPushButton:checked {
                     background: #1e293b;
@@ -708,14 +716,16 @@ class DownloaderTab(QWidget):
 
         layout.addLayout(stats_h)
 
-        # Filter + Action bar
-        action_h = QHBoxLayout()
-        action_h.setSpacing(6)
+        # ── Two-tier Center Toolbar ──
+        # Tier 1: Filter & Navigation Bar (Height: 30px)
+        filter_h = QHBoxLayout()
+        filter_h.setContentsMargins(0, 0, 0, 0)
+        filter_h.setSpacing(6)
 
         # Reopen Left button (visible when left sidebar collapsed)
         self.btn_reopen_left = QPushButton("⮞ Bảng Điều Khiển")
         self.btn_reopen_left.setIcon(get_svg_icon("sliders", "#818cf8", 12))
-        self.btn_reopen_left.setFixedHeight(32)
+        self.btn_reopen_left.setFixedHeight(30)
         self.btn_reopen_left.setVisible(False)
         self.btn_reopen_left.setToolTip("Mở lại Bảng Điều Khiển (Alt+1)")
         self.btn_reopen_left.setStyleSheet("""
@@ -726,7 +736,7 @@ class DownloaderTab(QWidget):
                 border-radius: 6px;
                 font-weight: 700;
                 font-size: 11px;
-                padding: 0 8px;
+                padding: 0 10px;
             }
             QPushButton:hover {
                 background: #27354a;
@@ -734,7 +744,7 @@ class DownloaderTab(QWidget):
             }
         """)
         self.btn_reopen_left.clicked.connect(self._toggle_setup_sidebar)
-        action_h.addWidget(self.btn_reopen_left)
+        filter_h.addWidget(self.btn_reopen_left)
 
         self.filter_buttons = {}
         filter_meta = [
@@ -751,100 +761,23 @@ class DownloaderTab(QWidget):
             btn.setObjectName("filterActive" if fkey == "all" else "filterInactive")
             btn.setStyleSheet("""
                 QPushButton {
-                    padding: 0 8px;
+                    padding: 0 10px;
                     font-size: 11px;
                     font-weight: 700;
+                    border-radius: 6px;
                 }
             """)
             btn.setToolTip(format_tooltip(f"Lọc {label.lower()}", sc_key))
             btn.clicked.connect(lambda checked, k=fkey: self._set_filter(k))
-            action_h.addWidget(btn)
+            filter_h.addWidget(btn)
             self.filter_buttons[fkey] = btn
 
-        action_h.addStretch()
-
-        self.random_count_spin = QSpinBox()
-        self.random_count_spin.setRange(1, 999)
-        self.random_count_spin.setValue(1)
-        self.random_count_spin.setFixedHeight(30)
-        self.random_count_spin.setMinimumWidth(50)
-        self.random_count_spin.setToolTip(format_tooltip("Số media muốn chọn ngẫu nhiên", "1-999"))
-        lbl_qty = QLabel("SL:")
-        lbl_qty.setStyleSheet("font-weight: 700; font-size: 11px; color: #94a3b8;")
-        action_h.addWidget(lbl_qty)
-        action_h.addWidget(self.random_count_spin)
-
-        self.btn_random_select = QPushButton("Ngẫu nhiên")
-        self.btn_random_select.setIcon(get_svg_icon("shuffle", "#ffffff", 12))
-        self.btn_random_select.setObjectName("purpleBtn")
-        self.btn_random_select.setFixedHeight(30)
-        self.btn_random_select.setStyleSheet("QPushButton#purpleBtn { padding: 0 8px; font-size: 11px; font-weight: 700; }")
-        self.btn_random_select.setToolTip(format_tooltip("Chọn ngẫu nhiên media trong cảnh", "Ctrl+R"))
-        self.btn_random_select.clicked.connect(self._select_random_scene)
-        action_h.addWidget(self.btn_random_select)
-
-        btn_retry = QPushButton("Làm mới")
-        btn_retry.setIcon(get_svg_icon("refresh", "#fbbf24", 12))
-        btn_retry.setObjectName("warningBtn")
-        btn_retry.setFixedHeight(30)
-        btn_retry.setStyleSheet("QPushButton#warningBtn { padding: 0 8px; font-size: 11px; font-weight: 700; }")
-        btn_retry.setToolTip(format_tooltip("Tải lại ảnh thu nhỏ bị lỗi", "Ctrl+Shift+R"))
-        btn_retry.clicked.connect(self._retry_failed_thumbnails)
-        action_h.addWidget(btn_retry)
-
-        btn_select_all = QPushButton("Chọn hết")
-        btn_select_all.setIcon(get_svg_icon("check", "#ffffff", 12))
-        btn_select_all.setObjectName("secondaryBtn")
-        btn_select_all.setFixedHeight(30)
-        btn_select_all.setStyleSheet("QPushButton#secondaryBtn { padding: 0 8px; font-size: 11px; font-weight: 700; }")
-        btn_select_all.setToolTip(format_tooltip("Chọn tất cả media trong cảnh này", "Ctrl+A"))
-        btn_select_all.clicked.connect(self._select_all_scene)
-        action_h.addWidget(btn_select_all)
-
-        self.btn_clear = QPushButton(t("downloader.clear_all_picks"))
-        self.btn_clear.setIcon(get_svg_icon("x", "#ffffff", 12))
-        self.btn_clear.setObjectName("dangerBtn")
-        self.btn_clear.setFixedHeight(30)
-        self.btn_clear.setStyleSheet("QPushButton#dangerBtn { padding: 0 8px; font-size: 11px; font-weight: 700; }")
-        self.btn_clear.setToolTip(format_tooltip("Bỏ chọn toàn bộ trong cảnh này", "Ctrl+D"))
-        self.btn_clear.clicked.connect(self._clear_scene_selection)
-        action_h.addWidget(self.btn_clear)
-
-        self.btn_download = QPushButton(t("downloader.download_selected"))
-        self.btn_download.setIcon(get_svg_icon("download", "#ffffff", 12))
-        self.btn_download.setObjectName("successBtn")
-        self.btn_download.setFixedHeight(30)
-        self.btn_download.setStyleSheet("QPushButton#successBtn { padding: 0 10px; font-size: 11px; font-weight: 800; letter-spacing: 0.2px; }")
-        self.btn_download.setToolTip(format_tooltip(t("downloader.download_selected"), "Ctrl+Enter"))
-        self.btn_download.clicked.connect(self.start_download)
-        action_h.addWidget(self.btn_download)
-
-        self.btn_next_step = QPushButton("Tiếp tục ➔")
-        self.btn_next_step.setIcon(get_svg_icon("mic", "#ffffff", 12))
-        self.btn_next_step.setObjectName("accentBtn")
-        self.btn_next_step.setFixedHeight(30)
-        self.btn_next_step.setStyleSheet("""
-            QPushButton#accentBtn {
-                background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #6366f1, stop:1 #8b5cf6);
-                color: #ffffff;
-                font-size: 11px;
-                font-weight: 800;
-                padding: 0 10px;
-                border-radius: 6px;
-                border: 1px solid rgba(255,255,255,0.18);
-            }
-            QPushButton#accentBtn:hover {
-                background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #4f46e5, stop:1 #7c3aed);
-            }
-        """)
-        self.btn_next_step.setToolTip(format_tooltip("Chuyển sang Bước 2: Tạo giọng đọc AI & Phụ đề SRT", "Ctrl+2"))
-        self.btn_next_step.clicked.connect(lambda: self.nextStepRequested.emit())
-        action_h.addWidget(self.btn_next_step)
+        filter_h.addStretch()
 
         # Reopen Right button (visible when ma sidebar collapsed)
         self.btn_reopen_right = QPushButton("Từ Khóa & Tải ⮜")
         self.btn_reopen_right.setIcon(get_svg_icon("film", "#fbbf24", 12))
-        self.btn_reopen_right.setFixedHeight(32)
+        self.btn_reopen_right.setFixedHeight(30)
         self.btn_reopen_right.setVisible(False)
         self.btn_reopen_right.setToolTip("Mở lại Từ Khóa & Giám Sát Tải (Alt+3)")
         self.btn_reopen_right.setStyleSheet("""
@@ -855,7 +788,7 @@ class DownloaderTab(QWidget):
                 border-radius: 6px;
                 font-weight: 700;
                 font-size: 11px;
-                padding: 0 8px;
+                padding: 0 10px;
             }
             QPushButton:hover {
                 background: #27354a;
@@ -863,7 +796,95 @@ class DownloaderTab(QWidget):
             }
         """)
         self.btn_reopen_right.clicked.connect(self._toggle_ma_sidebar)
-        action_h.addWidget(self.btn_reopen_right)
+        filter_h.addWidget(self.btn_reopen_right)
+
+        layout.addLayout(filter_h)
+
+        # Tier 2: Selection & Batch Action Bar (Height: 32px)
+        action_h = QHBoxLayout()
+        action_h.setContentsMargins(0, 0, 0, 0)
+        action_h.setSpacing(6)
+
+        lbl_qty = QLabel("SL:")
+        lbl_qty.setStyleSheet("font-weight: 700; font-size: 11px; color: #94a3b8;")
+        action_h.addWidget(lbl_qty)
+
+        self.random_count_spin = QSpinBox()
+        self.random_count_spin.setRange(1, 999)
+        self.random_count_spin.setValue(1)
+        self.random_count_spin.setFixedHeight(32)
+        self.random_count_spin.setFixedWidth(56)
+        self.random_count_spin.setToolTip(format_tooltip("Số media muốn chọn ngẫu nhiên", "1-999"))
+        action_h.addWidget(self.random_count_spin)
+
+        self.btn_random_select = QPushButton("Chọn ngẫu nhiên")
+        self.btn_random_select.setIcon(get_svg_icon("shuffle", "#ffffff", 12))
+        self.btn_random_select.setObjectName("purpleBtn")
+        self.btn_random_select.setFixedHeight(32)
+        self.btn_random_select.setStyleSheet("QPushButton#purpleBtn { padding: 0 10px; font-size: 11px; font-weight: 700; }")
+        self.btn_random_select.setToolTip(format_tooltip("Chọn ngẫu nhiên media trong cảnh", "Ctrl+R"))
+        self.btn_random_select.clicked.connect(self._select_random_scene)
+        action_h.addWidget(self.btn_random_select)
+
+        btn_retry = QPushButton("Làm mới")
+        btn_retry.setIcon(get_svg_icon("refresh", "#fbbf24", 12))
+        btn_retry.setObjectName("warningBtn")
+        btn_retry.setFixedHeight(32)
+        btn_retry.setStyleSheet("QPushButton#warningBtn { padding: 0 10px; font-size: 11px; font-weight: 700; }")
+        btn_retry.setToolTip(format_tooltip("Tải lại ảnh thu nhỏ bị lỗi", "Ctrl+Shift+R"))
+        btn_retry.clicked.connect(self._retry_failed_thumbnails)
+        action_h.addWidget(btn_retry)
+
+        btn_select_all = QPushButton("Chọn tất cả")
+        btn_select_all.setIcon(get_svg_icon("check", "#ffffff", 12))
+        btn_select_all.setObjectName("secondaryBtn")
+        btn_select_all.setFixedHeight(32)
+        btn_select_all.setStyleSheet("QPushButton#secondaryBtn { padding: 0 10px; font-size: 11px; font-weight: 700; }")
+        btn_select_all.setToolTip(format_tooltip("Chọn tất cả media trong cảnh này", "Ctrl+A"))
+        btn_select_all.clicked.connect(self._select_all_scene)
+        action_h.addWidget(btn_select_all)
+
+        self.btn_clear = QPushButton(t("downloader.clear_all_picks"))
+        self.btn_clear.setIcon(get_svg_icon("x", "#ffffff", 12))
+        self.btn_clear.setObjectName("dangerBtn")
+        self.btn_clear.setFixedHeight(32)
+        self.btn_clear.setStyleSheet("QPushButton#dangerBtn { padding: 0 10px; font-size: 11px; font-weight: 700; }")
+        self.btn_clear.setToolTip(format_tooltip("Bỏ chọn toàn bộ trong cảnh này", "Ctrl+D"))
+        self.btn_clear.clicked.connect(self._clear_scene_selection)
+        action_h.addWidget(self.btn_clear)
+
+        action_h.addStretch()
+
+        self.btn_download = QPushButton(t("downloader.download_selected"))
+        self.btn_download.setIcon(get_svg_icon("download", "#ffffff", 13))
+        self.btn_download.setObjectName("successBtn")
+        self.btn_download.setFixedHeight(32)
+        self.btn_download.setStyleSheet("QPushButton#successBtn { padding: 0 12px; font-size: 11.5px; font-weight: 800; letter-spacing: 0.3px; }")
+        self.btn_download.setToolTip(format_tooltip(t("downloader.download_selected"), "Ctrl+Enter"))
+        self.btn_download.clicked.connect(self.start_download)
+        action_h.addWidget(self.btn_download)
+
+        self.btn_next_step = QPushButton("Tiếp tục ➔")
+        self.btn_next_step.setIcon(get_svg_icon("mic", "#ffffff", 12))
+        self.btn_next_step.setObjectName("accentBtn")
+        self.btn_next_step.setFixedHeight(32)
+        self.btn_next_step.setStyleSheet("""
+            QPushButton#accentBtn {
+                background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #6366f1, stop:1 #8b5cf6);
+                color: #ffffff;
+                font-size: 11px;
+                font-weight: 800;
+                padding: 0 12px;
+                border-radius: 6px;
+                border: 1px solid rgba(255,255,255,0.18);
+            }
+            QPushButton#accentBtn:hover {
+                background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #4f46e5, stop:1 #7c3aed);
+            }
+        """)
+        self.btn_next_step.setToolTip(format_tooltip("Chuyển sang Bước 2: Tạo giọng đọc AI & Phụ đề SRT", "Ctrl+2"))
+        self.btn_next_step.clicked.connect(lambda: self.nextStepRequested.emit())
+        action_h.addWidget(self.btn_next_step)
 
         layout.addLayout(action_h)
 
@@ -913,17 +934,21 @@ class DownloaderTab(QWidget):
         self.prev_btn = QPushButton("Trang trước")
         self.prev_btn.setIcon(get_svg_icon("chevron-left", "#ffffff", 12))
         self.prev_btn.setEnabled(False)
+        self.prev_btn.setFixedHeight(30)
+        self.prev_btn.setStyleSheet("QPushButton { padding: 0 12px; font-size: 11px; font-weight: 700; }")
         self.prev_btn.clicked.connect(self._prev_page)
         pag_h.addWidget(self.prev_btn)
 
         self.page_label = QLabel("Trang 0/0")
-        self.page_label.setStyleSheet("color: #e6edf3; font-size: 13px; font-weight: 600;")
+        self.page_label.setStyleSheet("color: #e6edf3; font-size: 12px; font-weight: 600;")
         self.page_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         pag_h.addWidget(self.page_label, 1)
 
         self.next_btn = QPushButton("Trang sau")
         self.next_btn.setIcon(get_svg_icon("chevron-right", "#ffffff", 12))
         self.next_btn.setEnabled(False)
+        self.next_btn.setFixedHeight(30)
+        self.next_btn.setStyleSheet("QPushButton { padding: 0 12px; font-size: 11px; font-weight: 700; }")
         self.next_btn.clicked.connect(self._next_page)
         pag_h.addWidget(self.next_btn)
 
@@ -970,8 +995,8 @@ class DownloaderTab(QWidget):
         self.btn_toggle_ma = QPushButton()
         self.btn_toggle_ma.setIcon(get_svg_icon("chevron-right", "#fbbf24", 12))
         self.btn_toggle_ma.setToolTip("Thu gọn (Alt+3)")
-        self.btn_toggle_ma.setFixedSize(22, 22)
-        self.btn_toggle_ma.setStyleSheet("background: rgba(245, 158, 11, 0.1); border: 1px solid rgba(245, 158, 11, 0.3); border-radius: 4px;")
+        self.btn_toggle_ma.setFixedSize(26, 26)
+        self.btn_toggle_ma.setStyleSheet("background: rgba(245, 158, 11, 0.1); border: 1px solid rgba(245, 158, 11, 0.3); border-radius: 6px;")
         self.btn_toggle_ma.clicked.connect(self._toggle_ma_sidebar)
         ma_header_h.addWidget(self.btn_toggle_ma)
         ma_layout.addLayout(ma_header_h)
@@ -986,14 +1011,14 @@ class DownloaderTab(QWidget):
                 background-color: rgba(245, 158, 11, 0.15);
                 color: #fbbf24;
                 border: 1px solid rgba(245, 158, 11, 0.3);
-                border-radius: 4px;
-                padding: 2px 6px;
-                font-size: 10px;
+                border-radius: 6px;
+                padding: 0 8px;
+                font-size: 11px;
                 font-weight: 700;
             }
             QPushButton:hover { background-color: rgba(245, 158, 11, 0.3); }
         """)
-        btn_select_all_kw.setFixedHeight(22)
+        btn_select_all_kw.setFixedHeight(26)
         btn_select_all_kw.clicked.connect(self._ma_select_all_keywords)
         kw_btn_row.addWidget(btn_select_all_kw)
 
@@ -1004,14 +1029,14 @@ class DownloaderTab(QWidget):
                 background-color: #1e293b;
                 color: #94a3b8;
                 border: 1px solid #334155;
-                border-radius: 4px;
-                padding: 2px 6px;
-                font-size: 10px;
+                border-radius: 6px;
+                padding: 0 8px;
+                font-size: 11px;
                 font-weight: 700;
             }
             QPushButton:hover { background-color: #334155; color: #ffffff; }
         """)
-        btn_select_none_kw.setFixedHeight(22)
+        btn_select_none_kw.setFixedHeight(26)
         btn_select_none_kw.clicked.connect(self._ma_select_no_keywords)
         kw_btn_row.addWidget(btn_select_none_kw)
 
@@ -1023,14 +1048,14 @@ class DownloaderTab(QWidget):
                 background-color: rgba(56, 189, 248, 0.15);
                 color: #38bdf8;
                 border: 1px solid rgba(56, 189, 248, 0.3);
-                border-radius: 4px;
-                padding: 2px 6px;
-                font-size: 10px;
+                border-radius: 6px;
+                padding: 0 8px;
+                font-size: 11px;
                 font-weight: 700;
             }
             QPushButton:hover { background-color: rgba(56, 189, 248, 0.3); color: #ffffff; }
         """)
-        btn_copy_kw.setFixedHeight(22)
+        btn_copy_kw.setFixedHeight(26)
         btn_copy_kw.clicked.connect(self._ma_copy_all_keywords)
         kw_btn_row.addWidget(btn_copy_kw)
         ma_layout.addLayout(kw_btn_row)
@@ -1094,7 +1119,7 @@ class DownloaderTab(QWidget):
                 color: #ffffff;
                 font-weight: 800;
                 font-size: 11px;
-                padding: 6px;
+                padding: 0 12px;
                 border-radius: 6px;
                 border: none;
             }
@@ -1144,13 +1169,13 @@ class DownloaderTab(QWidget):
         btn_dm_refresh = QPushButton()
         btn_dm_refresh.setIcon(get_svg_icon("refresh", "#34d399", 14))
         btn_dm_refresh.setToolTip(t("downloader.scan_output_tooltip"))
-        btn_dm_refresh.setFixedSize(26, 22)
+        btn_dm_refresh.setFixedSize(26, 26)
         btn_dm_refresh.setStyleSheet("""
             QPushButton {
                 background-color: rgba(16, 185, 129, 0.15);
                 color: #34d399;
                 border: 1px solid rgba(16, 185, 129, 0.3);
-                border-radius: 4px;
+                border-radius: 6px;
             }
             QPushButton:hover { background-color: rgba(16, 185, 129, 0.3); }
         """)
@@ -1549,24 +1574,35 @@ class DownloaderTab(QWidget):
             cb.toggled.connect(self._ma_update_button_text)
             cb.setMinimumHeight(28)
 
-            color = "#f39c12" if is_primary else "#c9d1d9"
+            color = "#fbbf24" if is_primary else "#e2e8f0"
             weight = "700" if is_primary else "500"
-            bg_unchecked = "#1f1612" if is_primary else "#161b22"
+            bg_unchecked = "#1c1917" if is_primary else "#0f172a"
 
             cb.setStyleSheet(f"""
                 QCheckBox {{
                     color: {color};
-                    font-size: 12px;
+                    font-size: 11.5px;
                     font-weight: {weight};
-                    padding: 6px 8px;
+                    padding: 4px 6px;
                     background-color: {bg_unchecked};
-                    border-radius: 4px;
+                    border-radius: 6px;
                     spacing: 8px;
                     border: 1px solid transparent;
                 }}
                 QCheckBox:hover {{
-                    background-color: #21262d;
-                    border: 1px solid #f39c12;
+                    background-color: #1e293b;
+                    border: 1px solid rgba(245, 158, 11, 0.4);
+                }}
+                QCheckBox::indicator {{
+                    width: 15px;
+                    height: 15px;
+                    border: 1.5px solid #475569;
+                    border-radius: 4px;
+                    background-color: #0b0f19;
+                }}
+                QCheckBox::indicator:checked {{
+                    background-color: #f59e0b;
+                    border-color: #fbbf24;
                 }}
             """)
             self.ma_keywords_layout.insertWidget(idx, cb)
@@ -2155,7 +2191,7 @@ class DownloaderTab(QWidget):
         # Dynamic CTA visual count feedback
         if hasattr(self, "btn_download"):
             if total_selected > 0:
-                self.btn_download.setText(f"TẢI MEDIA ĐÃ CHỌN ({total_selected})")
+                self.btn_download.setText(f"{t('downloader.download_selected')} ({total_selected})")
             else:
                 self.btn_download.setText(t("downloader.download_selected"))
 
