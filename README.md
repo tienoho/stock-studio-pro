@@ -8,7 +8,7 @@
 ## 🌟 Tính Năng Nổi Bật (Key Features)
 
 - 🎞️ **Multi-Source Stock Downloader**:
-  - Tải video & ảnh độ phân giải cao tự động từ **Pexels**, **Pixabay**, **Vecteezy**.
+  - Tải video & ảnh độ phân giải cao tự động từ **Pexels**, **Pixabay**, **Wikimedia Commons** (kho mở 100% miễn phí, không cần API Key), **Openverse** (700M+ ảnh Creative Commons & Public Domain), **Coverr** (Free Stock Video), và **Vecteezy**.
   - Hỗ trợ tải thủ công thông minh từ **MotionArray** với bộ quét thư mục tải về (Downloads Watcher) tự phân loại theo từng Scene.
   - Xoay vòng đa tầng nhiều API Key thông minh (Round-robin), chống chạm giới hạn Rate Limit.
   - Cơ chế **Anti-Block & Adaptive Rate Limiting**: Tự điều chỉnh độ trễ tải, phát hiện lỗi 403 để tạm dừng cooldown an toàn.

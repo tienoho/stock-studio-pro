@@ -88,6 +88,10 @@ class SmartDownloader:
             elif "coverr.co" in url or "storage.coverr.co" in url:
                 headers["Referer"] = "https://coverr.co/"
                 headers["Origin"] = "https://coverr.co"
+            elif "wikimedia.org" in url:
+                headers["Referer"] = "https://commons.wikimedia.org/"
+            elif "openverse.org" in url:
+                headers["Referer"] = "https://openverse.org/"
             elif "motionarray.com" in url or "motionarray.imgix.net" in url:
                 headers["Referer"] = "https://motionarray.com/"
                 headers["Origin"] = "https://motionarray.com"

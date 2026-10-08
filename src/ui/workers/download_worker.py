@@ -13,9 +13,7 @@ from PyQt6.QtCore import QThread, pyqtSignal
 
 from ...core.constants import APP_VERSION, BLOCK_COOLDOWN_SECONDS
 from ...infrastructure.network.rate_limiter import AdaptiveRateLimiter, BlockDetector
-from ...infrastructure.providers.pexels_provider import PexelsProvider
-from ...infrastructure.providers.pixabay_provider import PixabayProvider
-from ...infrastructure.providers.vecteezy_provider import VecteezyProvider
+from ...application.services.media_provider_registry import MediaProviderRegistry
 from ...application.services.smart_downloader import SmartDownloader
 
 
@@ -50,12 +48,8 @@ class DownloadWorker(QThread):
         self.rate_limiter = AdaptiveRateLimiter()
         self.block_detector = BlockDetector()
 
-        providers = {}
-        if key_manager:
-            providers["pexels"] = PexelsProvider(key_manager)
-            providers["pixabay"] = PixabayProvider(key_manager)
-            providers["vecteezy"] = VecteezyProvider(key_manager)
-
+        registry = MediaProviderRegistry(key_manager)
+        providers = registry.get_all_providers(key_manager)
         self.downloader = SmartDownloader(providers=providers, should_stop=lambda: self._stop)
 
         self.stats = {

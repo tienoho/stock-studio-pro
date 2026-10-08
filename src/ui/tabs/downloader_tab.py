@@ -642,9 +642,16 @@ class DownloaderTab(QWidget):
         self.search_source_combo = QComboBox()
         self.search_source_combo.addItems([
             "Pexels + Pixabay",
+            "Tất cả nguồn (All Free Sources)",
+            "Wikimedia Commons (Free, No Key)",
+            "Openverse (700M+ Free Photos)",
+            "Coverr (Free Video)",
             "Pexels + Pixabay + Vecteezy",
             "Chỉ Pexels",
             "Chỉ Pixabay",
+            "Chỉ Wikimedia",
+            "Chỉ Openverse",
+            "Chỉ Coverr",
             "Chỉ Vecteezy"
         ])
         idx = self.search_source_combo.findText(search_prefs.get("source", "Pexels + Pixabay"))

@@ -8,10 +8,13 @@ from ...core.interfaces.media_provider import IMediaProvider
 from ...infrastructure.providers.pexels_provider import PexelsProvider
 from ...infrastructure.providers.pixabay_provider import PixabayProvider
 from ...infrastructure.providers.vecteezy_provider import VecteezyProvider
+from ...infrastructure.providers.wikimedia_provider import WikimediaProvider
+from ...infrastructure.providers.openverse_provider import OpenverseProvider
+from ...infrastructure.providers.coverr_provider import CoverrProvider
 
 
 class MediaProviderRegistry:
-    """Registry managing media providers (Pexels, Pixabay, Vecteezy, etc.)."""
+    """Registry managing media providers (Pexels, Pixabay, Vecteezy, Wikimedia, Openverse, Coverr)."""
 
     def __init__(self, key_manager=None):
         self._km = key_manager
@@ -24,6 +27,9 @@ class MediaProviderRegistry:
         self.register_factory("pexels", lambda km: PexelsProvider(km))
         self.register_factory("pixabay", lambda km: PixabayProvider(km))
         self.register_factory("vecteezy", lambda km: VecteezyProvider(km))
+        self.register_factory("wikimedia", lambda km: WikimediaProvider(km))
+        self.register_factory("openverse", lambda km: OpenverseProvider(km))
+        self.register_factory("coverr", lambda km: CoverrProvider(km))
 
     def register_provider(self, name: str, provider: IMediaProvider) -> None:
         """Register a concrete provider instance."""
@@ -57,14 +63,14 @@ class MediaProviderRegistry:
 
     def resolve_providers_for_mode(self, mode: str, key_manager=None) -> Dict[str, IMediaProvider]:
         """
-        Resolves active providers based on a search mode string (e.g., 'Pexels + Pixabay', 'Vecteezy', 'All').
-        Filters to only providers that have valid configured API keys in key_manager.
+        Resolves active providers based on a search mode string (e.g., 'Pexels + Pixabay', 'Wikimedia', 'Tất cả nguồn').
+        Filters to only providers that have valid configured API keys in key_manager (or require no keys).
         """
         km = key_manager or self._km
         mode_lower = (mode or "").lower()
         active: Dict[str, IMediaProvider] = {}
 
-        is_all = any(term in mode_lower for term in ("cả", "all", "+"))
+        is_all = any(term in mode_lower for term in ("tất cả", "all", "toàn bộ"))
 
         for name, factory in self._factories.items():
             should_include = is_all or (name in mode_lower)

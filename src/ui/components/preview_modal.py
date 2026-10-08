@@ -69,6 +69,7 @@ class PreviewModal(QDialog):
         # Source & Type Badges
         source_colors = {
             "pexels": "#10b981", "pixabay": "#06b6d4", "coverr": "#ec4899",
+            "wikimedia": "#0891b2", "openverse": "#f97316", "vecteezy": "#8b5cf6",
             "motionarray": "#f59e0b", "youtube": "#ef4444", "tiktok": "#8b5cf6",
         }
         source_color = source_colors.get(item.get("source", ""), "#6366f1")

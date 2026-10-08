@@ -18,6 +18,9 @@ from ...infrastructure.persistence.sqlite_config_repo import SqliteConfigReposit
 from ...infrastructure.providers.pexels_provider import PexelsProvider
 from ...infrastructure.providers.pixabay_provider import PixabayProvider
 from ...infrastructure.providers.vecteezy_provider import VecteezyProvider
+from ...infrastructure.providers.coverr_provider import CoverrProvider
+from ...infrastructure.providers.wikimedia_provider import WikimediaProvider
+from ...infrastructure.providers.openverse_provider import OpenverseProvider
 
 
 class KeyTesterThread(QThread):
@@ -39,6 +42,15 @@ class KeyTesterThread(QThread):
                 ok, msg = tester.test_key(self.key_str)
             elif "vecteezy" in self.platform:
                 tester = VecteezyProvider()
+                ok, msg = tester.test_key(self.key_str)
+            elif "coverr" in self.platform:
+                tester = CoverrProvider()
+                ok, msg = tester.test_key(self.key_str)
+            elif "wikimedia" in self.platform:
+                tester = WikimediaProvider()
+                ok, msg = tester.test_key(self.key_str)
+            elif "openverse" in self.platform:
+                tester = OpenverseProvider()
                 ok, msg = tester.test_key(self.key_str)
             else:
                 ok, msg = False, "Nguồn không hỗ trợ"
@@ -116,15 +128,17 @@ class ApiKeyManagerWidget(QFrame):
         self.status_badges_layout.setSpacing(4)
         self.badge_pexels = QLabel("Pexels: 0")
         self.badge_pixabay = QLabel("Pixabay: 0")
+        self.badge_coverr = QLabel("Coverr: 0")
         self.badge_vecteezy = QLabel("Vecteezy: 0")
+        self.badge_free = QLabel("Wiki/Openverse: Free ✓")
 
-        for b in [self.badge_pexels, self.badge_pixabay, self.badge_vecteezy]:
+        for b in [self.badge_pexels, self.badge_pixabay, self.badge_coverr, self.badge_vecteezy, self.badge_free]:
             b.setStyleSheet("""
                 background: #090d15;
                 color: #94a3b8;
-                font-size: 9.5px;
+                font-size: 9px;
                 font-weight: 700;
-                padding: 3px 6px;
+                padding: 3px 5px;
                 border-radius: 5px;
                 border: 1px solid #1f2b3f;
             """)
@@ -140,7 +154,7 @@ class ApiKeyManagerWidget(QFrame):
         input_row = QHBoxLayout()
         input_row.setSpacing(4)
         self.combo_platform = QComboBox()
-        self.combo_platform.addItems(["Pexels", "Pixabay", "Vecteezy"])
+        self.combo_platform.addItems(["Pexels", "Pixabay", "Coverr", "Vecteezy"])
         self.combo_platform.setFixedHeight(28)
         self.combo_platform.setStyleSheet("font-size: 11px; font-weight: bold; padding: 2px 6px;")
         input_row.addWidget(self.combo_platform)
@@ -308,6 +322,7 @@ class ApiKeyManagerWidget(QFrame):
         # Update status badges
         n_pex = sum(1 for k in all_keys if k["platform"] == "pexels" and k["is_active"])
         n_pix = sum(1 for k in all_keys if k["platform"] == "pixabay" and k["is_active"])
+        n_cov = sum(1 for k in all_keys if k["platform"] == "coverr" and k["is_active"])
         n_vec = sum(1 for k in all_keys if k["platform"] == "vecteezy" and k["is_active"])
 
         self.badge_pexels.setText(f"Pexels: {n_pex}")
@@ -316,8 +331,13 @@ class ApiKeyManagerWidget(QFrame):
         self.badge_pixabay.setText(f"Pixabay: {n_pix}")
         self.badge_pixabay.setStyleSheet(f"background: #0c0f17; color: {'#38bdf8' if n_pix else '#64748b'}; font-size: 9px; font-weight: 700; padding: 2px 4px; border-radius: 4px; border: 1px solid {'#0284c7' if n_pix else '#1e293b'};")
 
+        self.badge_coverr.setText(f"Coverr: {n_cov}")
+        self.badge_coverr.setStyleSheet(f"background: #0c0f17; color: {'#ec4899' if n_cov else '#64748b'}; font-size: 9px; font-weight: 700; padding: 2px 4px; border-radius: 4px; border: 1px solid {'#be185d' if n_cov else '#1e293b'};")
+
         self.badge_vecteezy.setText(f"Vecteezy: {n_vec}")
         self.badge_vecteezy.setStyleSheet(f"background: #0c0f17; color: {'#a78bfa' if n_vec else '#64748b'}; font-size: 9px; font-weight: 700; padding: 2px 4px; border-radius: 4px; border: 1px solid {'#7c3aed' if n_vec else '#1e293b'};")
+
+        self.badge_free.setStyleSheet("background: #0c0f17; color: #10b981; font-size: 9px; font-weight: 700; padding: 2px 4px; border-radius: 4px; border: 1px solid #059669;")
 
         if not all_keys:
             empty_lbl = QLabel(t("api_keys.empty_db"))
@@ -346,7 +366,14 @@ class ApiKeyManagerWidget(QFrame):
             r_lay.addWidget(cb)
 
             # Platform tag
-            plat_color = {"pexels": "#34d399", "pixabay": "#38bdf8", "vecteezy": "#a78bfa"}.get(k["platform"], "#94a3b8")
+            plat_color = {
+                "pexels": "#34d399",
+                "pixabay": "#38bdf8",
+                "coverr": "#ec4899",
+                "vecteezy": "#a78bfa",
+                "wikimedia": "#06b6d4",
+                "openverse": "#f97316"
+            }.get(k["platform"], "#94a3b8")
             tag = QLabel(k["platform"][:3].upper())
             tag.setStyleSheet(f"color: {plat_color}; font-size: 9px; font-weight: 800;")
             r_lay.addWidget(tag)

@@ -100,6 +100,8 @@ class ThumbnailCard(QFrame):
         source_colors = {
             "pexels": "#059669",
             "pixabay": "#0284c7",
+            "wikimedia": "#0891b2",
+            "openverse": "#ea580c",
             "coverr": "#e11d48",
             "motionarray": "#d97706",
             "vecteezy": "#7c3aed",

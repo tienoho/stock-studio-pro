@@ -13,6 +13,9 @@ from src.core.interfaces.media_provider import IMediaProvider
 from src.infrastructure.providers.pexels_provider import PexelsProvider
 from src.infrastructure.providers.pixabay_provider import PixabayProvider
 from src.infrastructure.providers.vecteezy_provider import VecteezyProvider
+from src.infrastructure.providers.wikimedia_provider import WikimediaProvider
+from src.infrastructure.providers.openverse_provider import OpenverseProvider
+from src.infrastructure.providers.coverr_provider import CoverrProvider
 from src.application.services.media_provider_registry import MediaProviderRegistry
 from src.application.services.subtitle_service import SubtitleService
 from src.application.services.media_organizer_service import MediaOrganizerService
@@ -38,6 +41,9 @@ class TestCleanArchitectureAndSOLID(unittest.TestCase):
             PexelsProvider(),
             PixabayProvider(),
             VecteezyProvider(),
+            WikimediaProvider(),
+            OpenverseProvider(),
+            CoverrProvider(),
         ]
         for p in providers:
             self.assertIsInstance(p, IMediaProvider)
@@ -56,6 +62,7 @@ class TestCleanArchitectureAndSOLID(unittest.TestCase):
         km_mock.pexels_keys = ["mock_key_1"]
         km_mock.pixabay_keys = ["mock_key_2"]
         km_mock.vecteezy_keys = []
+        km_mock.coverr_keys = []
 
         registry = MediaProviderRegistry(km_mock)
 
@@ -64,11 +71,24 @@ class TestCleanArchitectureAndSOLID(unittest.TestCase):
         self.assertIn("pexels", active)
         self.assertNotIn("pixabay", active)
 
-        # Resolves pexels + pixabay (vecteezy skipped because no keys)
+        # Resolves wikimedia only
+        active_wiki = registry.resolve_providers_for_mode("Wikimedia", km_mock)
+        self.assertIn("wikimedia", active_wiki)
+        self.assertNotIn("pexels", active_wiki)
+
+        # Resolves openverse only
+        active_open = registry.resolve_providers_for_mode("Openverse", km_mock)
+        self.assertIn("openverse", active_open)
+        self.assertNotIn("pixabay", active_open)
+
+        # Resolves all (pexels, pixabay, wikimedia, openverse; vecteezy & coverr skipped because no keys)
         active_all = registry.resolve_providers_for_mode("Tất cả", km_mock)
         self.assertIn("pexels", active_all)
         self.assertIn("pixabay", active_all)
+        self.assertIn("wikimedia", active_all)
+        self.assertIn("openverse", active_all)
         self.assertNotIn("vecteezy", active_all)
+        self.assertNotIn("coverr", active_all)
 
         # Custom provider registration without modifying registry class (Open/Closed)
         class MockUnsplashProvider(IMediaProvider):
