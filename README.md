@@ -20,14 +20,19 @@
 
 - 🎙️ **Voice TXT Studio**:
   - Tích hợp tạo giọng đọc AI từ văn bản hoặc kịch bản phân đoạn 20 phần.
+  - Tích hợp **Microsoft Edge TTS** bản địa thuần Python (Hoài My, Nam Minh, Jenny...) miễn phí chất lượng cao, không cần Node.js.
   - Ghép và đồng bộ file phụ đề `.srt` thông minh với thời gian nghỉ linh hoạt.
 
 - 🎬 **Scene Voice Matching**:
-  - Tự động cắt ghép và khớp video cảnh tương ứng với từng câu thoại / giọng đọc voice bằng FFmpeg.
+  - Tự động cắt ghép và khớp video cảnh tương ứng với từng câu thoại / giọng đọc voice bằng **Native FFmpeg Processor**.
+  - Không phụ thuộc script ngoài, tự động scale 1080p, cắt ngẫu nhiên hoặc tuần tự và xuất video master hoàn chỉnh.
 
 - 🧩 **Visual Workflow Canvas & Auto Mode**:
   - Hệ thống nút kéo thả (Node-based) kết nối trực quan toàn bộ các bước: *Load JSON $\rightarrow$ Search Stock $\rightarrow$ Random Select $\rightarrow$ Download $\rightarrow$ Cut/Mix $\rightarrow$ Create Voice $\rightarrow$ Voice Match*.
-  - Lưu và nạp các preset mẫu quy trình một chạm.
+  - Giao diện ma trận lưới Dot Matrix hiện đại, cuộn chuột Zoom in/out mượt mà, căn chỉnh tự động (Auto-layout).
+  - Đèn báo trạng thái trực tiếp cho từng Node (Idle, Đang chạy, Thành công, Lỗi).
+  - Phím tắt năng suất cao: `Ctrl+1..6` (chuyển tab), `Ctrl+S` (lưu phiên vào SQLite), `F5` (chạy quy trình).
+  - Lưu và nạp các preset mẫu quy trình một chạm bằng SQLite & JSON.
 
 ---
 
@@ -49,13 +54,15 @@ stock-studio-pro/
 ├── run_tests.py                     # 🧪 Trình chạy tự động toàn bộ Unit Tests
 ├── AutoStockStudio.spec             # ⚙️ Cấu hình đóng gói PyInstaller
 ├── requirements.txt                 # 📋 Danh sách thư viện Python
-├── tests/                           # 🧪 Bộ Unit Test tự động (58 tests)
+├── tests/                           # 🧪 Bộ Unit Test tự động (63 tests)
 │   ├── test_core_models.py
 │   ├── test_part_merger.py
 │   ├── test_rate_limiter.py
 │   ├── test_key_manager.py
 │   ├── test_persistence.py
 │   ├── test_ffmpeg_processor.py
+│   ├── test_scene_voice_matcher.py
+│   ├── test_edge_tts_service.py
 │   ├── test_i18n.py
 │   ├── test_ui_interactions.py
 │   └── test_bug_fixes.py
@@ -73,7 +80,7 @@ stock-studio-pro/
     │   ├── providers/               # PexelsProvider, PixabayProvider, VecteezyProvider
     │   └── watcher/                 # DownloadsWatcher
     ├── application/                 # ⚙️ Tầng Nghiệp Vụ (Application Services)
-    │   └── services/                # KeyManager, PartMerger, SmartDownloader, VideoCutService
+    │   └── services/                # KeyManager, PartMerger, SmartDownloader, VideoCutService, SceneVoiceMatcher, EdgeTTSService
     └── ui/                          # 🖥️ Tầng Giao Diện Người Dùng (PyQt6)
         ├── main_window.py           # AutoStockMainWindow (Thin Controller)
         ├── styles/                  # theme.qss, tokens.py, vector SVG icon engine
@@ -112,7 +119,7 @@ pip install -r requirements.txt
 
 ### 4. Chạy Kiểm Thử Tự Động (Unit Tests)
 
-Dự án trang bị 58 unit tests tự động:
+Dự án trang bị 63 unit tests tự động:
 ```bash
 python run_tests.py
 ```

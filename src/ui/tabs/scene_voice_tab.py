@@ -1,16 +1,70 @@
 """
 Scene Voice Matching tab widget.
+Matches scene video footage to audio / SRT voice tracks using native FFmpeg processor.
 """
 
-import sys
 from pathlib import Path
+from typing import Optional
 from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QGridLayout, QLabel,
     QLineEdit, QPushButton, QCheckBox, QDoubleSpinBox, QPlainTextEdit,
-    QFileDialog, QMessageBox
+    QFileDialog, QMessageBox, QFrame, QProgressBar
 )
-from PyQt6.QtCore import pyqtSignal
-from ..workflow.canvas import NodeToolWorker
+from PyQt6.QtCore import pyqtSignal, QThread
+from ...application.services.scene_voice_matcher import SceneVoiceMatcher
+from ..styles.icons import get_svg_icon, get_svg_pixmap
+
+
+class SceneVoiceWorker(QThread):
+    """Background worker for executing SceneVoiceMatcher safely off the UI thread."""
+    progress = pyqtSignal(str)
+    progress_val = pyqtSignal(int, int)
+    finished_signal = pyqtSignal(bool, str)
+
+    def __init__(
+        self,
+        root_video_dir: Path,
+        output_dir: Path,
+        voice_srt_path: Optional[Path] = None,
+        voice_audio_dir: Optional[Path] = None,
+        full_voice_audio: Optional[Path] = None,
+        random_cuts: bool = False,
+        concat_final: bool = True,
+        chunk_seconds: float = 0.0,
+    ):
+        super().__init__()
+        self.root_video_dir = root_video_dir
+        self.output_dir = output_dir
+        self.voice_srt_path = voice_srt_path
+        self.voice_audio_dir = voice_audio_dir
+        self.full_voice_audio = full_voice_audio
+        self.random_cuts = random_cuts
+        self.concat_final = concat_final
+        self.chunk_seconds = chunk_seconds
+
+    def run(self):
+        matcher = SceneVoiceMatcher()
+
+        def on_prog(cur, total, text):
+            self.progress_val.emit(cur, total)
+            self.progress.emit(f"Tiến độ: [{cur}/{total}] {text}")
+
+        def on_log(msg):
+            self.progress.emit(msg)
+
+        ok, msg, clips = matcher.match_and_cut(
+            root_video_dir=self.root_video_dir,
+            output_dir=self.output_dir,
+            voice_srt_path=self.voice_srt_path,
+            voice_audio_dir=self.voice_audio_dir,
+            full_voice_audio=self.full_voice_audio,
+            random_cuts=self.random_cuts,
+            concat_final=self.concat_final,
+            chunk_seconds=self.chunk_seconds,
+            progress_cb=on_prog,
+            log_cb=on_log,
+        )
+        self.finished_signal.emit(ok, msg)
 
 
 class SceneVoiceTab(QWidget):
@@ -21,24 +75,38 @@ class SceneVoiceTab(QWidget):
     def __init__(self, tool_root_fn=None, parent=None):
         super().__init__(parent)
         self.tool_root_fn = tool_root_fn or self._default_tool_root
-        self.scene_voice_worker = None
+        self.scene_voice_worker: Optional[SceneVoiceWorker] = None
 
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(24, 24, 24, 24)
-        layout.setSpacing(12)
+        layout.setContentsMargins(20, 20, 20, 20)
+        layout.setSpacing(10)
+
+        # Header
+        title_h = QHBoxLayout()
+        title_h.setSpacing(8)
+        self.title_icon = QLabel()
+        self.title_icon.setPixmap(get_svg_pixmap("activity", "#f0883e", 20))
+        title_h.addWidget(self.title_icon)
 
         title = QLabel("Khớp Video Với Giọng Đọc")
         title.setObjectName("heroTitle")
-        layout.addWidget(title)
+        title_h.addWidget(title)
+        title_h.addStretch()
+        layout.addLayout(title_h)
 
         hint = QLabel(
-            "Ghép nối video theo từng câu thoại hoặc phụ đề để tạo thành video hoàn chỉnh."
+            "Tự động cắt ghép các đoạn video cảnh theo đúng thời lượng từng câu thoại hoặc phụ đề SRT bằng FFmpeg."
         )
         hint.setObjectName("mutedText")
         hint.setWordWrap(True)
         layout.addWidget(hint)
 
-        grid = QGridLayout()
+        # Config Grid
+        grid_frame = QFrame()
+        grid_frame.setObjectName("toolCard")
+        grid = QGridLayout(grid_frame)
+        grid.setSpacing(8)
+
         self.svc_json = QLineEdit()
         self.svc_root = QLineEdit()
         self.svc_voice = QLineEdit()
@@ -47,45 +115,74 @@ class SceneVoiceTab(QWidget):
 
         rows = [
             ("Kịch bản (JSON, không bắt buộc)", self.svc_json, False),
-            ("Thư mục video cảnh", self.svc_root, True),
-            ("File phụ đề / voice lẻ", self.svc_voice, False),
-            ("File âm thanh đầy đủ", self.svc_full_voice, False),
-            ("Thư mục xuất", self.svc_out, True),
+            ("Thư mục video cảnh (bắt buộc)", self.svc_root, True),
+            ("File phụ đề (.srt) hoặc thư mục voice lẻ", self.svc_voice, False),
+            ("File âm thanh tổng (Master voice, tùy chọn)", self.svc_full_voice, False),
+            ("Thư mục xuất thành phẩm (bắt buộc)", self.svc_out, True),
         ]
         for r, (lab, edit, isdir) in enumerate(rows):
-            grid.addWidget(QLabel(lab + ":"), r, 0)
+            lbl = QLabel(lab + ":")
+            lbl.setStyleSheet("font-size: 12px; font-weight: 600;")
+            grid.addWidget(lbl, r, 0)
             grid.addWidget(edit, r, 1)
-            btn = QPushButton("Chọn")
+            btn = QPushButton("Chọn...")
+            btn.setIcon(get_svg_icon("folder" if isdir else "file", "#ffffff", 14))
             btn.clicked.connect(lambda _, e=edit, d=isdir: self._browse_line_path(e, d))
             grid.addWidget(btn, r, 2)
-        layout.addLayout(grid)
 
-        opts = QHBoxLayout()
-        self.svc_random = QCheckBox("Cắt ngẫu nhiên đoạn video nếu video dài hơn giọng")
-        self.svc_random.setChecked(True)
-        self.svc_concat = QCheckBox("Xuất video hoàn chỉnh (full_video.mp4)")
-        opts.addWidget(self.svc_random)
-        opts.addWidget(self.svc_concat)
-        opts.addWidget(QLabel("Cắt clip con mỗi:"))
+        layout.addWidget(grid_frame)
+
+        # Options Row
+        row = QHBoxLayout()
+        row.setSpacing(12)
+        row.addWidget(QLabel("Thời lượng cắt cố định (giây, nếu không có SRT):"))
         self.svc_chunk_seconds = QDoubleSpinBox()
         self.svc_chunk_seconds.setRange(0.0, 120.0)
-        self.svc_chunk_seconds.setSingleStep(1.0)
-        self.svc_chunk_seconds.setValue(0.0)
-        self.svc_chunk_seconds.setSuffix(" giây")
-        opts.addWidget(self.svc_chunk_seconds)
-        opts.addStretch()
-        layout.addLayout(opts)
+        self.svc_chunk_seconds.setValue(4.0)
+        self.svc_chunk_seconds.setSingleStep(0.5)
+        row.addWidget(self.svc_chunk_seconds)
 
-        row = QHBoxLayout()
-        run = QPushButton("Bắt Đầu Ghép")
-        run.setObjectName("primaryBtn")
-        run.clicked.connect(self.start_scene_voice)
-        row.addWidget(run)
+        self.svc_random = QCheckBox("Cắt ngẫu nhiên trong video (Random offset)")
+        self.svc_random.setChecked(True)
+        row.addWidget(self.svc_random)
+
+        self.svc_concat = QCheckBox("Tự động ghép thành 1 video hoàn chỉnh")
+        self.svc_concat.setChecked(True)
+        row.addWidget(self.svc_concat)
+
         row.addStretch()
+
+        self.btn_run = QPushButton("Bắt Đầu Khớp Video")
+        self.btn_run.setObjectName("primaryBtn")
+        self.btn_run.setIcon(get_svg_icon("play", "#ffffff", 14))
+        self.btn_run.setFixedHeight(36)
+        self.btn_run.clicked.connect(self.start_scene_voice)
+        row.addWidget(self.btn_run)
+
         layout.addLayout(row)
+
+        # Progress bar
+        self.progress_bar = QProgressBar()
+        self.progress_bar.setRange(0, 100)
+        self.progress_bar.setValue(0)
+        self.progress_bar.setTextVisible(True)
+        self.progress_bar.setFixedHeight(8)
+        self.progress_bar.setStyleSheet("""
+            QProgressBar {
+                background: #161b22;
+                border: 1px solid #30363d;
+                border-radius: 4px;
+            }
+            QProgressBar::chunk {
+                background: #f0883e;
+                border-radius: 3px;
+            }
+        """)
+        layout.addWidget(self.progress_bar)
 
         self.svc_log = QPlainTextEdit()
         self.svc_log.setReadOnly(True)
+        self.svc_log.setPlaceholderText("Nhật ký xử lý khớp cảnh sẽ xuất hiện tại đây...")
         layout.addWidget(self.svc_log, 1)
 
     def _default_tool_root(self) -> Path:
@@ -99,7 +196,10 @@ class SceneVoiceTab(QWidget):
         if is_dir:
             path = QFileDialog.getExistingDirectory(self, "Chọn thư mục", line_edit.text() or str(Path.home()))
         else:
-            path, _ = QFileDialog.getOpenFileName(self, "Chọn file", line_edit.text() or str(Path.home()), "All files (*.*)")
+            path, _ = QFileDialog.getOpenFileName(
+                self, "Chọn file", line_edit.text() or str(Path.home()),
+                "Supported files (*.srt *.mp3 *.wav *.aac *.m4a *.json);;All files (*.*)"
+            )
         if path:
             line_edit.setText(path)
 
@@ -114,41 +214,57 @@ class SceneVoiceTab(QWidget):
         self.svc_concat.setChecked(bool(concat))
 
     def start_scene_voice(self):
-        jsonp = self.svc_json.text().strip()
         root = self.svc_root.text().strip()
         voice = self.svc_voice.text().strip()
         full_voice = self.svc_full_voice.text().strip()
         out = self.svc_out.text().strip()
         chunk_seconds = self.svc_chunk_seconds.value()
 
-        if not root or not out:
-            QMessageBox.information(self, "Thiếu dữ liệu", "Cần folder video cảnh và output folder")
+        if not root:
+            QMessageBox.information(self, "Thiếu thông tin", "Vui lòng chọn Thư mục video cảnh nguồn.")
             return
 
-        script = self.tool_root() / "Scene Voice Cutter" / "scene_voice_cutter.py"
-        if not script.exists():
-            self.svc_log.appendPlainText(f"Lỗi: không tìm thấy {script}")
-            return
+        if not out:
+            # Default out to root / "matched_output"
+            out = str(Path(root) / "matched_output")
+            self.svc_out.setText(out)
 
         if self.scene_voice_worker and self.scene_voice_worker.isRunning():
-            QMessageBox.information(self, "Đang chạy", "Đợi job khớp voice hiện tại xong nhé")
+            QMessageBox.information(self, "Đang xử lý", "Tiến trình khớp video trước đó đang chạy. Vui lòng đợi hoàn tất.")
             return
 
-        args = [
-            sys.executable if not getattr(sys, "frozen", False) else "python",
-            str(script), "--cli", jsonp, root, voice, out,
-            "1" if self.svc_random.isChecked() else "0",
-            "1" if self.svc_concat.isChecked() else "0",
-            full_voice, f"{chunk_seconds:.3f}"
-        ]
-        self.svc_log.appendPlainText("Đang chạy khớp voice bằng ffmpeg...")
-        self.scene_voice_worker = NodeToolWorker(args, script.parent)
-        self.scene_voice_worker.progress.connect(lambda msg: self.svc_log.appendPlainText(msg) if msg else None)
+        voice_srt_path = Path(voice) if (voice and voice.lower().endswith(".srt")) else None
+        voice_audio_dir = Path(voice) if (voice and Path(voice).is_dir()) else None
+        full_voice_path = Path(full_voice) if full_voice else None
+
+        self.svc_log.clear()
+        self.svc_log.appendPlainText("Khởi động tiến trình Native Scene Voice Matcher (FFmpeg)...")
+        self.progress_bar.setValue(0)
+        self.btn_run.setEnabled(False)
+
+        self.scene_voice_worker = SceneVoiceWorker(
+            root_video_dir=Path(root),
+            output_dir=Path(out),
+            voice_srt_path=voice_srt_path,
+            voice_audio_dir=voice_audio_dir,
+            full_voice_audio=full_voice_path,
+            random_cuts=self.svc_random.isChecked(),
+            concat_final=self.svc_concat.isChecked(),
+            chunk_seconds=chunk_seconds,
+        )
+
+        self.scene_voice_worker.progress.connect(self.svc_log.appendPlainText)
+        self.scene_voice_worker.progress_val.connect(self._on_progress_val)
         self.scene_voice_worker.finished_signal.connect(self._on_finished)
         self.scene_voice_worker.start()
 
-    def _on_finished(self, ok: bool, message: str):
-        self.svc_log.appendPlainText(("[SUCCESS] " if ok else "[ERROR] ") + (message[-6000:] if message else "Done"))
-        self.finished.emit(ok, message)
+    def _on_progress_val(self, cur: int, total: int):
+        if total > 0:
+            self.progress_bar.setValue(int(cur / total * 100))
 
-    _start_native = start_scene_voice
+    def _on_finished(self, ok: bool, message: str):
+        self.btn_run.setEnabled(True)
+        self.progress_bar.setValue(100 if ok else 0)
+        status = "[HOÀN TẤT THÀNH CÔNG] " if ok else "[LỖI XỬ LÝ] "
+        self.svc_log.appendPlainText(f"\n{status}{message}")
+        self.finished.emit(ok, message)

@@ -177,6 +177,35 @@ class AutoStockMainWindow(QMainWindow):
         self.setStatusBar(self.status_bar)
         self.status_bar.showMessage(t("app.status_ready"))
 
+        # Setup Global Productivity Shortcuts
+        self._setup_shortcuts()
+
+    def _setup_shortcuts(self):
+        from PyQt6.QtGui import QKeySequence, QShortcut
+        for i in range(6):
+            sc = QShortcut(QKeySequence(f"Ctrl+{i+1}"), self)
+            sc.activated.connect(lambda idx=i: self.main_tabs.setCurrentIndex(idx))
+
+        sc_save = QShortcut(QKeySequence("Ctrl+S"), self)
+        sc_save.activated.connect(self._save_session_state)
+
+        sc_f5 = QShortcut(QKeySequence("F5"), self)
+        sc_f5.activated.connect(self._on_f5_pressed)
+
+    def _save_session_state(self):
+        try:
+            self.downloader_tab._save_state()
+            ToastNotification.show_toast(self, "Đã lưu phiên làm việc vào SQLite", "success", 2000)
+        except Exception as e:
+            ToastNotification.show_toast(self, f"Lỗi lưu: {e}", "error", 2000)
+
+    def _on_f5_pressed(self):
+        current_idx = self.main_tabs.currentIndex()
+        if current_idx == 0:
+            self.downloader_tab.start_search()
+        elif current_idx == 5:
+            self._run_workflow()
+
     def _toggle_language(self):
         """Switches between VI and EN, persisting to SQLite."""
         curr = self.i18n.get_locale()
@@ -298,6 +327,9 @@ class AutoStockMainWindow(QMainWindow):
             QMessageBox.information(self, "Quy trình trống", "Vui lòng thêm ít nhất một bước trước khi chạy.")
             return
 
+        for n in nodes:
+            n.set_status("idle")
+
         self._workflow_running_nodes = nodes
         self._workflow_index = 0
         steps = [node.title for node in nodes]
@@ -307,11 +339,16 @@ class AutoStockMainWindow(QMainWindow):
     def _workflow_continue(self):
         nodes = self._workflow_running_nodes
         while self._workflow_index < len(nodes):
+            # Mark previous node as success if applicable
+            if self._workflow_index > 0:
+                nodes[self._workflow_index - 1].set_status("success")
+
             node = nodes[self._workflow_index]
             self._workflow_index += 1
             step = node.title
             config = getattr(node, "config", {}) or {}
 
+            node.set_status("running")
             self.workflow_tab.workflow_log.appendPlainText(f"Bước: {step}")
 
             if step == "Load JSON":
@@ -321,17 +358,20 @@ class AutoStockMainWindow(QMainWindow):
                         data = json.loads(raw)
                         scenes = extract_scenes_from_json(data)
                         self._on_json_loaded(data, scenes, str(config.get("json")))
+                        node.set_status("success")
                         continue
                     except Exception as e:
+                        node.set_status("error")
                         QMessageBox.warning(self, "Lỗi đọc kịch bản", str(e))
                 self.main_tabs.setCurrentIndex(0)
                 self.downloader_tab._open_json_input_dialog()
                 if self.downloader_tab.scenes:
+                    node.set_status("success")
                     continue
                 else:
+                    node.set_status("error")
                     self.workflow_tab.workflow_log.appendPlainText("Quy trình dừng: Chưa nạp kịch bản.")
                     return
-
 
             if step == "Search stock":
                 self._workflow_waiting_for = "Search stock"
@@ -342,6 +382,7 @@ class AutoStockMainWindow(QMainWindow):
             if step == "Random select":
                 count = int(config.get("count") or 1)
                 self.downloader_tab.auto_random_all_scenes(count)
+                node.set_status("success")
                 continue
 
             if step == "Download selected":
@@ -363,6 +404,7 @@ class AutoStockMainWindow(QMainWindow):
                     self.voice_tab._start_json_parts_voice_native()
                 else:
                     self.voice_tab.start_native_voice()
+                node.set_status("success")
                 continue
 
             if step == "Scene voice match":
@@ -371,20 +413,28 @@ class AutoStockMainWindow(QMainWindow):
                 self.scene_voice_tab.start_scene_voice()
                 return
 
+        if nodes:
+            nodes[-1].set_status("success")
         self.workflow_tab.workflow_log.appendPlainText("Quy trình: Đã hoàn tất toàn bộ các bước!")
         self._workflow_waiting_for = None
 
     def _on_cut_mix_finished(self, ok: bool, message: str):
         if self._workflow_waiting_for == "Cut/Mix video":
             self._workflow_waiting_for = None
+            if self._workflow_index > 0 and self._workflow_index <= len(self._workflow_running_nodes):
+                self._workflow_running_nodes[self._workflow_index - 1].set_status("success" if ok else "error")
             self.workflow_tab.workflow_log.appendPlainText(f"Cắt & Ghép video: {'thành công' if ok else 'lỗi'} -> {message}")
-            self._workflow_continue()
+            if ok:
+                self._workflow_continue()
 
     def _on_scene_voice_finished(self, ok: bool, message: str):
         if self._workflow_waiting_for == "Scene voice match":
             self._workflow_waiting_for = None
+            if self._workflow_index > 0 and self._workflow_index <= len(self._workflow_running_nodes):
+                self._workflow_running_nodes[self._workflow_index - 1].set_status("success" if ok else "error")
             self.workflow_tab.workflow_log.appendPlainText(f"Khớp Video & Voice: {'thành công' if ok else 'lỗi'} -> {message}")
-            self._workflow_continue()
+            if ok:
+                self._workflow_continue()
 
     # ═══════════════════════════════════════════════════════════════
     # DRAG & DROP SCRIPT IMPORT

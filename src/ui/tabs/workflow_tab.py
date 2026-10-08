@@ -53,6 +53,12 @@ class WorkflowTab(QWidget):
         self.btn_add_node.clicked.connect(self._workflow_canvas_add)
         top.addWidget(self.btn_add_node)
 
+        self.btn_auto_layout = QPushButton("Sắp Xếp")
+        self.btn_auto_layout.setIcon(get_svg_icon("layout", "#4ec9b0", 14))
+        self.btn_auto_layout.setToolTip("Tự động căn chỉnh các bước thẳng hàng từ trái sang phải")
+        self.btn_auto_layout.clicked.connect(lambda: self.workflow_canvas.auto_arrange())
+        top.addWidget(self.btn_auto_layout)
+
         self.btn_run = QPushButton(t("workflow.run_workflow"))
         self.btn_run.setIcon(get_svg_icon("play", "#ffffff", 14))
         self.btn_run.setObjectName("primaryBtn")
